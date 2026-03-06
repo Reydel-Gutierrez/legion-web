@@ -1,8 +1,6 @@
 import React from "react";
 import { Card, Button } from '@themesberg/react-bootstrap';
 import { Link } from 'react-router-dom';
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faArrowRight } from "@fortawesome/free-solid-svg-icons";
 import { Routes } from "../routes";
 import { useState } from "react";
 import { Modal } from '@themesberg/react-bootstrap';
@@ -16,11 +14,6 @@ export default function Footer({ controllers = 18, devices = "1.42", ...props })
       <footer className="legion-footer">
         <div className="legion-footer-inner">
           <div className="legion-footer-left d-flex align-items-center gap-3">
-            <Link to={Routes.Upgrade.path} className="legion-footer-dev-link">
-              <FontAwesomeIcon icon={faArrowRight} className="me-1" />
-              Switch to Dev-Mode
-            </Link>
-            <span className="legion-footer-sep">·</span>
             <span>© 2026 Legion Controls <span className="legion-footer-sep">·</span> BAS Portal</span>
           </div>
           <div className="legion-footer-center">

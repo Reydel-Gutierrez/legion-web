@@ -3,12 +3,11 @@ import SimpleBar from 'simplebar-react';
 import { useLocation } from "react-router-dom";
 import { CSSTransition } from 'react-transition-group';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faBook, faUsers, faBoxOpen, faChartPie, faCog, faFileAlt, faHandHoldingUsd, faSignOutAlt, faTable, faTimes, faCalendarAlt, faMapPin, faInbox } from "@fortawesome/free-solid-svg-icons";
+import { faUsers, faBoxOpen, faChartPie, faCog, faSignOutAlt, faTimes, faCalendarAlt, faMapPin, faInbox } from "@fortawesome/free-solid-svg-icons";
 import { Nav, Badge, Image, Button, Dropdown, Accordion, Navbar } from '@themesberg/react-bootstrap';
 import { Link } from 'react-router-dom';
 
 import { Routes } from "../routes";
-import ThemesbergLogo from "../assets/img/themesberg.svg";
 import ReactHero from "../assets/img/technologies/react-hero-logo.svg";
 import ProfilePicture from "../assets/img/team/profile-picture-3.jpg";
 import { useSite } from "./SiteContext";
@@ -71,7 +70,7 @@ export default function Sidebar() {
   return (
     <>
       <Navbar expand={false} collapseOnSelect variant="dark" className="navbar-theme-primary px-4 d-md-none">
-        <Navbar.Brand className="me-lg-5" as={Link} to={Routes.DashboardOverview.path}>
+        <Navbar.Brand className="me-lg-5" as={Link} to={Routes.LegionDashboard.path}>
           <Image src={ReactHero} className="navbar-brand-light" />
         </Navbar.Brand>
         <Navbar.Toggle as={Button} aria-controls="main-navbar" onClick={onCollapse}>
@@ -89,7 +88,7 @@ export default function Sidebar() {
                 </div>
                 <div className="d-block">
                   <h6>Hi, Jane</h6>
-                  <Button as={Link} variant="secondary" size="xs" to={Routes.Signin.path} className="text-dark">
+                  <Button as={Link} variant="secondary" size="xs" to={Routes.LegionDashboard.path} className="text-dark">
                     <FontAwesomeIcon icon={faSignOutAlt} className="me-2" /> Sign Out
                   </Button>
                 </div>
