@@ -27,7 +27,7 @@
 		&.active {
 			& > .nav-link {
 				color: $light;
-				background-color: #2e3650;
+				background-color: #181818;
 				border: $border-width solid lighten( $dark, 20% );
 			}
 		}
@@ -36,7 +36,7 @@
 			border: $border-width solid $dark;
 			&:hover {
 				color: $light;
-				background-color: #2e3650;
+				background-color: #181818;
 			}
 			&.active {
 				color: $white;
@@ -75,7 +75,7 @@
 
 		&:focus{
 			outline: none;
-			box-shadow: 0 0 0 0.1rem rgba(#4c5680, 0.2);
+			box-shadow: 0 0 0 0.1rem rgba(#181818, 0.2);
 		}
 
 	}
@@ -180,7 +180,7 @@
 			width:.5rem;
 		}
 		&:not(.collapsed) {
-			background-color:#2e3650;
+			background-color:#181818;
 			&::after{
 				transform: rotate(90deg);
     			transition: all .2s ease;
@@ -207,7 +207,7 @@
 }
 
 .user-card{
-	border-bottom: 0.0625rem solid #2e3650;
+	border-bottom: 0.0625rem solid #181818;
 }
 
 @include media-breakpoint-down(sm) {

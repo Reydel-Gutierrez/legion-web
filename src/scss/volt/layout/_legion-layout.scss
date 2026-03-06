@@ -1,0 +1,639 @@
+/**
+ * Legion enterprise layout: sidebar, topbar, footer
+ * Metasys/industrial: darker, translucent panels, subtle borders, minimal glow
+ */
+
+// Shared panel tokens (match cards and rest of Legion)
+$legion-panel-bg: #0F1520;
+$legion-panel-border: rgba(255, 255, 255, 0.08);
+$legion-panel-radius: 4px;
+$legion-sidebar-width: 250px;
+$legion-accent: rgba(13, 202, 240, 0.95);
+$legion-text: rgba(255, 255, 255, 0.92);
+$legion-text-muted: rgba(255, 255, 255, 0.55);
+$legion-hover-bg: rgba(255, 255, 255, 0.06);
+$legion-active-bg: rgba(255, 255, 255, 0.08);
+$legion-accent-bar: 3px;
+
+/* ========== SIDEBAR ========== */
+/* Sidebar starts below navbar (no overlap) */
+.legion-sidebar-wrapper {
+  position: fixed !important;
+  top: var(--legion-topbar-h, 44px) !important;
+  left: 0 !important;
+  width: 100%;
+  max-width: $legion-sidebar-width;
+  height: calc(100vh - var(--legion-topbar-h, 44px) - var(--legion-footer-h, 40px)) !important;
+  max-height: calc(100vh - var(--legion-topbar-h, 44px) - var(--legion-footer-h, 40px)) !important;
+  z-index: 100;
+  background: $legion-panel-bg;
+  border-right: 1px solid $legion-panel-border;
+  box-shadow: inset -1px 0 0 rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+}
+
+/* Inner SimpleBar fills the wrapper; no independent positioning */
+.legion-sidebar-wrapper .sidebar.legion-sidebar,
+.legion-sidebar-wrapper [data-simplebar] {
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  max-height: none !important;
+}
+
+/* Shared styles for sidebar content (legion-sidebar or inside wrapper) */
+.legion-sidebar.sidebar,
+.legion-sidebar-wrapper .legion-sidebar.sidebar {
+  background: transparent;
+  color: $legion-text;
+
+  .sidebar-inner {
+    padding-top: 1rem;
+    padding-bottom: 1rem;
+    display: flex;
+    flex-direction: column;
+    min-height: 100%;
+
+    .nav.flex-column {
+      flex: 1 1 auto;
+      min-height: 0;
+    }
+  }
+
+  .legion-sidebar-site {
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    margin-bottom: 1rem;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: $legion-text-muted;
+    background: transparent;
+    border: none;
+    border-radius: $legion-panel-radius;
+    min-height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    transition: background 0.15s ease, color 0.15s ease;
+
+    &:hover {
+      color: $legion-text;
+      background: $legion-hover-bg;
+    }
+
+    .dropdown-toggle::after {
+      margin-left: 0.35rem;
+      opacity: 0.8;
+    }
+  }
+
+  .dropdown.show .legion-sidebar-site {
+    color: $legion-text;
+    background: $legion-hover-bg;
+  }
+
+  .nav-item {
+    margin-bottom: 0.1rem;
+    border: none;
+
+    .nav-link {
+      font-size: 0.8125rem;
+      padding: 0.5rem 0.75rem;
+      color: $legion-text-muted;
+      background: transparent;
+      border: none;
+      border-radius: $legion-panel-radius;
+      min-height: 36px;
+      display: flex;
+      align-items: center;
+
+      .sidebar-icon {
+        margin-right: 0.5rem;
+        color: inherit;
+        opacity: 0.9;
+
+        svg {
+          min-width: 18px;
+          width: 18px;
+          font-size: 0.875rem;
+        }
+      }
+
+      &:hover {
+        color: $legion-text;
+        background: $legion-hover-bg;
+      }
+
+      &:focus {
+        outline: none;
+        box-shadow: none;
+      }
+    }
+
+    &.active .nav-link {
+      color: $legion-text;
+      background: $legion-active-bg;
+      box-shadow: inset $legion-accent-bar 0 0 $legion-accent;
+      font-weight: 600;
+    }
+  }
+
+  .dropdown-divider {
+    border-color: $legion-panel-border;
+    opacity: 0.6;
+    margin: 0.5rem 0;
+  }
+
+
+  .legion-sidebar-dev-link {
+    margin-top: auto;
+    flex-shrink: 0;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.75rem;
+    color: $legion-text-muted;
+    background: transparent;
+    border: none;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    transition: color 0.15s ease;
+
+    &:hover {
+      color: $legion-text;
+    }
+
+    .sidebar-icon {
+      margin-right: 0;
+      font-size: 0.7rem;
+    }
+  }
+
+  .upgrade-to-pro {
+    position: static;
+    width: auto;
+    margin: 0.5rem 0 0;
+    padding: 0;
+    background: transparent !important;
+    border: none !important;
+    color: $legion-text-muted;
+    font-size: 0.75rem;
+    box-shadow: none !important;
+
+    &:hover {
+      color: $legion-text;
+      background: transparent !important;
+    }
+  }
+}
+
+/* Legion dropdown menus (site selector, etc.) – matches topbar notification/user menus */
+.legion-dropdown-menu.dropdown-menu {
+  background: rgba(10, 16, 26, 0.96) !important;
+  border: 1px solid rgba(255, 255, 255, 0.10) !important;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.55) !important;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+
+  .dropdown-item {
+    color: rgba(255, 255, 255, 0.85);
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.04);
+      color: $legion-text;
+    }
+  }
+}
+
+/* Content area margin when legion sidebar is present */
+main.content.legion-bg {
+  margin-left: $legion-sidebar-width;
+  padding-bottom: var(--legion-footer-h, 40px);
+}
+
+@include media-breakpoint-down(md) {
+  main.content.legion-bg {
+    margin-left: 0;
+  }
+
+  /* Mobile overlay sidebar: when expanded, starts below topbar */
+  .legion-sidebar-wrapper.collapse.show {
+    top: var(--legion-topbar-h, 44px) !important;
+    height: calc(100vh - var(--legion-topbar-h, 44px)) !important;
+    max-height: calc(100vh - var(--legion-topbar-h, 44px)) !important;
+  }
+}
+
+/* ========== TOP BAR ========== */
+/* Match --legion-topbar-h (44px) for seamless sidebar junction */
+.legion-topbar {
+  background: $legion-panel-bg;
+  border-bottom: 1px solid $legion-panel-border;
+  backdrop-filter: saturate(1.1) blur(8px);
+  height: var(--legion-topbar-h);
+  min-height: var(--legion-topbar-h);
+  padding: 0;
+
+  .legion-topbar-breadcrumb {
+    font-size: 0.8125rem;
+    color: $legion-text-muted;
+
+    .breadcrumb-item {
+      color: inherit;
+
+      a {
+        color: inherit;
+        text-decoration: none;
+      }
+
+      &.active {
+        color: $legion-text;
+      }
+    }
+
+    .breadcrumb-item + .breadcrumb-item::before {
+      content: ">";
+      font-family: inherit;
+      font-weight: 400;
+      color: $legion-text-muted;
+      opacity: 0.7;
+    }
+  }
+
+  .legion-topbar-chips {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    font-size: 0.75rem;
+    color: $legion-text-muted;
+  }
+
+  .legion-topbar-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    white-space: nowrap;
+
+    .legion-topbar-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: $green;
+      flex-shrink: 0;
+    }
+  }
+
+  .legion-topbar-user {
+    font-size: 0.8125rem;
+    color: $legion-text-muted;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+}
+
+/* ========== FOOTER ========== */
+/* Matches navbar: same bg + border, full width, fixed at bottom. Sidebar ends above it. */
+/* Solid background (no transparency) to prevent grey patch at sidebar/footer junction */
+.legion-footer {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: var(--legion-footer-h, 40px);
+  min-height: var(--legion-footer-h, 40px);
+  z-index: 1200;
+  background: $legion-panel-bg !important;
+  border-top: 1px solid $legion-panel-border !important;
+  box-shadow: none !important;
+
+  /* Extend solid bg into sidebar column to eliminate any gap at junction */
+  &::before {
+    content: '';
+    position: absolute;
+    top: -2px;
+    left: 0;
+    width: $legion-sidebar-width;
+    height: calc(100% + 2px);
+    background: $legion-panel-bg;
+    z-index: -1;
+  }
+
+  .legion-footer-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    height: 100%;
+    max-width: 100%;
+    padding-left: calc(#{$legion-sidebar-width} + 14px);
+    padding-right: 14px;
+
+    @include media-breakpoint-down(md) {
+      padding-left: 14px;
+    }
+  }
+
+  .legion-footer-left {
+    flex: 0 0 auto;
+    font-size: 0.75rem;
+    color: var(--legion-topbar-muted, $legion-text-muted);
+  }
+
+  .legion-footer-center {
+    flex: 1 1 auto;
+    text-align: center;
+    min-width: 0;
+    font-size: 0.75rem;
+    color: var(--legion-topbar-muted, $legion-text-muted);
+  }
+
+  .legion-footer-right {
+    flex: 0 0 auto;
+    font-size: 0.75rem;
+  }
+
+  a {
+    color: var(--legion-topbar-muted, $legion-text-muted);
+    text-decoration: none;
+    transition: color 0.15s ease;
+
+    &:hover {
+      color: $legion-text;
+    }
+  }
+
+  .legion-footer-sep {
+    margin: 0 0.35rem;
+    opacity: 0.6;
+  }
+
+  .legion-footer-dev-link {
+    display: inline-flex;
+    align-items: center;
+    white-space: nowrap;
+    font-size: 0.75rem;
+  }
+}
+
+@media (max-width: 576px) {
+  .legion-footer .legion-footer-inner {
+    flex-direction: column;
+    text-align: center;
+  }
+  .legion-footer .legion-footer-center {
+    order: 3;
+    width: 100%;
+  }
+}
+
+/* ========== LEGION SEARCH BAR ========== */
+/* Matches search inputs on Alarms, Events, Equipment: pill shape, dark bg, muted placeholder */
+$legion-search-bg: #2E333D;
+$legion-search-placeholder: #7B818F;
+
+.legion-search-bar {
+  border-radius: 999px;
+  background: $legion-search-bg;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+  box-shadow: none;
+
+  .form-control {
+    border: none !important;
+  }
+
+  .legion-search-bar-addon,
+  .input-group-text {
+    background: transparent !important;
+    border: none !important;
+    color: $legion-search-placeholder !important;
+    padding-left: 1rem;
+    padding-right: 0.5rem;
+  }
+
+  .legion-search-bar-input,
+  .form-control.legion-search-bar-input {
+    background: transparent !important;
+    border: none !important;
+    color: $legion-text !important;
+    padding: 0.5rem 1rem 0.5rem 0.25rem;
+    min-width: 220px;
+
+    @include media-breakpoint-up(md) {
+      min-width: 280px;
+    }
+
+    &::placeholder {
+      color: $legion-search-placeholder;
+      opacity: 0.95;
+    }
+
+    &:focus {
+      background: transparent !important;
+      border: none !important;
+      box-shadow: none !important;
+    }
+  }
+}
+
+/* ========== EQUIPMENT TREE ========== */
+.legion-equipment-tree {
+  .equipment-tree-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    width: 100%;
+    padding: 0.35rem 0.5rem;
+    padding-left: var(--tree-pad, 0.5rem);
+    border: none;
+    border-left: 2px solid transparent;
+    background: transparent;
+    color: $legion-text;
+    font-size: 0.9375rem;
+    text-align: left;
+    cursor: pointer;
+    transition: background 0.15s ease;
+
+    .equipment-tree-caret {
+      flex-shrink: 0;
+      width: 14px;
+      display: inline-flex;
+      justify-content: center;
+      color: $legion-text-muted;
+      font-size: 0.85rem;
+    }
+
+    .equipment-tree-content {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      flex: 1;
+      min-width: 0;
+    }
+
+    .equipment-tree-name {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .equipment-tree-subtext {
+      color: $legion-text-muted;
+      font-size: 0.875rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    &:hover {
+      background: $legion-hover-bg;
+    }
+
+    &.equipment-tree-row--active {
+      background: $legion-active-bg;
+      border-left-color: $secondary;
+    }
+
+    &.equipment-tree-row--draggable {
+      cursor: grab;
+
+      &:active {
+        cursor: grabbing;
+      }
+    }
+  }
+}
+
+/* Workspace drop zone highlight */
+.legion-workspace-dropzone {
+  transition: box-shadow 0.15s ease, background 0.15s ease;
+
+  &.legion-workspace-dropzone--active {
+    box-shadow: inset 0 0 0 2px $legion-accent;
+    background: rgba(13, 202, 240, 0.06);
+  }
+}
+
+/* Workspace table: ensure all data cells have clear, readable text */
+.legion-workspace-dropzone .table td {
+  color: rgba(255, 255, 255, 0.96) !important;
+}
+
+/* Point column: easy-to-read point identifiers (e.g. DA-T, SA-T, Flow) */
+.legion-workspace-point {
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.98) !important;
+  letter-spacing: 0.02em;
+  font-family: ui-monospace, "SF Mono", "Cascadia Code", "Consolas", monospace;
+}
+
+/* ========== WORKSPACE PANEL EXTENSIONS ========== */
+.workspace-panel {
+  .legion-selection-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.5rem 0.75rem;
+    background: rgba($secondary, 0.2);
+    border: 1px solid rgba($secondary, 0.5);
+    border-radius: 0.375rem;
+  }
+
+  .legion-scope-tray {
+    min-height: 48px;
+    padding: 0.5rem 0.75rem;
+    background: rgba(0, 0, 0, 0.25);
+    border: 1px dashed rgba(255, 255, 255, 0.2);
+    border-radius: 0.375rem;
+    transition: border-color 0.15s ease, background 0.15s ease;
+
+    &.legion-scope-tray--active {
+      border-color: $legion-accent;
+      background: rgba(13, 202, 240, 0.08);
+    }
+
+    .legion-scope-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.2rem 0.5rem;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 999px;
+      font-size: 0.875rem;
+      color: $legion-text;
+
+      .legion-scope-chip-remove {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0;
+        margin: 0;
+        width: 18px;
+        height: 18px;
+        border: none;
+        background: rgba(255, 255, 255, 0.15);
+        color: $legion-text;
+        border-radius: 50%;
+        cursor: pointer;
+        font-size: 0.7rem;
+        line-height: 1;
+
+        &:hover {
+          background: rgba(255, 255, 255, 0.25);
+        }
+      }
+    }
+  }
+
+  .legion-global-results-panel {
+    padding: 0.75rem;
+    background: rgba(0, 0, 0, 0.35);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 0.375rem;
+    max-height: 280px;
+    overflow-y: auto;
+
+    .legion-global-result-row {
+      cursor: pointer;
+      padding: 0.2rem 0;
+      margin: 0;
+    }
+
+    .legion-global-result-row:hover {
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 0.25rem;
+    }
+  }
+
+  .legion-command-points-list {
+    max-height: 180px;
+    overflow-y: auto;
+  }
+
+  .table-active {
+    background: rgba($secondary, 0.2) !important;
+  }
+}
+
+/* Override success (green) to $secondary in Legion Equipment page */
+.legion-equipment-page {
+  .btn-success {
+    background-color: $secondary !important;
+    border-color: $secondary !important;
+    color: $dark !important;
+
+    &:hover {
+      background-color: lighten($secondary, 5%) !important;
+      border-color: lighten($secondary, 5%) !important;
+      color: $dark !important;
+    }
+  }
+}

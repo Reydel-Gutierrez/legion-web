@@ -7,8 +7,6 @@ export const Routes = {
     Settings: { path: "/settings" },
     Upgrade: { path: "/upgrade" },
     BootstrapTables: { path: "/tables/bootstrap-tables" },
-    Billing: { path: "/examples/billing" },
-    Invoice: { path: "/examples/invoice" },
     Signin: { path: "/examples/sign-in" },
     Signup: { path: "/examples/sign-up" },
     ForgotPassword: { path: "/examples/forgot-password" },
@@ -16,6 +14,18 @@ export const Routes = {
     Lock: { path: "/examples/lock" },
     NotFound: { path: "/examples/404" },
     ServerError: { path: "/examples/500" },
+
+    LegionDashboard: { path: "/legion/dashboard" },
+    LegionSite: { path: "/legion/site" },
+    LegionEquipment: { path: "/legion/equipment" },
+    LegionEquipmentDetail: { path: "/legion/equipment/:equipmentId" },
+    LegionAlarms: { path: "/legion/alarms" },
+    LegionTrends: { path: "/legion/trends" },
+    LegionSchedules: { path: "/legion/schedules" },
+    LegionEvents: { path: "/legion/events" },
+    LegionSettings: { path: "/legion/settings" },
+    LegionUsers: { path: "/legion/users" },
+
 
     // docs
     DocsOverview: { path: "/documentation/overview" },
@@ -43,6 +53,5 @@ export const Routes = {
     Tables: { path: "/components/tables" },
     Tabs: { path: "/components/tabs" },
     Tooltips: { path: "/components/tooltips" },
-    Toasts: { path: "/components/toasts" },
-    WidgetsComponent: { path: "/components/widgets" }
+    Toasts: { path: "/components/toasts" }
 };

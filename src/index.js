@@ -25,11 +25,14 @@ import "react-datetime/css/react-datetime.css";
 
 import HomePage from "./pages/HomePage";
 import ScrollToTop from "./components/ScrollToTop";
+import { SiteProvider } from "./components/SiteContext";
 
 ReactDOM.render(
   <HashRouter>
-    <ScrollToTop />
-    <HomePage />
+    <SiteProvider>
+      <ScrollToTop />
+      <HomePage />
+    </SiteProvider>
   </HashRouter>,
   document.getElementById("root")
 );

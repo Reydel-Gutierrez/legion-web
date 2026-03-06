@@ -1,8 +1,21 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 import { Route, Switch, Redirect } from "react-router-dom";
 import { Routes } from "../routes";
+import LegionBg from "../assets/img/legion-web-bg.png"; // adjust path/name
 
 // pages
+// Legion pages
+import LegionDashboard from "./Legion/Dashboard";
+import LegionSite from "./Legion/Site";
+import LegionEquipment from "./Legion/Equipment";
+import LegionEquipmentDetail from "./Legion/EquipmentDetail";
+import LegionAlarms from "./Legion/Alarms";
+import LegionTrends from "./Legion/Trends";
+import LegionSchedules from "./Legion/Schedules";
+import LegionEvents from "./Legion/Events";
+import LegionSettings from "./Legion/Settings";
+import LegionUsers from "./Legion/Users";
+
 import Presentation from "./Presentation";
 import Upgrade from "./Upgrade";
 import DashboardOverview from "./dashboard/DashboardOverview";
@@ -87,11 +100,13 @@ const RouteWithSidebar = ({ component: Component, ...rest }) => {
         <Preloader show={loaded ? false : true} />
         <Sidebar />
 
-        <main className="content">
-          <Navbar />
-          <Component {...props} />
-          <Footer toggleSettings={toggleSettings} showSettings={showSettings} />
-        </main>
+           <main className="content legion-bg">
+
+            <Navbar />
+            <Component {...props} />
+            <Footer toggleSettings={toggleSettings} showSettings={showSettings} />
+          </main>
+
       </>
     )}
     />
@@ -115,6 +130,19 @@ export default () => (
     <RouteWithSidebar exact path={Routes.Transactions.path} component={Transactions} />
     <RouteWithSidebar exact path={Routes.Settings.path} component={Settings} />
     <RouteWithSidebar exact path={Routes.BootstrapTables.path} component={BootstrapTables} />
+
+    {/* Legion BAS */}
+    <RouteWithSidebar exact path={Routes.LegionDashboard.path} component={LegionDashboard} />
+    <RouteWithSidebar exact path={Routes.LegionSite.path} component={LegionSite} />
+    <RouteWithSidebar exact path={Routes.LegionEquipment.path} component={LegionEquipment} />
+    <RouteWithSidebar exact path={Routes.LegionEquipmentDetail.path} component={LegionEquipmentDetail} />
+    <RouteWithSidebar exact path={Routes.LegionAlarms.path} component={LegionAlarms} />
+    <RouteWithSidebar exact path={Routes.LegionTrends.path} component={LegionTrends} />
+    <RouteWithSidebar exact path={Routes.LegionSchedules.path} component={LegionSchedules} />
+    <RouteWithSidebar exact path={Routes.LegionEvents.path} component={LegionEvents} />
+    <RouteWithSidebar exact path={Routes.LegionSettings.path} component={LegionSettings} />
+    <RouteWithSidebar exact path={Routes.LegionUsers.path} component={LegionUsers} />
+
 
     {/* components */}
     <RouteWithSidebar exact path={Routes.Accordions.path} component={Accordion} />

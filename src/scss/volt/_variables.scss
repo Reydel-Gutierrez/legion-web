@@ -49,6 +49,15 @@ $cyan:    #63b1bd;
 $soft-indigo:#f5e8ff;
 $soft-green: #2CA58D;
 
+.card.bg-primary {
+  color: #ffffff;
+}
+
+.card.bg-primary .form-label,
+.card.bg-primary .small {
+  color: #ffffff !important;
+}
+
 // scss-docs-start colors-map
 $colors: (
   "blue":       $blue,
@@ -68,11 +77,11 @@ $colors: (
 // scss-docs-end colors-map
 
 // Color scheme
-$default:       #262B40;
-$primary:       #262B40;
-$secondary:     #61DAFB;
-$tertiary:      #1B998B;
-$quaternary:    #C96480;
+$default:       #0F1520;
+$primary:       #0F1520;
+$secondary:     #B3CFE5;
+$tertiary:      #7d0000;
+$quaternary:    #586281;
 
 // Series names and colors. This can be extended or customized as desired. Just add more series and colors.
 $ct-series-names: (a, b, c, d, e, f, g) !default;
@@ -84,7 +93,6 @@ $ct-series-colors: (
   #C96480,
   #ffffff,
   #17a5ce,
-
 );
 
 // Mobile landing color scheme
@@ -1262,7 +1270,7 @@ $card-social-padding:               .25rem .375rem;
 $card-title-spacer-y:               .875rem;
 $card-border-width:                 $border-width;
 $card-border-radius:                $border-radius;
-$card-border-color:                 rgba($black, .125);
+$card-border-color:                 rgba($white, 0.10);
 $card-inner-border-radius:          subtract($card-border-radius, $card-border-width);
 $card-cap-padding-y:                1.25rem;
 $card-cap-padding-x:                $card-spacer-x;
@@ -1270,7 +1278,7 @@ $card-cap-bg:                       rgba($black, .03);
 $card-cap-color:                    null;
 $card-height:                       null;
 $card-color:                        null;
-$card-bg:                           $white;
+$card-bg:                           rgba($white, 0.04);
 
 $card-img-overlay-padding:          $spacer;
 
@@ -1394,6 +1402,33 @@ $badge-pill-padding-x:              .875em;
 $badge-pill-border-radius:          10rem;
 
 $badge-circle-size:                 2rem;
+
+// Severity Pill - Enterprise Style
+
+.severity-pill {
+  display: inline-block;
+  padding: 0.25rem 0.6rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  border-radius: 4px;
+  background-color: rgba(255, 255, 255, 0.05);
+  border-left: 3px solid transparent;
+  color: #fff;
+}
+
+.severity-critical {
+  border-left-color: #dc3545;
+}
+
+.severity-major {
+  border-left-color: #f0ad4e;
+}
+
+.severity-minor {
+  border-left-color: rgba(255, 255, 255, 0.55);
+}
 
 
 // Modals
@@ -1679,3 +1714,528 @@ $padding-footer:          .375rem ;
 $padding-footer-md:       .625rem ;
 $padding-footer-general:  .9375rem;
 $padding-footer-big:      1.5rem;
+
+// Accordion (make it glass / transparent)
+$accordion-bg: rgba($white, 0.04);
+$accordion-border-color: rgba($white, 0.10);
+$accordion-border-width: $border-width;
+
+$accordion-color: $white;
+
+$accordion-button-color: $white;
+$accordion-button-bg: transparent;
+$accordion-button-active-color: $white;
+$accordion-button-active-bg: rgba($white, 0.06);
+
+$accordion-button-focus-border-color: rgba($white, 0.18);
+$accordion-button-focus-box-shadow: none;
+
+$accordion-icon-color: rgba($white, 0.80);
+$accordion-icon-active-color: rgba($white, 0.90);
+
+$accordion-body-padding-y: 1rem;
+$accordion-body-padding-x: 1.25rem;
+
+/* Drop this in your CSS (or SCSS) */
+.bas-points-table {
+  border-collapse: separate;
+  border-spacing: 0;
+  background: rgba(9, 18, 28, 0.35);
+  border: 1px transparent; /* keep transparent */
+  border-radius: 6px;
+  overflow: hidden;
+  color: #e7edf7;
+}
+
+.bas-points-table thead th {
+  background: rgba(9, 18, 28, 0.55);
+  color: rgba(220, 230, 245, 0.75);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  font-size: 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 12px 14px;
+}
+
+.bas-points-table tbody td,
+.bas-points-table tbody th {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06) !important;
+  padding: 4px 8px;
+  background: transparent !important;
+}
+
+.bas-points-table tbody tr:last-child td,
+.bas-points-table tbody tr:last-child th {
+  border-bottom: none !important;
+}
+
+.col-point { width: 55%; }
+.col-current { width: 25%; }
+.col-value { width: 20%; }
+
+/* ---------- POINT CELL ---------- */
+
+.point-cell {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* Numbered status icon */
+.point-icon {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  border: 1px solid rgba(255,255,255,0.18);
+  background: rgba(255,255,255,0.04);
+}
+
+/* ONLINE */
+.point-icon.online {
+  color: #38e1a1;
+  border-color: rgba(56,225,161,0.55);
+  box-shadow: 0 0 0 3px rgba(56,225,161,0.14);
+}
+
+/* OFFLINE */
+.point-icon.offline {
+  color: #ef4444;
+  border-color: rgba(239,68,68,0.55);
+  box-shadow: 0 0 0 3px rgba(239,68,68,0.14);
+}
+
+/* ALARM / WARNING */
+.point-icon.alarm {
+  color: #fbbf24;
+  border-color: rgba(251,191,36,0.65);
+  box-shadow: 0 0 0 3px rgba(251,191,36,0.16);
+}
+
+/* ---------- TEXT ---------- */
+
+.point-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: rgba(235, 242, 252, 0.92);
+}
+
+.current-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 600;
+  color: rgba(235, 242, 252, 0.9);
+}
+
+/* ---------- STATUS DOT ---------- */
+
+.mini-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #38e1a1;
+  box-shadow: 0 0 0 3px rgba(56,225,161,0.12);
+}
+
+.mini-dot.warn {
+  background: #fbbf24;
+  box-shadow: 0 0 0 3px rgba(251,191,36,0.12);
+}
+
+/* ---------- SPARKLINE ---------- */
+
+.spark {
+  height: 18px;
+  width: 120px;
+  border-radius: 8px;
+  margin-left: auto;
+  background:
+    linear-gradient(90deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02)),
+    repeating-linear-gradient(135deg, rgba(255,255,255,0.10) 0 2px, transparent 2px 6px);
+  border: 1px solid rgba(255,255,255,0.08);
+}
+
+.spark-blue  { border-color: rgba(77,163,255,0.25); }
+.spark-green { border-color: rgba(56,225,161,0.25); }
+.spark-cyan  { border-color: rgba(94,234,212,0.25); }
+.spark-amber { border-color: rgba(251,191,36,0.25); }
+
+/* ---------- STATUS PILL ---------- */
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 28px;
+  min-width: 56px;
+  padding: 0 14px;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 12px;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.06);
+  color: rgba(235, 242, 252, 0.9);
+}
+
+.pill.on {
+  border-color: rgba(56,225,161,0.35);
+  background: rgba(56,225,161,0.12);
+  color: #38e1a1;
+}
+
+/* Add these (your existing CSS stays the same) */
+.col-point { width: 10%; }
+.col-current { width: 10%; }
+.col-value { width: 10%; }
+
+/* Status pill colors */
+.pill.online {
+  border-color: rgba(56,225,161,0.35);
+  background: rgba(56,225,161,0.12);
+  color: #38e1a1;
+}
+.pill.offline {
+  border-color: rgba(239,68,68,0.35);
+  background: rgba(239,68,68,0.12);
+  color: #ef4444;
+}
+.pill.alarm {
+  border-color: rgba(251,191,36,0.40);
+  background: rgba(251,191,36,0.12);
+  color: #fbbf24;
+}
+
+/* Optional: make it feel like a "details" table without changing your theme */
+.bas-details-table .col-key { width: 38%; }
+.bas-details-table .col-val { width: 62%; }
+
+.bas-details-table .detail-key {
+  color: rgba(220, 230, 245, 0.78);
+  font-weight: 600;
+}
+
+.bas-details-table .detail-val {
+  color: rgba(235, 242, 252, 0.92);
+  opacity: 0.95;
+}
+
+
+/* Power icon gradient fill (FontAwesome SVG) */
+.legion-power-icon {
+  display: inline-flex;
+  align-items: flex-end;
+  margin: 0 2px;
+  font-size: 120px;   // slightly bigger than text
+  
+  svg {
+    font-size: 70px; /* keep your sizing here instead of inline style if you want */
+  }
+
+  /* Apply the SVG gradient to the actual path */
+  svg path {
+    fill: url(#legionPowerGradient);
+  }
+}
+
+.legion-map-wrapper {
+  justify-content: center;   // horizontal center
+  align-items: center;       // vertical center
+}
+
+.legion-map-image {
+  object-fit: cover;
+  justify-content: center;   // horizontal center
+  align-items: center;       // vertical center
+}
+
+
+
+
+.point-cell {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.point-index {
+  min-width: 28px;
+  padding: 0.15rem 0.4rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  text-align: center;
+
+  color: rgba(255, 255, 255, 0.75);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  border-radius: 4px;
+}
+
+.point-name {
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+/* =========================================================
+   LEGION UNIFIED CHIP (ONE STYLE FOR EVERYTHING)
+   - Looks like your screenshot:
+     pill outline + soft fill + left accent bar
+   - Use for: severity, status, ack
+   ========================================================= */
+
+.legion-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  height: 22px;
+  padding: 0 10px;
+
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  line-height: 1;
+
+  border-radius: 999px;
+  white-space: nowrap;
+
+  /* default neutral */
+  color: rgba(255, 255, 255, 0.92);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+
+  /* the left accent bar */
+  box-shadow: inset 3px 0 0 rgba(255, 255, 255, 0.55);
+}
+
+/* Optional: tighter in tables */
+.table .legion-chip {
+  height: 20px;
+  padding: 0 9px;
+  font-size: 10px;
+}
+
+/* ===== Severity ===== */
+.legion-chip--sev-critical {
+  border-color: rgba(220, 53, 69, 0.55);
+  background: rgba(220, 53, 69, 0.10);
+  box-shadow: inset 3px 0 0 rgba(220, 53, 69, 0.95);
+}
+
+/* WARNING (formerly MAJOR) - yellow */
+.legion-chip--sev-warning,
+.legion-chip--sev-major {
+  border-color: rgba(240, 173, 78, 0.60);
+  background: rgba(240, 173, 78, 0.10);
+  box-shadow: inset 3px 0 0 rgba(240, 173, 78, 0.95);
+}
+
+/* MINOR - white/gray (neutral, no blue) */
+.legion-chip--sev-minor {
+  border-color: rgba(255, 255, 255, 0.35);
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: inset 3px 0 0 rgba(255, 255, 255, 0.55);
+}
+
+/* ===== Status (Equipment health) ===== */
+.legion-chip--stat-ok {
+  border-color: rgba(25, 135, 84, 0.55);
+  background: rgba(25, 135, 84, 0.10);
+  box-shadow: inset 3px 0 0 rgba(25, 135, 84, 0.95);
+}
+
+.legion-chip--stat-warn {
+  border-color: rgba(240, 173, 78, 0.60);
+  background: rgba(240, 173, 78, 0.10);
+  box-shadow: inset 3px 0 0 rgba(240, 173, 78, 0.95);
+}
+
+.legion-chip--stat-alarm {
+  border-color: rgba(220, 53, 69, 0.55);
+  background: rgba(220, 53, 69, 0.10);
+  box-shadow: inset 3px 0 0 rgba(220, 53, 69, 0.95);
+}
+
+/* OFFLINE - red (bad/urgent) */
+.legion-chip--stat-offline {
+  border-color: rgba(220, 53, 69, 0.55);
+  background: rgba(220, 53, 69, 0.10);
+  box-shadow: inset 3px 0 0 rgba(220, 53, 69, 0.95);
+}
+
+/* ===== Ack ===== */
+.legion-chip--ack-acked {
+  border-color: rgba(25, 135, 84, 0.55);
+  background: rgba(25, 135, 84, 0.10);
+  box-shadow: inset 3px 0 0 rgba(25, 135, 84, 0.95);
+}
+
+/* UNACKED - red (bad/urgent) */
+.legion-chip--ack-unacked {
+  border-color: rgba(220, 53, 69, 0.55);
+  background: rgba(220, 53, 69, 0.10);
+  box-shadow: inset 3px 0 0 rgba(220, 53, 69, 0.95);
+}
+
+/* =========================================================
+   LEGION STATUS DOT + LABEL (dot only colored, no badge bg)
+   - Use for: severity, status, ack, comm health in tables
+   ========================================================= */
+
+.legion-dot-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.legion-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.legion-dot--red {
+  background-color: #dc3545;
+}
+
+.legion-dot--green {
+  background-color: #198754;
+}
+
+.legion-dot--yellow {
+  background-color: #f0ad4e;
+}
+
+.legion-dot--neutral {
+  background-color: rgba(255, 255, 255, 0.55);
+}
+
+.legion-dot-text {
+  color: #fff;
+  font-weight: 600;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* =========================================================
+   POINT LIST (index styling)
+   ========================================================= */
+.point-cell {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.point-index {
+  min-width: 28px;
+  padding: 0.15rem 0.4rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  text-align: center;
+
+  color: rgba(255, 255, 255, 0.75);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  border-radius: 4px;
+}
+
+.point-name {
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+
+.legion-bg {
+  min-height: 100vh;
+  background: linear-gradient(
+    180deg,
+    #0F1622 0%,
+    #0c1727 100%
+  );
+  background-attachment: fixed;
+  background-repeat: no-repeat;
+  background-size: cover;
+}
+
+.upgrade-to-pro {
+  position: fixed;
+  left: 15px;
+  bottom: 15px;
+  width: 230px;
+}
+
+/* Sidebar must be flex column */
+.sidebar.legion-sidebar .sidebar-inner {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+
+// .legion-hero-logo {
+//   display: block;
+
+//   height: 150px;
+//   width: auto;
+
+//   /* keeps proportions correct */
+//   object-fit: contain;
+// }
+
+// .legion-hero-right {
+//   min-height: 130px;  /* match logo height */
+// }
+
+.legion-hero-brand {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.1;
+}
+
+.legion-brand-title {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+}
+
+.legion-brand-legion {
+  font-size: 34px;
+  font-weight: 800;
+  color: #ffffff;
+  letter-spacing: 0.5px;
+}
+
+.legion-brand-controls {
+  font-size: 28px;
+  font-weight: 500;
+  color: rgba(255,255,255,0.85);
+}
+
+.legion-brand-subtitle {
+  margin-top: 4px;
+  font-size: 18px;
+  color: rgba(255,255,255,0.55);
+  letter-spacing: 0.3px;
+}
+
+//logo
+.legion-hero-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.legion-brand-logo {
+  width: 68px;
+  height: 68px;
+  flex-shrink: 0;
+}

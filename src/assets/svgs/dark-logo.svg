@@ -1,0 +1,117 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 500">
+  <defs>
+    <!-- Subtle background vignette -->
+    <radialGradient id="bgVignette" cx="38%" cy="45%" r="80%">
+      <stop offset="0%" stop-color="#131D2C"/>
+      <stop offset="55%" stop-color="#0F1622"/>
+      <stop offset="100%" stop-color="#0B111B"/>
+    </radialGradient>
+
+    <!-- Stripe gradients (same blue family, premium depth) -->
+    <linearGradient id="g1" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0%" stop-color="#06152D"/>
+      <stop offset="100%" stop-color="#0B2A55"/>
+    </linearGradient>
+    <linearGradient id="g2" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0%" stop-color="#0A244D"/>
+      <stop offset="100%" stop-color="#123A6F"/>
+    </linearGradient>
+    <linearGradient id="g3" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0%" stop-color="#123C78"/>
+      <stop offset="100%" stop-color="#1F5FAF"/>
+    </linearGradient>
+    <linearGradient id="g4" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0%" stop-color="#1A5FCC"/>
+      <stop offset="100%" stop-color="#2D7FF9"/>
+    </linearGradient>
+    <linearGradient id="g5" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0%" stop-color="#55A7E3"/>
+      <stop offset="100%" stop-color="#8BD2FF"/>
+    </linearGradient>
+
+    <!-- Thin highlight line gradient -->
+    <linearGradient id="shine" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0%" stop-color="#BFE8FF" stop-opacity="0"/>
+      <stop offset="55%" stop-color="#BFE8FF" stop-opacity="0.55"/>
+      <stop offset="100%" stop-color="#BFE8FF" stop-opacity="0"/>
+    </linearGradient>
+
+    <!-- Left mark container (rounded) -->
+    <clipPath id="markClip">
+      <rect x="56" y="78" width="260" height="344" rx="28" ry="28"/>
+    </clipPath>
+
+    <!-- Soft shadow for mark -->
+    <filter id="softShadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="10" result="blur"/>
+      <feOffset dx="0" dy="10" result="off"/>
+      <feColorMatrix in="off" type="matrix"
+        values="0 0 0 0 0
+                0 0 0 0 0
+                0 0 0 0 0
+                0 0 0 .35 0" result="shadow"/>
+      <feMerge>
+        <feMergeNode in="shadow"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <!-- Subtle text glow (very restrained) -->
+    <filter id="textGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="1.6" result="b"/>
+      <feColorMatrix in="b" type="matrix"
+        values="0 0 0 0 0.72
+                0 0 0 0 0.88
+                0 0 0 0 1
+                0 0 0 .18 0" result="g"/>
+      <feMerge>
+        <feMergeNode in="g"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="900" height="500" fill="url(#bgVignette)"/>
+
+  <!-- Left Mark (ownable + premium) -->
+  <g filter="url(#softShadow)">
+    <!-- Container -->
+    <rect x="56" y="78" width="260" height="344" rx="28" ry="28" fill="#0C1420" stroke="#223043" stroke-opacity="0.55"/>
+
+    <!-- Stripes clipped into rounded container -->
+    <g clip-path="url(#markClip)">
+      <!-- Tapered diagonal bands (more "designed" than simple polygons) -->
+      <path d="M-40,430 L-40,360 L190,70 L250,70 L20,360 Z" fill="url(#g1)"/>
+      <path d="M-40,450 L-40,388 L205,70 L260,70 L15,388 Z" fill="url(#g2)"/>
+      <path d="M-40,470 L-40,415 L220,70 L275,70 L15,415 Z" fill="url(#g3)"/>
+      <path d="M-40,492 L-40,445 L235,70 L290,70 L15,445 Z" fill="url(#g4)"/>
+      <path d="M-40,520 L-40,480 L252,70 L308,70 L16,480 Z" fill="url(#g5)"/>
+
+      <!-- A single thin "shine" line to add luxury (not cheesy) -->
+      <path d="M-30,458 L-30,452 L246,72 L252,72 Z" fill="url(#shine)" opacity="0.9"/>
+
+      <!-- Subtle overlay to unify -->
+      <rect x="56" y="78" width="260" height="344" fill="#0F1622" opacity="0.12"/>
+    </g>
+  </g>
+
+  <!-- Wordmark -->
+  <g font-family="Montserrat, Poppins, Arial, sans-serif" filter="url(#textGlow)">
+    <!-- Main name -->
+    <text x="350" y="232" font-size="112" letter-spacing="-2" font-weight="800" fill="#F3F6FB">
+      Reyders
+    </text>
+
+    <!-- Descriptor -->
+    <text x="352" y="310" font-size="44" letter-spacing="3.2" font-weight="600" fill="#A6AFBE">
+      SMART INTEGRATORS
+    </text>
+
+    <!-- Underline accent (micro detail = premium) -->
+    <rect x="352" y="324" width="330" height="2" rx="1" fill="#2D7FF9" opacity="0.55"/>
+  </g>
+
+  <!-- Optional tiny corner dot (brand detail) -->
+  <circle cx="820" cy="115" r="4" fill="#7BBDE8" opacity="0.65"/>
+</svg>

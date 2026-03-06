@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 500">
+  <!-- Background -->
+  <rect width="900" height="500" fill="#0F1622"/>
+
+  <!-- Premium Blue Diagonal Bands (slimmer + cleaner spacing) -->
+  <g>
+    <polygon points="0,500 0,452 255,0 303,0" fill="#0B1F3B"/>
+    <polygon points="0,500 0,464 277,0 325,0" fill="#123A6F"/>
+    <polygon points="0,500 0,476 299,0 347,0" fill="#1F5FAF"/>
+    <polygon points="0,500 0,488 321,0 369,0" fill="#2D7FF9"/>
+    <polygon points="0,500 0,500 343,0 391,0" fill="#7BBDE8"/>
+  </g>
+
+  <!-- Logo Text -->
+  <g font-family="Montserrat, Poppins, Arial, sans-serif">
+    <!-- Brand Name -->
+    <text x="300" y="230" font-size="108" letter-spacing="-2" font-weight="750" fill="#EFEFEB">
+      Reyders
+    </text>
+
+    <!-- Sub Name (more premium: smaller, spaced out, lighter) -->
+    <text x="300" y="315" font-size="45" letter-spacing="2.5" font-weight="600" fill="#A5A9B3">
+       SMART INTEGRATORS
+    </text>
+  </g>
+</svg>

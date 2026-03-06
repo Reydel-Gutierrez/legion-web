@@ -1,0 +1,85 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 500">
+
+  <defs>
+    <!-- Soft light background gradient -->
+    <linearGradient id="lightBg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#F7F9FC"/>
+      <stop offset="100%" stop-color="#EEF2F7"/>
+    </linearGradient>
+
+    <!-- Stripe gradients (stronger contrast for light mode) -->
+    <linearGradient id="lg1" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0%" stop-color="#0B1F3B"/>
+      <stop offset="100%" stop-color="#143A75"/>
+    </linearGradient>
+
+    <linearGradient id="lg2" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0%" stop-color="#123A6F"/>
+      <stop offset="100%" stop-color="#1F5FAF"/>
+    </linearGradient>
+
+    <linearGradient id="lg3" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0%" stop-color="#1F5FAF"/>
+      <stop offset="100%" stop-color="#2D7FF9"/>
+    </linearGradient>
+
+    <linearGradient id="lg4" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0%" stop-color="#2D7FF9"/>
+      <stop offset="100%" stop-color="#7BBDE8"/>
+    </linearGradient>
+
+    <!-- Rounded container clip -->
+    <clipPath id="lightMarkClip">
+      <rect x="60" y="80" width="250" height="340" rx="26" ry="26"/>
+    </clipPath>
+  </defs>
+
+  <!-- Background -->
+  <rect width="900" height="500" fill="url(#lightBg)"/>
+
+  <!-- Emblem Container -->
+  <rect x="60" y="80" width="250" height="340" rx="26" ry="26"
+        fill="#FFFFFF"
+        stroke="#E3E8F0"
+        stroke-width="2"/>
+
+  <!-- Diagonal Stripes -->
+  <g clip-path="url(#lightMarkClip)">
+    <path d="M-20,430 L-20,370 L200,80 L250,80 L30,370 Z" fill="url(#lg1)"/>
+    <path d="M-20,455 L-20,400 L220,80 L270,80 L30,400 Z" fill="url(#lg2)"/>
+    <path d="M-20,480 L-20,430 L240,80 L290,80 L30,430 Z" fill="url(#lg3)"/>
+    <path d="M-20,505 L-20,460 L260,80 L310,80 L30,460 Z" fill="url(#lg4)"/>
+  </g>
+
+  <!-- Wordmark -->
+  <g font-family="Montserrat, Poppins, Arial, sans-serif">
+
+    <!-- Brand Name -->
+    <text x="350" y="235"
+          font-size="112"
+          letter-spacing="-1.5"
+          font-weight="800"
+          fill="#0F1622">
+      Reyders
+    </text>
+
+    <!-- Sub Name -->
+    <text x="352" y="310"
+          font-size="44"
+          letter-spacing="3"
+          font-weight="600"
+          fill="#5B6472">
+      SMART INTEGRATORS
+    </text>
+
+    <!-- Accent Line -->
+    <rect x="352" y="325"
+          width="320"
+          height="2"
+          rx="1"
+          fill="#2D7FF9"
+          opacity="0.6"/>
+  </g>
+  <!-- Optional tiny corner dot (brand detail) -->
+  <circle cx="820" cy="115" r="4" fill="#0B1F3B" opacity="0.65"/>
+</svg>
