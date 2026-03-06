@@ -1,10 +1,9 @@
-// src/pages/Legion/Equipment.js
 import React, { useCallback, useMemo, useState, useEffect, useRef } from "react";
-import { useSite } from "../../components/SiteContext";
+import { useSite } from "../../../components/SiteContext";
 import { Container, Row, Col, Card, Button, ButtonGroup, Form, Table, Modal, Toast } from "@themesberg/react-bootstrap";
 import { useHistory } from "react-router-dom";
-import LegionHeroHeader from "../../components/legion/LegionHeroHeader";
-import StatusDotLabel from "../../components/legion/StatusDotLabel";
+import LegionHeroHeader from "../../../components/legion/LegionHeroHeader";
+import StatusDotLabel from "../../../components/legion/StatusDotLabel";
 
 // ---------------------------------------
 // Mock points per equipment type (4-5 points each)
@@ -814,7 +813,7 @@ function WorkspacePanel({
   );
 }
 
-export default function Equipment() {
+export default function EquipmentPage() {
   const history = useHistory();
   useSite();
   const goToEquipment = (id) => history.push(`/legion/equipment/${id}`);

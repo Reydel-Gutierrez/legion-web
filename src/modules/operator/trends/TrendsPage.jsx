@@ -1,5 +1,5 @@
 import React, { useMemo, useRef, useState } from "react";
-import { useSite } from "../../components/SiteContext";
+import { useSite } from "../../../components/SiteContext";
 import {
   Container,
   Row,
@@ -9,7 +9,7 @@ import {
   Button,
   ButtonGroup,
 } from "@themesberg/react-bootstrap";
-import LegionHeroHeader from "../../components/legion/LegionHeroHeader";
+import LegionHeroHeader from "../../../components/legion/LegionHeroHeader";
 
 /**
  * Trends Page (MVP)
@@ -20,7 +20,7 @@ import LegionHeroHeader from "../../components/legion/LegionHeroHeader";
  * No external chart libs. Pure SVG.
  */
 
-export default function Trends() {
+export default function TrendsPage() {
   useSite(); // consume context for global site sync
 
   // UI state

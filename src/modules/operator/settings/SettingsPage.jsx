@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import { useSite } from "../../components/SiteContext";
+import { useSite } from "../../../components/SiteContext";
 import {
   Container,
   Row,
@@ -9,9 +9,9 @@ import {
   Button,
   ButtonGroup,
 } from "@themesberg/react-bootstrap";
-import LegionHeroHeader from "../../components/legion/LegionHeroHeader";
+import LegionHeroHeader from "../../../components/legion/LegionHeroHeader";
 
-export default function Settings() {
+export default function SettingsPage() {
   const { site } = useSite();
 
   // Mock "me" (replace later with /me)

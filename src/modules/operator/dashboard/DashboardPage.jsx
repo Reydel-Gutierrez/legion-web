@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useEffect } from "react";
-import { useSite } from "../../components/SiteContext";
+import { useSite } from "../../../components/SiteContext";
 import {
   Container,
   Row,
@@ -12,16 +12,16 @@ import {
   Tooltip,
 } from "@themesberg/react-bootstrap";
 import { Link } from "react-router-dom";
-import LegionHeroHeader from "../../components/legion/LegionHeroHeader";
-import { Routes } from "../../routes";
+import LegionHeroHeader from "../../../components/legion/LegionHeroHeader";
+import { Routes } from "../../../routes";
 import {
   getDashboardSummary,
   getRecentEvents,
   getDashboardAlarms,
   getEquipmentHealth,
   getWeather,
-} from "../../data/mockDashboard";
-import StatusDotLabel from "../../components/legion/StatusDotLabel";
+} from "../../../data/mockDashboard";
+import StatusDotLabel from "../../../components/legion/StatusDotLabel";
 
 const norm = (v) => String(v ?? "").trim().toLowerCase();
 const normalizeSeverityKey = (severity) => {
@@ -32,7 +32,7 @@ const normalizeSeverityKey = (severity) => {
   return "minor";
 };
 
-export default function Dashboard() {
+export default function DashboardPage() {
   const { site } = useSite();
   const [alarmFilter, setAlarmFilter] = useState("All");
   const [weather, setWeather] = useState(null);
@@ -152,7 +152,7 @@ export default function Dashboard() {
           </Col>
         </Row>
 
-                {/* E) Weather + F) Quick Actions */}
+        {/* E) Weather + F) Quick Actions */}
         <Row className="g-3 mt-2 mb-3">
           <Col xs={12} md={6} lg={4}>
             <Card className="bg-primary border border-light border-opacity-10 shadow-sm h-100">
@@ -416,8 +416,6 @@ export default function Dashboard() {
             </Row>
           </Col>
         </Row>
-
-
       </div>
     </Container>
   );

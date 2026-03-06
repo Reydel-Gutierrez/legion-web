@@ -23,7 +23,7 @@ import "./scss/volt.scss";
 // vendor styles
 import "react-datetime/css/react-datetime.css";
 
-import HomePage from "./pages/HomePage";
+import AppRoutes from "./app/router/AppRoutes";
 import ScrollToTop from "./components/ScrollToTop";
 import { SiteProvider } from "./components/SiteContext";
 
@@ -31,7 +31,7 @@ ReactDOM.render(
   <HashRouter>
     <SiteProvider>
       <ScrollToTop />
-      <HomePage />
+      <AppRoutes />
     </SiteProvider>
   </HashRouter>,
   document.getElementById("root")

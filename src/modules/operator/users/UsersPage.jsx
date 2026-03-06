@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import { useSite } from "../../components/SiteContext";
+import { useSite } from "../../../components/SiteContext";
 import {
   Container,
   Row,
@@ -10,10 +10,10 @@ import {
   Button,
   ButtonGroup,
 } from "@themesberg/react-bootstrap";
-import LegionHeroHeader from "../../components/legion/LegionHeroHeader";
-import StatusDotLabel from "../../components/legion/StatusDotLabel";
+import LegionHeroHeader from "../../../components/legion/LegionHeroHeader";
+import StatusDotLabel from "../../../components/legion/StatusDotLabel";
 
-export default function Users() {
+export default function UsersPage() {
   const { site } = useSite();
 
   // Filters

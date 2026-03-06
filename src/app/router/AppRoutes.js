@@ -1,24 +1,24 @@
 import React, { useState, useEffect } from "react";
 import { Route, Switch, Redirect } from "react-router-dom";
-import { Routes } from "../routes";
+import { Routes } from "../../routes";
 
-// Legion pages
-import LegionDashboard from "./Legion/Dashboard";
-import LegionSite from "./Legion/Site";
-import LegionEquipment from "./Legion/Equipment";
-import LegionEquipmentDetail from "./Legion/EquipmentDetail";
-import LegionAlarms from "./Legion/Alarms";
-import LegionTrends from "./Legion/Trends";
-import LegionSchedules from "./Legion/Schedules";
-import LegionEvents from "./Legion/Events";
-import LegionSettings from "./Legion/Settings";
-import LegionUsers from "./Legion/Users";
+// Operator module pages
+import LegionDashboard from "../../modules/operator/dashboard/DashboardPage";
+import LegionSite from "../../modules/operator/site/SitePage";
+import LegionEquipment from "../../modules/operator/equipment/EquipmentPage";
+import LegionEquipmentDetail from "../../modules/operator/equipment/EquipmentDetailPage";
+import LegionAlarms from "../../modules/operator/alarms/AlarmsPage";
+import LegionTrends from "../../modules/operator/trends/TrendsPage";
+import LegionSchedules from "../../modules/operator/schedules/SchedulesPage";
+import LegionEvents from "../../modules/operator/events/EventsPage";
+import LegionUsers from "../../modules/operator/users/UsersPage";
+import LegionSettings from "../../modules/operator/settings/SettingsPage";
 
-// shared layout
-import Sidebar from "../components/Sidebar";
-import Navbar from "../components/Navbar";
-import Footer from "../components/Footer";
-import Preloader from "../components/Preloader";
+// shared layout (kept in components for now)
+import Sidebar from "../../components/Sidebar";
+import Navbar from "../../components/Navbar";
+import Footer from "../../components/Footer";
+import Preloader from "../../components/Preloader";
 
 const RouteWithSidebar = ({ component: Component, ...rest }) => {
   const [loaded, setLoaded] = useState(false);
@@ -57,7 +57,7 @@ const RouteWithSidebar = ({ component: Component, ...rest }) => {
   );
 };
 
-export default function HomePage() {
+export default function AppRoutes() {
   return (
     <Switch>
       <Redirect exact from="/" to={Routes.LegionDashboard.path} />

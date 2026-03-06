@@ -1,14 +1,14 @@
 import React, { useState } from "react";
-import { useSite } from "../../components/SiteContext";
+import { useSite } from "../../../components/SiteContext";
 import { Container, Row, Col, Card, Button, ButtonGroup } from "@themesberg/react-bootstrap";
-import LegionHeroHeader from "../../components/legion/LegionHeroHeader";
+import LegionHeroHeader from "../../../components/legion/LegionHeroHeader";
 
-import BuildingImage from "../../assets/img/bi.jpg";
-import floor1Img from "../../assets/img/floor1.png";
-import floor2Img from "../../assets/img/floor2.png";
-import floor3Img from "../../assets/img/floor3.png";
+import BuildingImage from "../../../assets/img/bi.jpg";
+import floor1Img from "../../../assets/img/floor1.png";
+import floor2Img from "../../../assets/img/floor2.png";
+import floor3Img from "../../../assets/img/floor3.png";
 
-export default function Site() {
+export default function SitePage() {
   const { site } = useSite();
   const [level, setLevel] = useState(0);
 

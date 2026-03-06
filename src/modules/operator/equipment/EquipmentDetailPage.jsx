@@ -1,14 +1,13 @@
 import React from "react";
-import { useSite } from "../../components/SiteContext";
+import { useSite } from "../../../components/SiteContext";
 import { Container, Row, Col, Card } from "@themesberg/react-bootstrap";
-import LegionHeroHeader from "../../components/legion/LegionHeroHeader";
+import LegionHeroHeader from "../../../components/legion/LegionHeroHeader";
 import { Accordion } from "@themesberg/react-bootstrap";
 import { useParams } from "react-router-dom";
-import VavGraphic from "../../graphics/VavGraphic";
-import VavGraphicImg from "../../graphics/mysvgvav.svg";
-import StatusDotLabel from "../../components/legion/StatusDotLabel";
+import VavGraphicImg from "../../../assets/graphics/mysvgvav.svg";
+import StatusDotLabel from "../../../components/legion/StatusDotLabel";
 
-export default function EquipmentDetail() {
+export default function EquipmentDetailPage() {
   const { equipmentId } = useParams();
   useSite(); // consume context for global site sync
 
