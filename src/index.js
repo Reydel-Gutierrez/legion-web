@@ -24,8 +24,8 @@ import "./scss/volt.scss";
 import "react-datetime/css/react-datetime.css";
 
 import AppRoutes from "./app/router/AppRoutes";
-import ScrollToTop from "./components/ScrollToTop";
-import { SiteProvider } from "./components/SiteContext";
+import ScrollToTop from "./app/router/ScrollToTop";
+import { SiteProvider } from "./app/providers/SiteProvider";
 
 ReactDOM.render(
   <HashRouter>

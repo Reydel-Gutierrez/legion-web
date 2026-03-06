@@ -10,7 +10,7 @@ import { Link } from 'react-router-dom';
 import { Routes } from "../../routes";
 import ReactHero from "../../assets/img/technologies/react-hero-logo.svg";
 import ProfilePicture from "../../assets/img/team/profile-picture-3.jpg";
-import { useSite } from "../../components/SiteContext";
+import { useSite } from "../providers/SiteProvider";
 
 export default function Sidebar() {
   const { site, setSite } = useSite();

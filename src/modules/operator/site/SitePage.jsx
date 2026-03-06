@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useSite } from "../../../components/SiteContext";
+import { useSite } from "../../../app/providers/SiteProvider";
 import { Container, Row, Col, Card, Button, ButtonGroup } from "@themesberg/react-bootstrap";
 import LegionHeroHeader from "../../../components/legion/LegionHeroHeader";
 

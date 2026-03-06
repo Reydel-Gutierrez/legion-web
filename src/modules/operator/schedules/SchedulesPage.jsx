@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import { useSite } from "../../../components/SiteContext";
+import { useSite } from "../../../app/providers/SiteProvider";
 import { Container, Row, Col, Card, Table, Form, Button, ButtonGroup, Modal } from "@themesberg/react-bootstrap";
 import LegionHeroHeader from "../../../components/legion/LegionHeroHeader";
 import StatusDotLabel from "../../../components/legion/StatusDotLabel";

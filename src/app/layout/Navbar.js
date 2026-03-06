@@ -21,9 +21,9 @@ import {
   Modal,
 } from "@themesberg/react-bootstrap";
 import { Link, useHistory } from "react-router-dom";
-import PageBreadcrumbs from "../../components/PageBreadcrumbs";
+import PageBreadcrumbs from "../../components/ui/PageBreadcrumbs";
 import NOTIFICATIONS_DATA from "../../lib/data/notifications";
-import { useSite } from "../../components/SiteContext";
+import { useSite } from "../providers/SiteProvider";
 
 export default function TopNavbar() {
   const { site } = useSite();

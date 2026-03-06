@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo, useState, useEffect, useRef } from "react";
-import { useSite } from "../../../components/SiteContext";
+import { useSite } from "../../../app/providers/SiteProvider";
 import { Container, Row, Col, Card, Button, ButtonGroup, Form, Table, Modal, Toast } from "@themesberg/react-bootstrap";
 import { useHistory } from "react-router-dom";
 import LegionHeroHeader from "../../../components/legion/LegionHeroHeader";
