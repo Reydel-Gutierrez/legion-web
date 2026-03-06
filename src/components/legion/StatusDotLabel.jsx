@@ -10,7 +10,7 @@
  *   className (string) - optional additional classes
  */
 import React from "react";
-import { getSeverityMap, getStatusMap, getAckMap, getAlarmStateMap } from "../../utils/chipMap";
+import { getSeverityMap, getStatusMap, getAckMap, getAlarmStateMap } from "../../lib/utils/chipMap";
 
 function getMap(value, kind, acked) {
   if (typeof acked === "boolean") return getAckMap(acked);

@@ -14,11 +14,11 @@ import LegionEvents from "../../modules/operator/events/EventsPage";
 import LegionUsers from "../../modules/operator/users/UsersPage";
 import LegionSettings from "../../modules/operator/settings/SettingsPage";
 
-// shared layout (kept in components for now)
-import Sidebar from "../../components/Sidebar";
-import Navbar from "../../components/Navbar";
-import Footer from "../../components/Footer";
-import Preloader from "../../components/Preloader";
+// shared layout
+import Sidebar from "../layout/Sidebar";
+import Navbar from "../layout/Navbar";
+import Footer from "../layout/Footer";
+import Preloader from "../layout/Preloader";
 
 const RouteWithSidebar = ({ component: Component, ...rest }) => {
   const [loaded, setLoaded] = useState(false);

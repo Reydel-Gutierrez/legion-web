@@ -20,7 +20,7 @@ import {
   getDashboardAlarms,
   getEquipmentHealth,
   getWeather,
-} from "../../../data/mockDashboard";
+} from "../../../lib/data/mockDashboard";
 import StatusDotLabel from "../../../components/legion/StatusDotLabel";
 
 const norm = (v) => String(v ?? "").trim().toLowerCase();
