@@ -55,7 +55,7 @@
   font-size: 12px;
 }
 
-/* Engineering mode badge */
+/* Engineering mode badge - gold to match LCC logo / sidebar accent */
 .legion-topbar-engineering-badge {
   display: inline-flex;
   align-items: center;
@@ -65,9 +65,9 @@
   font-size: 11px;
   font-weight: 500;
   letter-spacing: 0.02em;
-  background: rgba(99, 102, 241, 0.2);
-  border: 1px solid rgba(99, 102, 241, 0.35);
-  color: rgba(199, 210, 254, 0.95);
+  background: rgba(232, 197, 71, 0.2);
+  border: 1px solid rgba(232, 197, 71, 0.5);
+  color: #e8c547;
 }
 
 /* Chips */

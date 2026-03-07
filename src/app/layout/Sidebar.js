@@ -115,15 +115,38 @@ export default function Sidebar() {
                 </Dropdown.Toggle>
 
                 <Dropdown.Menu className="w-100 legion-dropdown-menu">
-                  <Dropdown.Item onClick={() => setSite("Miami HQ")}>
-                    Miami HQ
-                  </Dropdown.Item>
-                  <Dropdown.Item onClick={() => setSite("Tampa Site")}>
-                    Tampa Site
-                  </Dropdown.Item>
-                  <Dropdown.Item onClick={() => setSite("Orlando Site")}>
-                    Orlando Site
-                  </Dropdown.Item>
+                  {currentMode === "engineering" ? (
+                    <>
+                      <Dropdown.Item onClick={() => setSite("New Building")}>
+                        New Building
+                      </Dropdown.Item>
+                      <Dropdown.Item onClick={() => setSite("Miami HQ")}>
+                        Miami HQ
+                      </Dropdown.Item>
+                      <Dropdown.Item onClick={() => setSite("Parkline")}>
+                        Parkline
+                      </Dropdown.Item>
+                      <Dropdown.Divider className="border-light border-opacity-10" />
+                      <Dropdown.Item onClick={() => setSite("Tampa Site")}>
+                        Tampa Site
+                      </Dropdown.Item>
+                      <Dropdown.Item onClick={() => setSite("Orlando Site")}>
+                        Orlando Site
+                      </Dropdown.Item>
+                    </>
+                  ) : (
+                    <>
+                      <Dropdown.Item onClick={() => setSite("Miami HQ")}>
+                        Miami HQ
+                      </Dropdown.Item>
+                      <Dropdown.Item onClick={() => setSite("Tampa Site")}>
+                        Tampa Site
+                      </Dropdown.Item>
+                      <Dropdown.Item onClick={() => setSite("Orlando Site")}>
+                        Orlando Site
+                      </Dropdown.Item>
+                    </>
+                  )}
                 </Dropdown.Menu>
               </Dropdown>
             </div>

@@ -12,7 +12,6 @@ import {
 } from "@themesberg/react-bootstrap";
 import LegionHeroHeader from "../../../components/legion/LegionHeroHeader";
 import LegionTablePagination from "../../../components/legion/LegionTablePagination";
-import StatusDotLabel from "../../../components/legion/StatusDotLabel";
 import { useTablePagination } from "../../../hooks/useTablePagination";
 
 export default function EventsPage() {
@@ -111,6 +110,258 @@ export default function EventsPage() {
         occurredAt: "2/20/26 19:33",
         severity: "Info",
       },
+            {
+        id: "EVT-20031",
+        type: "Command",
+        equipName: "VAV-2",
+        equipType: "VAV",
+        point: "Damper Cmd",
+        message: "Command issued: Damper Cmd = 65%",
+        actor: "Operator",
+        state: "New",
+        occurredAt: "2/22/26 14:10",
+        severity: "Info",
+      },
+      {
+        id: "EVT-20027",
+        type: "Comm",
+        equipName: "AHU-1",
+        equipType: "AHU",
+        point: "Device Status",
+        message: "Device went OFFLINE (no response)",
+        actor: "Engine",
+        state: "New",
+        occurredAt: "2/22/26 13:42",
+        severity: "Warn",
+      },
+      {
+        id: "EVT-20021",
+        type: "Device",
+        equipName: "OAU-1",
+        equipType: "OAU",
+        point: "Filter DP",
+        message: "Point discovered and added to database",
+        actor: "Engineering",
+        state: "Reviewed",
+        occurredAt: "2/22/26 11:08",
+        severity: "Info",
+      },
+      {
+        id: "EVT-20015",
+        type: "User",
+        equipName: "Site",
+        equipType: "Miami HQ",
+        point: "Login",
+        message: "User logged in",
+        actor: "reydel",
+        state: "Reviewed",
+        occurredAt: "2/22/26 08:01",
+        severity: "Info",
+      },
+      {
+        id: "EVT-20002",
+        type: "System",
+        equipName: "Engine-01",
+        equipType: "Supervisor",
+        point: "Service",
+        message: "Engine restarted successfully",
+        actor: "System",
+        state: "Reviewed",
+        occurredAt: "2/21/26 22:17",
+        severity: "Info",
+      },
+      {
+        id: "EVT-19991",
+        type: "Schedule",
+        equipName: "AHU-1",
+        equipType: "AHU",
+        point: "Occ Mode",
+        message: "Schedule action: Occupied Mode = ON",
+        actor: "Scheduler",
+        state: "Reviewed",
+        occurredAt: "2/21/26 06:00",
+        severity: "Info",
+      },
+      {
+        id: "EVT-19972",
+        type: "Comm",
+        equipName: "CHW-P-1",
+        equipType: "Pump",
+        point: "Device Status",
+        message: "Device back ONLINE (response restored)",
+        actor: "Engine",
+        state: "Reviewed",
+        occurredAt: "2/20/26 19:33",
+        severity: "Info",
+      },
+            {
+        id: "EVT-20031",
+        type: "Command",
+        equipName: "VAV-2",
+        equipType: "VAV",
+        point: "Damper Cmd",
+        message: "Command issued: Damper Cmd = 65%",
+        actor: "Operator",
+        state: "New",
+        occurredAt: "2/22/26 14:10",
+        severity: "Info",
+      },
+      {
+        id: "EVT-20027",
+        type: "Comm",
+        equipName: "AHU-1",
+        equipType: "AHU",
+        point: "Device Status",
+        message: "Device went OFFLINE (no response)",
+        actor: "Engine",
+        state: "New",
+        occurredAt: "2/22/26 13:42",
+        severity: "Warn",
+      },
+      {
+        id: "EVT-20021",
+        type: "Device",
+        equipName: "OAU-1",
+        equipType: "OAU",
+        point: "Filter DP",
+        message: "Point discovered and added to database",
+        actor: "Engineering",
+        state: "Reviewed",
+        occurredAt: "2/22/26 11:08",
+        severity: "Info",
+      },
+      {
+        id: "EVT-20015",
+        type: "User",
+        equipName: "Site",
+        equipType: "Miami HQ",
+        point: "Login",
+        message: "User logged in",
+        actor: "reydel",
+        state: "Reviewed",
+        occurredAt: "2/22/26 08:01",
+        severity: "Info",
+      },
+      {
+        id: "EVT-20002",
+        type: "System",
+        equipName: "Engine-01",
+        equipType: "Supervisor",
+        point: "Service",
+        message: "Engine restarted successfully",
+        actor: "System",
+        state: "Reviewed",
+        occurredAt: "2/21/26 22:17",
+        severity: "Info",
+      },
+      {
+        id: "EVT-19991",
+        type: "Schedule",
+        equipName: "AHU-1",
+        equipType: "AHU",
+        point: "Occ Mode",
+        message: "Schedule action: Occupied Mode = ON",
+        actor: "Scheduler",
+        state: "Reviewed",
+        occurredAt: "2/21/26 06:00",
+        severity: "Info",
+      },
+      {
+        id: "EVT-19972",
+        type: "Comm",
+        equipName: "CHW-P-1",
+        equipType: "Pump",
+        point: "Device Status",
+        message: "Device back ONLINE (response restored)",
+        actor: "Engine",
+        state: "Reviewed",
+        occurredAt: "2/20/26 19:33",
+        severity: "Info",
+      },
+            {
+        id: "EVT-20031",
+        type: "Command",
+        equipName: "VAV-2",
+        equipType: "VAV",
+        point: "Damper Cmd",
+        message: "Command issued: Damper Cmd = 65%",
+        actor: "Operator",
+        state: "New",
+        occurredAt: "2/22/26 14:10",
+        severity: "Info",
+      },
+      {
+        id: "EVT-20027",
+        type: "Comm",
+        equipName: "AHU-1",
+        equipType: "AHU",
+        point: "Device Status",
+        message: "Device went OFFLINE (no response)",
+        actor: "Engine",
+        state: "New",
+        occurredAt: "2/22/26 13:42",
+        severity: "Warn",
+      },
+      {
+        id: "EVT-20021",
+        type: "Device",
+        equipName: "OAU-1",
+        equipType: "OAU",
+        point: "Filter DP",
+        message: "Point discovered and added to database",
+        actor: "Engineering",
+        state: "Reviewed",
+        occurredAt: "2/22/26 11:08",
+        severity: "Info",
+      },
+      {
+        id: "EVT-20015",
+        type: "User",
+        equipName: "Site",
+        equipType: "Miami HQ",
+        point: "Login",
+        message: "User logged in",
+        actor: "reydel",
+        state: "Reviewed",
+        occurredAt: "2/22/26 08:01",
+        severity: "Info",
+      },
+      {
+        id: "EVT-20002",
+        type: "System",
+        equipName: "Engine-01",
+        equipType: "Supervisor",
+        point: "Service",
+        message: "Engine restarted successfully",
+        actor: "System",
+        state: "Reviewed",
+        occurredAt: "2/21/26 22:17",
+        severity: "Info",
+      },
+      {
+        id: "EVT-19991",
+        type: "Schedule",
+        equipName: "AHU-1",
+        equipType: "AHU",
+        point: "Occ Mode",
+        message: "Schedule action: Occupied Mode = ON",
+        actor: "Scheduler",
+        state: "Reviewed",
+        occurredAt: "2/21/26 06:00",
+        severity: "Info",
+      },
+      {
+        id: "EVT-19972",
+        type: "Comm",
+        equipName: "CHW-P-1",
+        equipType: "Pump",
+        point: "Device Status",
+        message: "Device back ONLINE (response restored)",
+        actor: "Engine",
+        state: "Reviewed",
+        occurredAt: "2/20/26 19:33",
+        severity: "Info",
+      },
     ],
     []
   );
@@ -121,13 +372,14 @@ export default function EventsPage() {
     return events.filter((e) => {
       const matchesSearch =
         !q ||
-        e.id.toLowerCase().includes(q) ||
-        e.type.toLowerCase().includes(q) ||
-        e.equipName.toLowerCase().includes(q) ||
-        e.equipType.toLowerCase().includes(q) ||
-        e.point.toLowerCase().includes(q) ||
-        e.message.toLowerCase().includes(q) ||
-        e.actor.toLowerCase().includes(q);
+        String(e.id || "").toLowerCase().includes(q) ||
+        String(e.type || "").toLowerCase().includes(q) ||
+        String(e.equipName || "").toLowerCase().includes(q) ||
+        String(e.equipType || "").toLowerCase().includes(q) ||
+        String(e.point || "").toLowerCase().includes(q) ||
+        String(e.message || "").toLowerCase().includes(q) ||
+        String(e.actor || "").toLowerCase().includes(q) ||
+        String(e.occurredAt || "").toLowerCase().includes(q);
 
       const matchesType = type === "All" || e.type === type;
       const matchesState = state === "All" || e.state === state;
@@ -152,7 +404,7 @@ export default function EventsPage() {
     pageSize,
     hasPrev,
     hasNext,
-  } = useTablePagination(filtered, 20, search, type, state, range);
+  } = useTablePagination(filtered, 20, `${search}|${type}|${state}|${range}`);
 
   const counts = useMemo(() => {
     const total = events.length;
@@ -210,11 +462,14 @@ export default function EventsPage() {
                     <Form.Label className="text-white fw-semibold small mb-1">
                       Search
                     </Form.Label>
-                    <Form.Control
+                    <input
+                      type="text"
                       value={search}
                       onChange={(e) => setSearch(e.target.value)}
                       placeholder="Search equipment, point, message, ID, user…"
-                      className="bg-dark text-white border border-light border-opacity-10"
+                      className="form-control bg-dark text-white border border-light border-opacity-10"
+                      aria-label="Search events"
+                      autoComplete="off"
                     />
                   </Col>
 
@@ -246,9 +501,9 @@ export default function EventsPage() {
                       onChange={(e) => setState(e.target.value)}
                       className="bg-dark text-white border border-light border-opacity-10"
                     >
-                      <option>All</option>
-                      <option>New</option>
-                      <option>Reviewed</option>
+                      <option value="All">All</option>
+                      <option value="New">New</option>
+                      <option value="Reviewed">Reviewed</option>
                     </Form.Select>
                   </Col>
 
@@ -300,9 +555,6 @@ export default function EventsPage() {
                           Actor
                         </th>
                         <th style={{ width: 140 }} className="text-white">
-                          Severity
-                        </th>
-                        <th style={{ width: 140 }} className="text-white">
                           State
                         </th>
                         <th style={{ width: 160 }} className="text-end text-white">
@@ -311,16 +563,16 @@ export default function EventsPage() {
                       </tr>
                     </thead>
 
-                    <tbody>
+                    <tbody key={`filter-${search}-${filtered.length}`}>
                       {filtered.length === 0 ? (
                         <tr>
-                          <td colSpan={9} className="text-center text-white py-4">
+                          <td colSpan={8} className="text-center text-white py-4">
                             No events match your filters.
                           </td>
                         </tr>
                       ) : (
-                        pagedRows.map((e) => (
-                          <tr key={e.id}>
+                        pagedRows.map((e, i) => (
+                          <tr key={`${e.id}-${startIndex + i}`}>
                             <td className="text-white fw-semibold">{e.occurredAt}</td>
 
                             <td className="text-white fw-semibold">{e.type}</td>
@@ -338,10 +590,6 @@ export default function EventsPage() {
                             <td className="text-white fw-semibold">{e.message}</td>
 
                             <td className="text-white fw-semibold">{e.actor}</td>
-
-                            <td>
-                              <StatusDotLabel value={e.severity} kind="severity" />
-                            </td>
 
                             <td className="text-white fw-semibold">{e.state}</td>
 

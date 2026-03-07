@@ -37,7 +37,7 @@ export default function Footer({ controllers = 18, devices = "1.42", ...props })
               <div className="legion-footer-segmented" role="group">
                 <button
                   type="button"
-                  className={`legion-footer-segment ${currentMode === "operator" ? "active" : ""}`}
+                  className={`legion-footer-segment legion-footer-segment--operator ${currentMode === "operator" ? "active" : ""}`}
                   onClick={() => handleModeSwitch("operator")}
                   aria-pressed={currentMode === "operator"}
                 >
@@ -45,7 +45,7 @@ export default function Footer({ controllers = 18, devices = "1.42", ...props })
                 </button>
                 <button
                   type="button"
-                  className={`legion-footer-segment ${currentMode === "engineering" ? "active" : ""}`}
+                  className={`legion-footer-segment legion-footer-segment--engineering ${currentMode === "engineering" ? "active" : ""}`}
                   onClick={() => handleModeSwitch("engineering")}
                   aria-pressed={currentMode === "engineering"}
                 >
@@ -54,13 +54,13 @@ export default function Footer({ controllers = 18, devices = "1.42", ...props })
               </div>
             </div>
             <span className="legion-footer-sep d-none d-sm-inline">·</span>
-            <Link to={Routes.LegionDashboard.path}>Legion</Link>
+            <Link to={Routes.LegionDashboard.path} className="legion-footer-link">Legion</Link>
             <span className="legion-footer-sep">·</span>
-            <Card.Link as={Button} variant="link" className="p-0 text-white" onClick={() => setShowDefault(true)}>
+            <button type="button" className="legion-footer-link legion-footer-link--btn" onClick={() => setShowDefault(true)}>
               Help
-            </Card.Link>
+            </button>
             <span className="legion-footer-sep">·</span>
-            <Link to={Routes.LegionSettings.path}>Settings</Link>
+            <Link to={Routes.LegionSettings.path} className="legion-footer-link">Settings</Link>
           </div>
         </div>
       </footer>
