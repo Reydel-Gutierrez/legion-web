@@ -2,7 +2,9 @@ import React, { useMemo, useState } from "react";
 import { useSite } from "../../../app/providers/SiteProvider";
 import { Container, Row, Col, Card, Table, Form, Button, ButtonGroup, Modal } from "@themesberg/react-bootstrap";
 import LegionHeroHeader from "../../../components/legion/LegionHeroHeader";
+import LegionTablePagination from "../../../components/legion/LegionTablePagination";
 import StatusDotLabel from "../../../components/legion/StatusDotLabel";
+import { useTablePagination } from "../../../hooks/useTablePagination";
 
 export default function SchedulesPage() {
   useSite(); // consume context for global site sync
@@ -30,6 +32,19 @@ export default function SchedulesPage() {
       return matchesSearch && matchesScope && matchesStatus;
     });
   }, [schedules, search, scope, status]);
+
+  const {
+    page,
+    setPage,
+    pagedRows,
+    total,
+    totalPages,
+    startIndex,
+    endIndex,
+    pageSize,
+    hasPrev,
+    hasNext,
+  } = useTablePagination(filtered, 20, search, scope, status);
 
   const inferType = (equip) => (equip.startsWith("AHU") ? "AHU" : equip.startsWith("VAV") ? "VAV" : equip.startsWith("FCU") ? "FCU" : equip.startsWith("OAU") ? "OAU" : "Other");
   const nowStamp = () => { const n = new Date(); const m = n.getMonth() + 1, d = n.getDate(), yy = String(n.getFullYear()).slice(-2), hh = String(n.getHours()).padStart(2, "0"), mm = String(n.getMinutes()).padStart(2, "0"); return `${m}/${d}/${yy} ${hh}:${mm}`; };
@@ -75,7 +90,7 @@ export default function SchedulesPage() {
           <Col xs={12}>
             <Card className="bg-primary border border-light border-opacity-10 shadow-sm">
               <Card.Body>
-                <div className="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3"><div className="text-white fw-semibold">Schedule Log</div><div className="text-white fw-semibold">{filtered.length} records</div></div>
+                <div className="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3"><div className="text-white fw-semibold">Schedule Log</div><div className="text-white fw-semibold">Showing {total === 0 ? "0" : `${startIndex + 1}–${endIndex}`} of {total}</div></div>
 
                 <Row className="g-2 align-items-end mb-3">
                   <Col xs={12} md={6} lg={6}>
@@ -117,7 +132,7 @@ export default function SchedulesPage() {
                       {filtered.length === 0 ? (
                         <tr><td colSpan={9} className="text-center text-white py-4">No schedules match your filters.</td></tr>
                       ) : (
-                        filtered.map((s) => (
+                        pagedRows.map((s) => (
                           <tr key={s.id}>
                             <td><div className="fw-bold text-white">{s.name}</div><div className="text-white">{s.id}</div></td>
                             <td>
@@ -143,6 +158,18 @@ export default function SchedulesPage() {
                     </tbody>
                   </Table>
                 </div>
+
+                <LegionTablePagination
+                  page={page}
+                  setPage={setPage}
+                  totalPages={totalPages}
+                  total={total}
+                  startIndex={startIndex}
+                  endIndex={endIndex}
+                  pageSize={pageSize}
+                  hasPrev={hasPrev}
+                  hasNext={hasNext}
+                />
 
                 <div className="d-flex justify-content-between align-items-center flex-wrap gap-2 mt-3">
                   <div className="text-white small fw-semibold">Tip: Use schedules for occupancy mode and setpoint setbacks. Keep overrides temporary and track them in Events.</div>

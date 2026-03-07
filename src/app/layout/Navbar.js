@@ -24,9 +24,11 @@ import { Link, useHistory } from "react-router-dom";
 import PageBreadcrumbs from "../../components/ui/PageBreadcrumbs";
 import NOTIFICATIONS_DATA from "../../lib/data/notifications";
 import { useSite } from "../providers/SiteProvider";
+import { useWorkspaceMode } from "../providers/WorkspaceModeProvider";
 
 export default function TopNavbar() {
   const { site } = useSite();
+  const { currentMode } = useWorkspaceMode();
   const history = useHistory();
   const [notifications, setNotifications] = useState(NOTIFICATIONS_DATA);
   const [showHelp, setShowHelp] = useState(false);
@@ -53,6 +55,9 @@ export default function TopNavbar() {
 
               {/* Right: chips + icons */}
               <div className="d-flex align-items-center gap-2">
+                {currentMode === "engineering" && (
+                  <span className="legion-topbar-engineering-badge">Engineering</span>
+                )}
                 <div className="legion-topbar-chips d-none d-md-flex">
                   <span className="legion-topbar-chip">Last sync: {lastSync}</span>
                   <span className="legion-topbar-chip">

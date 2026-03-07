@@ -11,7 +11,9 @@ import {
   ButtonGroup,
 } from "@themesberg/react-bootstrap";
 import LegionHeroHeader from "../../../components/legion/LegionHeroHeader";
+import LegionTablePagination from "../../../components/legion/LegionTablePagination";
 import StatusDotLabel from "../../../components/legion/StatusDotLabel";
+import { useTablePagination } from "../../../hooks/useTablePagination";
 
 export default function AlarmsPage() {
   useSite(); // consume context for global site sync
@@ -123,6 +125,19 @@ export default function AlarmsPage() {
     });
   }, [alarms, search, severity, state, ack]);
 
+  const {
+    page,
+    setPage,
+    pagedRows,
+    total,
+    totalPages,
+    startIndex,
+    endIndex,
+    pageSize,
+    hasPrev,
+    hasNext,
+  } = useTablePagination(filtered, 20, search, severity, state, ack);
+
   const counts = useMemo(() => {
     const active = alarms.filter((a) => a.state === "Active").length;
     const unackedActive = alarms.filter((a) => a.state === "Active" && !a.ack).length;
@@ -171,7 +186,9 @@ export default function AlarmsPage() {
                 {/* Filters */}
                 <div className="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
                   <div className="text-white fw-semibold">Alarm Log</div>
-                  <div className="text-white fw-semibold">{filtered.length} records</div>
+                  <div className="text-white fw-semibold">
+                    Showing {total === 0 ? "0" : `${startIndex + 1}–${endIndex}`} of {total}
+                  </div>
                 </div>
 
                 <Row className="g-2 align-items-end mb-3">
@@ -277,7 +294,7 @@ export default function AlarmsPage() {
                           </td>
                         </tr>
                       ) : (
-                        filtered.map((a) => (
+                        pagedRows.map((a) => (
                           <tr key={a.id}>
                             <td>
                               <div className="fw-bold text-white">{a.equipName}</div>
@@ -345,6 +362,18 @@ export default function AlarmsPage() {
                     </tbody>
                   </Table>
                 </div>
+
+                <LegionTablePagination
+                  page={page}
+                  setPage={setPage}
+                  totalPages={totalPages}
+                  total={total}
+                  startIndex={startIndex}
+                  endIndex={endIndex}
+                  pageSize={pageSize}
+                  hasPrev={hasPrev}
+                  hasNext={hasNext}
+                />
 
                 {/* Footer hint */}
                 <div className="d-flex justify-content-between align-items-center flex-wrap gap-2 mt-3">

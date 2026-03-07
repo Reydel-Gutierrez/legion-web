@@ -3,17 +3,19 @@ import SimpleBar from 'simplebar-react';
 import { useLocation } from "react-router-dom";
 import { CSSTransition } from 'react-transition-group';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faUsers, faBoxOpen, faChartPie, faCog, faSignOutAlt, faTimes, faCalendarAlt, faMapPin, faInbox } from "@fortawesome/free-solid-svg-icons";
+import { faUsers, faBoxOpen, faChartPie, faCog, faSignOutAlt, faTimes, faCalendarAlt, faMapPin, faInbox, faTachometerAlt, faSitemap, faTools, faNetworkWired, faMapMarkerAlt, faImage, faCheckCircle, faRocket, faListAlt } from "@fortawesome/free-solid-svg-icons";
 import { Nav, Badge, Image, Button, Dropdown, Accordion, Navbar } from '@themesberg/react-bootstrap';
 import { Link } from 'react-router-dom';
 
 import { Routes } from "../../routes";
 import ReactHero from "../../assets/img/technologies/react-hero-logo.svg";
-import ProfilePicture from "../../assets/img/team/profile-picture-3.jpg";
+import LegionLogo from "../../assets/img/legionlogo.png";
 import { useSite } from "../providers/SiteProvider";
+import { useWorkspaceMode } from "../providers/WorkspaceModeProvider";
 
 export default function Sidebar() {
   const { site, setSite } = useSite();
+  const { currentMode } = useWorkspaceMode();
   const location = useLocation();
   const { pathname } = location;
   const [show, setShow] = useState(false);
@@ -70,7 +72,7 @@ export default function Sidebar() {
   return (
     <>
       <Navbar expand={false} collapseOnSelect variant="dark" className="navbar-theme-primary px-4 d-md-none">
-        <Navbar.Brand className="me-lg-5" as={Link} to={Routes.LegionDashboard.path}>
+        <Navbar.Brand className="me-lg-5" as={Link} to={currentMode === "engineering" ? Routes.EngineeringDashboard.path : Routes.LegionDashboard.path}>
           <Image src={ReactHero} className="navbar-brand-light" />
         </Navbar.Brand>
         <Navbar.Toggle as={Button} aria-controls="main-navbar" onClick={onCollapse}>
@@ -78,13 +80,13 @@ export default function Sidebar() {
         </Navbar.Toggle>
       </Navbar>
       <CSSTransition timeout={300} in={show} classNames="sidebar-transition">
-        <div className={`legion-sidebar-wrapper collapse ${showClass} d-md-block`}>
+        <div className={`legion-sidebar-wrapper collapse ${showClass} d-md-block ${currentMode === "engineering" ? "legion-sidebar--engineering" : ""}`}>
           <SimpleBar className="sidebar legion-sidebar text-white">
             <div className="sidebar-inner px-4 pt-3">
             <div className="user-card d-flex d-md-none align-items-center justify-content-between justify-content-md-center pb-4">
               <div className="d-flex align-items-center">
                 <div className="user-avatar lg-avatar me-4">
-                  <Image src={ProfilePicture} className="card-img-top rounded-circle border-white" />
+                  <Image src={LegionLogo} className="card-img-top rounded-circle border-white" alt="" />
                 </div>
                 <div className="d-block">
                   <h6>Hi, Jane</h6>
@@ -129,21 +131,37 @@ export default function Sidebar() {
               {/* LEGION BAS */}
               <Dropdown.Divider className="my-3 border-indigo" />
 
-              <NavItem title="Legion BAS" link={Routes.LegionDashboard.path} icon={faChartPie} />
-              <NavItem title="Site Layout" link={Routes.LegionSite.path} icon={faMapPin} />
-              <NavItem title="Equipment" link={Routes.LegionEquipment.path} icon={faBoxOpen} />
-              <NavItem title="Alarms" link={Routes.LegionAlarms.path} icon={faInbox} />
-              <NavItem title="Trends" link={Routes.LegionTrends.path} icon={faChartPie} />
+              {currentMode === "operator" ? (
+                <>
+                  <NavItem title="Dashboard" link={Routes.LegionDashboard.path} icon={faChartPie} />
+                  <NavItem title="Site Layout" link={Routes.LegionSite.path} icon={faMapPin} />
+                  <NavItem title="Equipment" link={Routes.LegionEquipment.path} icon={faBoxOpen} />
+                  <NavItem title="Alarms" link={Routes.LegionAlarms.path} icon={faInbox} />
+                  <NavItem title="Trends" link={Routes.LegionTrends.path} icon={faChartPie} />
 
-              <Dropdown.Divider className="my-3 border-indigo" />
+                  <Dropdown.Divider className="my-3 border-indigo" />
 
-              <NavItem title="Schedules" link={Routes.LegionSchedules.path} icon={faCalendarAlt} />
-              <NavItem title="Events" link={Routes.LegionEvents.path} icon={faCog} />
+                  <NavItem title="Schedules" link={Routes.LegionSchedules.path} icon={faCalendarAlt} />
+                  <NavItem title="Events" link={Routes.LegionEvents.path} icon={faCog} />
 
-              <Dropdown.Divider className="my-3 border-indigo" />
+                  <Dropdown.Divider className="my-3 border-indigo" />
 
-              <NavItem title="Users" link={Routes.LegionUsers.path} icon={faUsers} />
-              <NavItem title="Settings" link={Routes.LegionSettings.path} icon={faCog} />
+                  <NavItem title="Users" link={Routes.LegionUsers.path} icon={faUsers} />
+                  <NavItem title="Settings" link={Routes.LegionSettings.path} icon={faCog} />
+                </>
+              ) : (
+                <>
+                  <NavItem title="LCC Dashboard" link={Routes.EngineeringDashboard.path} icon={faTachometerAlt} />
+                  <NavItem title="Site Builder" link={Routes.EngineeringSiteBuilder.path} icon={faSitemap} />
+                  <NavItem title="Equipment Builder" link={Routes.EngineeringEquipmentBuilder.path} icon={faTools} />
+                  <NavItem title="Network Discovery" link={Routes.EngineeringNetworkDiscovery.path} icon={faNetworkWired} />
+                  <NavItem title="Point Mapping" link={Routes.EngineeringPointMapping.path} icon={faMapMarkerAlt} />
+                  <NavItem title="Graphics Manager" link={Routes.EngineeringGraphicsManager.path} icon={faImage} />
+                  <NavItem title="Validation Center" link={Routes.EngineeringValidationCenter.path} icon={faCheckCircle} />
+                  <NavItem title="Deployment" link={Routes.EngineeringDeployment.path} icon={faRocket} />
+                  <NavItem title="Logs" link={Routes.EngineeringLogs.path} icon={faListAlt} />
+                </>
+              )}
             </Nav>
           </div>
           </SimpleBar>

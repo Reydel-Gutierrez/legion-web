@@ -11,7 +11,9 @@ import {
   ButtonGroup,
 } from "@themesberg/react-bootstrap";
 import LegionHeroHeader from "../../../components/legion/LegionHeroHeader";
+import LegionTablePagination from "../../../components/legion/LegionTablePagination";
 import StatusDotLabel from "../../../components/legion/StatusDotLabel";
+import { useTablePagination } from "../../../hooks/useTablePagination";
 
 export default function EventsPage() {
   const { site } = useSite();
@@ -139,6 +141,19 @@ export default function EventsPage() {
     });
   }, [events, search, type, state, range]);
 
+  const {
+    page,
+    setPage,
+    pagedRows,
+    total,
+    totalPages,
+    startIndex,
+    endIndex,
+    pageSize,
+    hasPrev,
+    hasNext,
+  } = useTablePagination(filtered, 20, search, type, state, range);
+
   const counts = useMemo(() => {
     const total = events.length;
     const newCount = events.filter((e) => e.state === "New").length;
@@ -185,7 +200,9 @@ export default function EventsPage() {
                 {/* Filters */}
                 <div className="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
                   <div className="text-white fw-semibold">Event Log</div>
-                  <div className="text-white fw-semibold">{filtered.length} records</div>
+                  <div className="text-white fw-semibold">
+                    Showing {total === 0 ? "0" : `${startIndex + 1}–${endIndex}`} of {total}
+                  </div>
                 </div>
 
                 <Row className="g-2 align-items-end mb-3">
@@ -302,7 +319,7 @@ export default function EventsPage() {
                           </td>
                         </tr>
                       ) : (
-                        filtered.map((e) => (
+                        pagedRows.map((e) => (
                           <tr key={e.id}>
                             <td className="text-white fw-semibold">{e.occurredAt}</td>
 
@@ -354,6 +371,18 @@ export default function EventsPage() {
                     </tbody>
                   </Table>
                 </div>
+
+                <LegionTablePagination
+                  page={page}
+                  setPage={setPage}
+                  totalPages={totalPages}
+                  total={total}
+                  startIndex={startIndex}
+                  endIndex={endIndex}
+                  pageSize={pageSize}
+                  hasPrev={hasPrev}
+                  hasNext={hasNext}
+                />
 
                 {/* Footer hint */}
                 <div className="d-flex justify-content-between align-items-center flex-wrap gap-2 mt-3">

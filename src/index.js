@@ -26,12 +26,15 @@ import "react-datetime/css/react-datetime.css";
 import AppRoutes from "./app/router/AppRoutes";
 import ScrollToTop from "./app/router/ScrollToTop";
 import { SiteProvider } from "./app/providers/SiteProvider";
+import { WorkspaceModeProvider } from "./app/providers/WorkspaceModeProvider";
 
 ReactDOM.render(
   <HashRouter>
     <SiteProvider>
-      <ScrollToTop />
-      <AppRoutes />
+      <WorkspaceModeProvider>
+        <ScrollToTop />
+        <AppRoutes />
+      </WorkspaceModeProvider>
     </SiteProvider>
   </HashRouter>,
   document.getElementById("root")

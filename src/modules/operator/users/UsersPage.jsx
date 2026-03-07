@@ -11,7 +11,9 @@ import {
   ButtonGroup,
 } from "@themesberg/react-bootstrap";
 import LegionHeroHeader from "../../../components/legion/LegionHeroHeader";
+import LegionTablePagination from "../../../components/legion/LegionTablePagination";
 import StatusDotLabel from "../../../components/legion/StatusDotLabel";
+import { useTablePagination } from "../../../hooks/useTablePagination";
 
 export default function UsersPage() {
   const { site } = useSite();
@@ -111,6 +113,19 @@ export default function UsersPage() {
       return matchesSearch && matchesRole && matchesStatus;
     });
   }, [users, search, role, status]);
+
+  const {
+    page,
+    setPage,
+    pagedRows,
+    total,
+    totalPages,
+    startIndex,
+    endIndex,
+    pageSize,
+    hasPrev,
+    hasNext,
+  } = useTablePagination(filtered, 20, search, role, status);
 
   const counts = useMemo(() => {
     const total = users.length;
@@ -217,7 +232,7 @@ export default function UsersPage() {
                   <div className="text-white fw-semibold">
                     Search Directory — {site}
                   </div>
-                  <div className="text-white fw-semibold">{filtered.length} users</div>
+                  <div className="text-white fw-semibold">Showing {total === 0 ? "0" : `${startIndex + 1}–${endIndex}`} of {total}</div>
                 </div>
 
                 {!canViewAllUsers ? (
@@ -305,7 +320,7 @@ export default function UsersPage() {
                               </td>
                             </tr>
                           ) : (
-                            filtered.map((u) => (
+                            pagedRows.map((u) => (
                               <tr key={u.id}>
                                 <td>
                                   <div className="fw-bold text-white">{u.displayName}</div>
@@ -351,6 +366,18 @@ export default function UsersPage() {
                         </tbody>
                       </Table>
                     </div>
+
+                    <LegionTablePagination
+                      page={page}
+                      setPage={setPage}
+                      totalPages={totalPages}
+                      total={total}
+                      startIndex={startIndex}
+                      endIndex={endIndex}
+                      pageSize={pageSize}
+                      hasPrev={hasPrev}
+                      hasNext={hasNext}
+                    />
 
                     {/* Footer */}
                     <div className="d-flex justify-content-between align-items-center flex-wrap gap-2 mt-3">

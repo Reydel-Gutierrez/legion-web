@@ -1,11 +1,23 @@
 import React from "react";
 import { Card, Button } from '@themesberg/react-bootstrap';
-import { Link } from 'react-router-dom';
+import { Link, useHistory } from 'react-router-dom';
 import { Routes } from "../../routes";
 import { useState } from "react";
 import { Modal } from '@themesberg/react-bootstrap';
+import { useWorkspaceMode } from "../providers/WorkspaceModeProvider";
 
 export default function Footer({ controllers = 18, devices = "1.42", ...props }) {
+  const { currentMode, setCurrentMode } = useWorkspaceMode();
+  const history = useHistory();
+
+  const handleModeSwitch = (mode) => {
+    setCurrentMode(mode);
+    if (mode === "engineering") {
+      history.push(Routes.EngineeringDashboard.path);
+    } else {
+      history.push(Routes.LegionDashboard.path);
+    }
+  };
   const [showDefault, setShowDefault] = useState(false);
   const handleClose = () => setShowDefault(false);
 
@@ -19,7 +31,29 @@ export default function Footer({ controllers = 18, devices = "1.42", ...props })
           <div className="legion-footer-center">
             Connected controllers · {controllers} <span className="legion-footer-sep">·</span> Devices {devices}
           </div>
-          <div className="legion-footer-right">
+          <div className="legion-footer-right d-flex align-items-center gap-3">
+            <div className="legion-footer-mode-switch">
+              <span className="legion-footer-mode-label">Mode:</span>
+              <div className="legion-footer-segmented" role="group">
+                <button
+                  type="button"
+                  className={`legion-footer-segment ${currentMode === "operator" ? "active" : ""}`}
+                  onClick={() => handleModeSwitch("operator")}
+                  aria-pressed={currentMode === "operator"}
+                >
+                  Operator
+                </button>
+                <button
+                  type="button"
+                  className={`legion-footer-segment ${currentMode === "engineering" ? "active" : ""}`}
+                  onClick={() => handleModeSwitch("engineering")}
+                  aria-pressed={currentMode === "engineering"}
+                >
+                  Engineering
+                </button>
+              </div>
+            </div>
+            <span className="legion-footer-sep d-none d-sm-inline">·</span>
             <Link to={Routes.LegionDashboard.path}>Legion</Link>
             <span className="legion-footer-sep">·</span>
             <Card.Link as={Button} variant="link" className="p-0 text-white" onClick={() => setShowDefault(true)}>

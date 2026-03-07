@@ -14,6 +14,10 @@ import LegionEvents from "../../modules/operator/events/EventsPage";
 import LegionUsers from "../../modules/operator/users/UsersPage";
 import LegionSettings from "../../modules/operator/settings/SettingsPage";
 
+// Engineering pages
+import EngineeringDashboardPage from "../../modules/engineering/lcc-dashboard/EngineeringDashboardPage";
+import EngineeringPlaceholderPage from "../../modules/engineering/EngineeringPlaceholderPage";
+
 // shared layout
 import Sidebar from "../layout/Sidebar";
 import Navbar from "../layout/Navbar";
@@ -72,6 +76,17 @@ export default function AppRoutes() {
       <RouteWithSidebar exact path={Routes.LegionEvents.path} component={LegionEvents} />
       <RouteWithSidebar exact path={Routes.LegionUsers.path} component={LegionUsers} />
       <RouteWithSidebar exact path={Routes.LegionSettings.path} component={LegionSettings} />
+
+      {/* Engineering mode routes */}
+      <RouteWithSidebar exact path={Routes.EngineeringDashboard.path} component={EngineeringDashboardPage} />
+      <RouteWithSidebar exact path={Routes.EngineeringSiteBuilder.path} render={(props) => <EngineeringPlaceholderPage {...props} title="Site Builder" />} />
+      <RouteWithSidebar exact path={Routes.EngineeringEquipmentBuilder.path} render={(props) => <EngineeringPlaceholderPage {...props} title="Equipment Builder" />} />
+      <RouteWithSidebar exact path={Routes.EngineeringNetworkDiscovery.path} render={(props) => <EngineeringPlaceholderPage {...props} title="Network Discovery" />} />
+      <RouteWithSidebar exact path={Routes.EngineeringPointMapping.path} render={(props) => <EngineeringPlaceholderPage {...props} title="Point Mapping" />} />
+      <RouteWithSidebar exact path={Routes.EngineeringGraphicsManager.path} render={(props) => <EngineeringPlaceholderPage {...props} title="Graphics Manager" />} />
+      <RouteWithSidebar exact path={Routes.EngineeringValidationCenter.path} render={(props) => <EngineeringPlaceholderPage {...props} title="Validation Center" />} />
+      <RouteWithSidebar exact path={Routes.EngineeringDeployment.path} render={(props) => <EngineeringPlaceholderPage {...props} title="Deployment" />} />
+      <RouteWithSidebar exact path={Routes.EngineeringLogs.path} render={(props) => <EngineeringPlaceholderPage {...props} title="Logs" />} />
 
       <Redirect to={Routes.LegionDashboard.path} />
     </Switch>
