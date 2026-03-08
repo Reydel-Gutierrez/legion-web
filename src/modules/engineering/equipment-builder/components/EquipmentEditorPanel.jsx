@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Card, Form, Button } from "@themesberg/react-bootstrap";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faTrashAlt } from "@fortawesome/free-solid-svg-icons";
+import LegionFormSelect from "../../../../components/legion/LegionFormSelect";
 import { EQUIPMENT_TYPE_OPTIONS } from "../equipmentTypes";
 import { EQUIPMENT_STATUSES } from "../../data/mockEngineeringData";
 
@@ -102,53 +103,50 @@ export default function EquipmentEditorPanel({
 
           <Form.Group className="mb-3">
             <Form.Label className="text-white small">Equipment Type</Form.Label>
-            <Form.Select
+            <LegionFormSelect
               size="sm"
-              className="bg-dark bg-opacity-25 border border-light border-opacity-10 text-white"
               value={form.equipmentType}
               onChange={(e) => handleChange("equipmentType", e.target.value)}
-            >
-              {EQUIPMENT_TYPE_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </Form.Select>
+              options={EQUIPMENT_TYPE_OPTIONS}
+              placeholder="Select type..."
+            />
           </Form.Group>
 
           <Form.Group className="mb-3">
             <Form.Label className="text-white small">Assign Controller</Form.Label>
-            <Form.Select
+            <LegionFormSelect
               size="sm"
-              className="bg-dark bg-opacity-25 border border-light border-opacity-10 text-white"
               value={form.controllerRef || ""}
               onChange={(e) => handleChange("controllerRef", e.target.value)}
-            >
-              <option value="">Unassigned</option>
-              <option value="43001">BACnet/IP: 43001</option>
-              <option value="43002">BACnet/IP: 43002</option>
-              <option value="43020">BACnet/IP: 43020</option>
-              <option value="43021">BACnet/IP: 43021</option>
-              <option value="43100">BACnet/IP: 43100</option>
-            </Form.Select>
+              options={[
+                { value: "", label: "Unassigned" },
+                { value: "43001", label: "BACnet/IP: 43001" },
+                { value: "43002", label: "BACnet/IP: 43002" },
+                { value: "43020", label: "BACnet/IP: 43020" },
+                { value: "43021", label: "BACnet/IP: 43021" },
+                { value: "43100", label: "BACnet/IP: 43100" },
+              ]}
+              placeholder="Unassigned"
+            />
           </Form.Group>
 
           <Form.Group className="mb-3">
             <Form.Label className="text-white small">Template</Form.Label>
-            <Form.Select
+            <LegionFormSelect
               size="sm"
-              className="bg-dark bg-opacity-25 border border-light border-opacity-10 text-white"
               value={form.templateName || ""}
               onChange={(e) => handleChange("templateName", e.target.value)}
-            >
-              <option value="">Select template</option>
-              <option value="LC VMA-1832 AHU">LC VMA-1832 AHU</option>
-              <option value="LC VAV-1832">LC VAV-1832</option>
-              <option value="LC FCU-2-Pipe">LC FCU-2-Pipe</option>
-              <option value="LC Chiller-500Ton">LC Chiller-500Ton</option>
-              <option value="LC CHWP-VFD">LC CHWP-VFD</option>
-              <option value="LC ExhaustFan">LC ExhaustFan</option>
-            </Form.Select>
+              options={[
+                { value: "", label: "Select template" },
+                { value: "LC VMA-1832 AHU", label: "LC VMA-1832 AHU" },
+                { value: "LC VAV-1832", label: "LC VAV-1832" },
+                { value: "LC FCU-2-Pipe", label: "LC FCU-2-Pipe" },
+                { value: "LC Chiller-500Ton", label: "LC Chiller-500Ton" },
+                { value: "LC CHWP-VFD", label: "LC CHWP-VFD" },
+                { value: "LC ExhaustFan", label: "LC ExhaustFan" },
+              ]}
+              placeholder="Select template"
+            />
           </Form.Group>
 
           <Form.Group className="mb-3">
@@ -164,19 +162,13 @@ export default function EquipmentEditorPanel({
 
           <Form.Group className="mb-3">
             <Form.Label className="text-white small">Floor / Location</Form.Label>
-            <Form.Select
+            <LegionFormSelect
               size="sm"
-              className="bg-dark bg-opacity-25 border border-light border-opacity-10 text-white"
               value={form.floorId}
               onChange={(e) => handleChange("floorId", e.target.value)}
-            >
-              <option value="">Select floor</option>
-              {floors.map((f) => (
-                <option key={f.id} value={f.id}>
-                  {f.name}
-                </option>
-              ))}
-            </Form.Select>
+              options={[{ value: "", label: "Select floor" }, ...(floors || []).map((f) => ({ value: f.id, label: f.name }))]}
+              placeholder="Select floor"
+            />
           </Form.Group>
 
           <Form.Group className="mb-3">

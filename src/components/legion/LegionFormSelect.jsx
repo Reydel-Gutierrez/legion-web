@@ -1,0 +1,79 @@
+/**
+ * LegionFormSelect - Custom select with dark-themed dropdown.
+ * Replaces native Form.Select for consistent dark UI; native select dropdowns
+ * cannot be styled in most browsers.
+ */
+import React, { useState, useRef, useEffect } from "react";
+import { Dropdown } from "@themesberg/react-bootstrap";
+
+export default function LegionFormSelect({
+  value,
+  onChange,
+  options = [],
+  placeholder = "Select...",
+  size = "sm",
+  className = "",
+  disabled = false,
+}) {
+  const [show, setShow] = useState(false);
+  const containerRef = useRef(null);
+
+  const selectedOption = options.find((o) => String(o.value) === String(value));
+  const displayLabel = selectedOption ? selectedOption.label : placeholder;
+
+  const handleSelect = (opt) => {
+    if (onChange) onChange({ target: { value: opt.value } });
+    setShow(false);
+  };
+
+  // Close on outside click (exclude clicks inside the dropdown menu - it's portaled outside containerRef)
+  useEffect(() => {
+    if (!show) return;
+    const onDocClick = (e) => {
+      const inContainer = containerRef.current && containerRef.current.contains(e.target);
+      const inDropdownMenu = e.target.closest?.(".legion-form-select-menu, .dropdown-menu");
+      if (!inContainer && !inDropdownMenu) {
+        setShow(false);
+      }
+    };
+    document.addEventListener("mousedown", onDocClick);
+    return () => document.removeEventListener("mousedown", onDocClick);
+  }, [show]);
+
+  const height = size === "sm" ? "31px" : size === "lg" ? "47px" : "38px";
+  const fontSize = size === "sm" ? "0.875rem" : "1rem";
+
+  return (
+    <div ref={containerRef} className="legion-form-select">
+      <Dropdown show={show} onToggle={(next) => !disabled && setShow(next)}>
+        <Dropdown.Toggle
+          variant="link"
+          as="button"
+          disabled={disabled}
+          className={`legion-form-select-toggle ${className}`.trim()}
+          style={{
+            height,
+            fontSize,
+            minHeight: height,
+          }}
+        >
+          <span className={!selectedOption ? "text-white-50" : ""}>
+            {displayLabel}
+          </span>
+          <span className="legion-form-select-chevron">▾</span>
+        </Dropdown.Toggle>
+        <Dropdown.Menu className="legion-form-select-menu">
+          {options.map((opt) => (
+            <Dropdown.Item
+              key={opt.value}
+              active={String(opt.value) === String(value)}
+              onClick={() => handleSelect(opt)}
+            >
+              {opt.label}
+            </Dropdown.Item>
+          ))}
+        </Dropdown.Menu>
+      </Dropdown>
+    </div>
+  );
+}

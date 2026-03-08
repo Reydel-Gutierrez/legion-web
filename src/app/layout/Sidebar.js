@@ -3,7 +3,7 @@ import SimpleBar from 'simplebar-react';
 import { useLocation } from "react-router-dom";
 import { CSSTransition } from 'react-transition-group';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faUsers, faBoxOpen, faChartPie, faCog, faSignOutAlt, faTimes, faCalendarAlt, faMapPin, faInbox, faTachometerAlt, faSitemap, faTools, faNetworkWired, faMapMarkerAlt, faImage, faCheckCircle, faRocket, faListAlt } from "@fortawesome/free-solid-svg-icons";
+import { faUsers, faBoxOpen, faChartPie, faCog, faSignOutAlt, faTimes, faCalendarAlt, faMapPin, faInbox, faTachometerAlt, faSitemap, faNetworkWired, faMapMarkerAlt, faImage, faCheckCircle, faRocket, faListAlt } from "@fortawesome/free-solid-svg-icons";
 import { Nav, Badge, Image, Button, Dropdown, Accordion, Navbar } from '@themesberg/react-bootstrap';
 import { Link } from 'react-router-dom';
 
@@ -176,7 +176,6 @@ export default function Sidebar() {
                 <>
                   <NavItem title="LCC Dashboard" link={Routes.EngineeringDashboard.path} icon={faTachometerAlt} />
                   <NavItem title="Site Builder" link={Routes.EngineeringSiteBuilder.path} icon={faSitemap} />
-                  <NavItem title="Equipment Builder" link={Routes.EngineeringEquipmentBuilder.path} icon={faTools} />
                   <NavItem title="Network Discovery" link={Routes.EngineeringNetworkDiscovery.path} icon={faNetworkWired} />
                   <NavItem title="Point Mapping" link={Routes.EngineeringPointMapping.path} icon={faMapMarkerAlt} />
                   <NavItem title="Graphics Manager" link={Routes.EngineeringGraphicsManager.path} icon={faImage} />

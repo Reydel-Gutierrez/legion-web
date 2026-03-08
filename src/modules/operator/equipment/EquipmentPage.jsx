@@ -2,6 +2,8 @@ import React, { useCallback, useMemo, useState, useEffect, useRef } from "react"
 import { useSite } from "../../../app/providers/SiteProvider";
 import { Container, Row, Col, Card, Button, ButtonGroup, Form, Table, Modal, Toast } from "@themesberg/react-bootstrap";
 import { useHistory } from "react-router-dom";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faChevronDown, faChevronRight, faBuilding, faLayerGroup, faSnowflake, faFolder } from "@fortawesome/free-solid-svg-icons";
 import LegionHeroHeader from "../../../components/legion/LegionHeroHeader";
 import StatusDotLabel from "../../../components/legion/StatusDotLabel";
 
@@ -58,55 +60,74 @@ function getPointsForEquipment(equipmentId, equipmentName, status) {
 }
 
 // ---------------------------------------
-// Reusable tree row component
+// Reusable tree row component (Site Builder hierarchy style)
 // ---------------------------------------
 const ONLINE_STATUSES = ["ok", "normal", "online", "active", "enabled"];
 
+const NODE_ICONS = {
+  group: faSnowflake,
+  floor: faLayerGroup,
+  equip: faFolder,
+};
+
 function EquipmentTreeRow({ level = 0, active, onClick, isGroup, isOpen, node, isLeaf, isDraggable, onDragStart }) {
-  const pad = 8 + level * 16;
+  const pad = 8 + level * 20;
   const rawStatus = (node.status || "Normal").toString().toLowerCase();
   const dotOnly = ONLINE_STATUSES.includes(rawStatus);
   const showCaret = isGroup;
+  const Icon = NODE_ICONS[node.type] || faFolder;
 
   const content = (
     <>
-      <span className="equipment-tree-caret">
-        {showCaret ? (isOpen ? "▾" : "▸") : ""}
+      <span className="site-tree-caret">
+        {showCaret ? (
+          <FontAwesomeIcon icon={isOpen ? faChevronDown : faChevronRight} className="fa-sm" />
+        ) : (
+          <span className="site-tree-caret-placeholder" />
+        )}
       </span>
-
-      <div className="equipment-tree-content">
-        {!showCaret ? <StatusDotLabel value={node.status || "Normal"} kind="status" dotOnly={dotOnly} /> : null}
-        <span className="equipment-tree-name">{node.label}</span>
+      <span className="site-tree-icon">
+        {isLeaf ? (
+          <StatusDotLabel value={node.status || "Normal"} kind="status" dotOnly={dotOnly} />
+        ) : (
+          <FontAwesomeIcon icon={Icon} className="fa-sm" />
+        )}
+      </span>
+      <span className="site-tree-name-wrap">
+        <span className="site-tree-name">{node.label}</span>
         {node.sub ? (
-          <span className="equipment-tree-subtext text-white-50">• {node.sub}</span>
+          <span className="site-tree-subtext text-white-50"> • {node.sub}</span>
         ) : null}
-      </div>
+        <span className="site-tree-type-badge">
+          {node.type === "group" ? "GROUP" : node.type === "floor" ? "FLOOR" : "EQUIPMENT"}
+        </span>
+      </span>
     </>
   );
 
   const commonProps = {
     className: [
-      "equipment-tree-row",
-      active ? "equipment-tree-row--active" : "",
-      isDraggable ? "equipment-tree-row--draggable" : "",
+      "site-tree-row",
+      active ? "site-tree-row--active" : "",
+      isDraggable ? "site-tree-row--draggable" : "",
     ].filter(Boolean).join(" "),
-    style: { "--tree-pad": `${pad}px` },
+    style: { paddingLeft: `${pad}px` },
     onClick,
   };
 
   if (isDraggable) {
     return (
-      <div
-        {...commonProps}
-        draggable
-        onDragStart={onDragStart}
-      >
+      <div {...commonProps} draggable onDragStart={onDragStart}>
         {content}
       </div>
     );
   }
 
-  return <button type="button" {...commonProps}>{content}</button>;
+  return (
+    <button type="button" {...commonProps}>
+      {content}
+    </button>
+  );
 }
 
 // ---------------------------------------
@@ -907,16 +928,15 @@ export default function EquipmentPage() {
     const onDragStart = isDraggable ? (e) => handleDragStart(e, node, treeData) : undefined;
 
     return (
-      <div>
+      <div className="site-tree-node">
         <EquipmentTreeRow level={level} active={isActive} onClick={onClick} isGroup={isExpandable} isOpen={isOpen} node={node} isLeaf={isLeaf} isDraggable={isDraggable} onDragStart={onDragStart} />
         {isExpandable && isOpen && node.children?.length ? (
-          <div>
+          <div className="site-tree-children">
             {node.children.map((c) => (
               <TreeNode key={c.id} node={c} level={level + 1} />
             ))}
           </div>
         ) : null}
-        {level === 0 ? <div className="border-top border-light border-opacity-10" style={{ height: 1 }} /> : null}
       </div>
     );
   };
@@ -954,7 +974,7 @@ export default function EquipmentPage() {
                   />
                 </div>
                 <div className="border-top border-light border-opacity-10" style={{ height: 1 }} />
-                <div className="legion-equipment-tree pb-2">
+                <div className="legion-equipment-tree site-builder-tree pb-2">
                   {filteredTree.map((n) => (
                     <TreeNode key={n.id} node={n} level={0} />
                   ))}

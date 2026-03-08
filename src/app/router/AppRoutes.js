@@ -17,8 +17,8 @@ import LegionSettings from "../../modules/operator/settings/SettingsPage";
 // Engineering pages
 import EngineeringDashboardPage from "../../modules/engineering/lcc-dashboard/EngineeringDashboardPage";
 import SiteBuilderPage from "../../modules/engineering/site-builder/SiteBuilderPage";
-import EquipmentBuilderPage from "../../modules/engineering/equipment-builder/EquipmentBuilderPage";
 import EngineeringPlaceholderPage from "../../modules/engineering/EngineeringPlaceholderPage";
+import NetworkDiscoveryPage from "../../modules/engineering/network-discovery/NetworkDiscoveryPage";
 
 // shared layout
 import Sidebar from "../layout/Sidebar";
@@ -82,8 +82,7 @@ export default function AppRoutes() {
       {/* Engineering mode routes */}
       <RouteWithSidebar exact path={Routes.EngineeringDashboard.path} component={EngineeringDashboardPage} />
       <RouteWithSidebar exact path={Routes.EngineeringSiteBuilder.path} component={SiteBuilderPage} />
-      <RouteWithSidebar exact path={Routes.EngineeringEquipmentBuilder.path} component={EquipmentBuilderPage} />
-      <RouteWithSidebar exact path={Routes.EngineeringNetworkDiscovery.path} render={(props) => <EngineeringPlaceholderPage {...props} title="Network Discovery" />} />
+      <RouteWithSidebar exact path={Routes.EngineeringNetworkDiscovery.path} component={NetworkDiscoveryPage} />
       <RouteWithSidebar exact path={Routes.EngineeringPointMapping.path} render={(props) => <EngineeringPlaceholderPage {...props} title="Point Mapping" />} />
       <RouteWithSidebar exact path={Routes.EngineeringGraphicsManager.path} render={(props) => <EngineeringPlaceholderPage {...props} title="Graphics Manager" />} />
       <RouteWithSidebar exact path={Routes.EngineeringValidationCenter.path} render={(props) => <EngineeringPlaceholderPage {...props} title="Validation Center" />} />

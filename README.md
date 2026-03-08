@@ -23,7 +23,6 @@ The project is currently being restructured from a legacy dashboard template int
 ### Engineering Modules
 - Engineering Dashboard
 - Site Builder
-- Equipment Builder
 - Network Discovery
 - Point Mapping
 - Graphics Manager

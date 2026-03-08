@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Modal, Button, Form } from "@themesberg/react-bootstrap";
+import LegionFormSelect from "../../../../components/legion/LegionFormSelect";
 
 const EQUIPMENT_TYPES = [
   { value: "AHU", label: "Air Handling Unit" },
@@ -127,51 +128,36 @@ export default function AddEquipmentModal({
           </Form.Group>
           <Form.Group className="mb-3">
             <Form.Label className="text-white small">Equipment Type</Form.Label>
-            <Form.Select
+            <LegionFormSelect
               size="sm"
-              className="bg-dark border border-light border-opacity-10 text-white"
               value={equipmentType}
               onChange={(e) => setEquipmentType(e.target.value)}
-            >
-              {EQUIPMENT_TYPES.map((t) => (
-                <option key={t.value} value={t.value}>
-                  {t.label}
-                </option>
-              ))}
-            </Form.Select>
+              options={EQUIPMENT_TYPES}
+              placeholder="Select type"
+            />
           </Form.Group>
           <Form.Group className="mb-3">
             <Form.Label className="text-white small">Building</Form.Label>
-            <Form.Select
+            <LegionFormSelect
               size="sm"
-              className="bg-dark border border-light border-opacity-10 text-white"
               value={buildingId}
               onChange={(e) => {
                 setBuildingId(e.target.value);
                 setFloorId("");
               }}
-            >
-              {buildings.map((b) => (
-                <option key={b.id} value={b.id}>
-                  {b.name}
-                </option>
-              ))}
-            </Form.Select>
+              options={buildings.map((b) => ({ value: b.id, label: b.name }))}
+              placeholder="Select building"
+            />
           </Form.Group>
           <Form.Group className="mb-3">
             <Form.Label className="text-white small">Floor</Form.Label>
-            <Form.Select
+            <LegionFormSelect
               size="sm"
-              className="bg-dark border border-light border-opacity-10 text-white"
               value={floorId}
               onChange={(e) => setFloorId(e.target.value)}
-            >
-              {floors.map((f) => (
-                <option key={f.id} value={f.id}>
-                  {f.name}
-                </option>
-              ))}
-            </Form.Select>
+              options={floors.map((f) => ({ value: f.id, label: f.name }))}
+              placeholder="Select floor"
+            />
           </Form.Group>
           <Form.Group className="mb-3">
             <Form.Label className="text-white small">Template (optional)</Form.Label>

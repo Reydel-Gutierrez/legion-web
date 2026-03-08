@@ -3,6 +3,7 @@ import { Card, Form, Button } from "@themesberg/react-bootstrap";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faTrashAlt } from "@fortawesome/free-solid-svg-icons";
 
+import LegionFormSelect from "../../../../components/legion/LegionFormSelect";
 import EquipmentEditorPanel from "../../equipment-builder/components/EquipmentEditorPanel";
 
 /**
@@ -162,35 +163,37 @@ export default function NodeEditorPanel({
             <>
               <Form.Group className="mb-3">
                 <Form.Label className="text-white small">Site Type</Form.Label>
-                <Form.Select
+                <LegionFormSelect
                   size="sm"
-                  className="bg-dark bg-opacity-25 border border-light border-opacity-10 text-white"
                   value={form.siteType}
                   onChange={(e) => handleChange("siteType", e.target.value)}
-                >
-                  <option value="">Select...</option>
-                  <option value="Office">Office</option>
-                  <option value="Campus">Campus</option>
-                  <option value="Residential">Residential</option>
-                  <option value="Mixed Use">Mixed Use</option>
-                  <option value="Garage">Garage</option>
-                  <option value="Other">Other</option>
-                </Form.Select>
+                  options={[
+                    { value: "", label: "Select..." },
+                    { value: "Office", label: "Office" },
+                    { value: "Campus", label: "Campus" },
+                    { value: "Residential", label: "Residential" },
+                    { value: "Mixed Use", label: "Mixed Use" },
+                    { value: "Garage", label: "Garage" },
+                    { value: "Other", label: "Other" },
+                  ]}
+                  placeholder="Select..."
+                />
               </Form.Group>
               <Form.Group className="mb-3">
                 <Form.Label className="text-white small">Timezone</Form.Label>
-                <Form.Select
+                <LegionFormSelect
                   size="sm"
-                  className="bg-dark bg-opacity-25 border border-light border-opacity-10 text-white"
                   value={form.timezone}
                   onChange={(e) => handleChange("timezone", e.target.value)}
-                >
-                  <option value="America/New_York">America/New_York</option>
-                  <option value="America/Chicago">America/Chicago</option>
-                  <option value="America/Denver">America/Denver</option>
-                  <option value="America/Los_Angeles">America/Los_Angeles</option>
-                  <option value="UTC">UTC</option>
-                </Form.Select>
+                  options={[
+                    { value: "America/New_York", label: "America/New_York" },
+                    { value: "America/Chicago", label: "America/Chicago" },
+                    { value: "America/Denver", label: "America/Denver" },
+                    { value: "America/Los_Angeles", label: "America/Los_Angeles" },
+                    { value: "UTC", label: "UTC" },
+                  ]}
+                  placeholder="Select timezone"
+                />
               </Form.Group>
               <Form.Group className="mb-3">
                 <Form.Label className="text-white small">Address</Form.Label>
@@ -204,16 +207,17 @@ export default function NodeEditorPanel({
               </Form.Group>
               <Form.Group className="mb-3">
                 <Form.Label className="text-white small">Status</Form.Label>
-                <Form.Select
+                <LegionFormSelect
                   size="sm"
-                  className="bg-dark bg-opacity-25 border border-light border-opacity-10 text-white"
                   value={form.status}
                   onChange={(e) => handleChange("status", e.target.value)}
-                >
-                  <option value="Active">Active</option>
-                  <option value="Draft">Draft</option>
-                  <option value="Archived">Archived</option>
-                </Form.Select>
+                  options={[
+                    { value: "Active", label: "Active" },
+                    { value: "Draft", label: "Draft" },
+                    { value: "Archived", label: "Archived" },
+                  ]}
+                  placeholder="Status"
+                />
               </Form.Group>
             </>
           )}
@@ -222,20 +226,21 @@ export default function NodeEditorPanel({
             <>
               <Form.Group className="mb-3">
                 <Form.Label className="text-white small">Building Type</Form.Label>
-                <Form.Select
+                <LegionFormSelect
                   size="sm"
-                  className="bg-dark bg-opacity-25 border border-light border-opacity-10 text-white"
                   value={form.buildingType}
                   onChange={(e) => handleChange("buildingType", e.target.value)}
-                >
-                  <option value="">Select...</option>
-                  <option value="Office Tower">Office Tower</option>
-                  <option value="Garage">Garage</option>
-                  <option value="Mechanical">Mechanical</option>
-                  <option value="Residential">Residential</option>
-                  <option value="Mixed Use">Mixed Use</option>
-                  <option value="Other">Other</option>
-                </Form.Select>
+                  options={[
+                    { value: "", label: "Select..." },
+                    { value: "Office Tower", label: "Office Tower" },
+                    { value: "Garage", label: "Garage" },
+                    { value: "Mechanical", label: "Mechanical" },
+                    { value: "Residential", label: "Residential" },
+                    { value: "Mixed Use", label: "Mixed Use" },
+                    { value: "Other", label: "Other" },
+                  ]}
+                  placeholder="Select..."
+                />
               </Form.Group>
               <Form.Group className="mb-3">
                 <Form.Label className="text-white small">Building Code / Ref</Form.Label>
@@ -259,16 +264,17 @@ export default function NodeEditorPanel({
               </Form.Group>
               <Form.Group className="mb-3">
                 <Form.Label className="text-white small">Status</Form.Label>
-                <Form.Select
+                <LegionFormSelect
                   size="sm"
-                  className="bg-dark bg-opacity-25 border border-light border-opacity-10 text-white"
                   value={form.status}
                   onChange={(e) => handleChange("status", e.target.value)}
-                >
-                  <option value="Active">Active</option>
-                  <option value="Draft">Draft</option>
-                  <option value="Archived">Archived</option>
-                </Form.Select>
+                  options={[
+                    { value: "Active", label: "Active" },
+                    { value: "Draft", label: "Draft" },
+                    { value: "Archived", label: "Archived" },
+                  ]}
+                  placeholder="Status"
+                />
               </Form.Group>
             </>
           )}
@@ -277,38 +283,40 @@ export default function NodeEditorPanel({
             <>
               <Form.Group className="mb-3">
                 <Form.Label className="text-white small">Floor Type</Form.Label>
-                <Form.Select
+                <LegionFormSelect
                   size="sm"
-                  className="bg-dark bg-opacity-25 border border-light border-opacity-10 text-white"
                   value={form.floorType}
                   onChange={(e) => handleChange("floorType", e.target.value)}
-                >
-                  <option value="">Select...</option>
-                  <option value="Standard Floor">Standard Floor</option>
-                  <option value="Roof">Roof</option>
-                  <option value="Mechanical Level">Mechanical Level</option>
-                  <option value="Basement">Basement</option>
-                  <option value="Parking Level">Parking Level</option>
-                  <option value="Penthouse">Penthouse</option>
-                  <option value="Other">Other</option>
-                </Form.Select>
+                  options={[
+                    { value: "", label: "Select..." },
+                    { value: "Standard Floor", label: "Standard Floor" },
+                    { value: "Roof", label: "Roof" },
+                    { value: "Mechanical Level", label: "Mechanical Level" },
+                    { value: "Basement", label: "Basement" },
+                    { value: "Parking Level", label: "Parking Level" },
+                    { value: "Penthouse", label: "Penthouse" },
+                    { value: "Other", label: "Other" },
+                  ]}
+                  placeholder="Select..."
+                />
               </Form.Group>
               <Form.Group className="mb-3">
                 <Form.Label className="text-white small">Occupancy Type</Form.Label>
-                <Form.Select
+                <LegionFormSelect
                   size="sm"
-                  className="bg-dark bg-opacity-25 border border-light border-opacity-10 text-white"
                   value={form.occupancyType}
                   onChange={(e) => handleChange("occupancyType", e.target.value)}
-                >
-                  <option value="">Select...</option>
-                  <option value="Office">Office</option>
-                  <option value="Tenant">Tenant</option>
-                  <option value="Common Area">Common Area</option>
-                  <option value="Mechanical">Mechanical</option>
-                  <option value="Parking">Parking</option>
-                  <option value="Mixed">Mixed</option>
-                </Form.Select>
+                  options={[
+                    { value: "", label: "Select..." },
+                    { value: "Office", label: "Office" },
+                    { value: "Tenant", label: "Tenant" },
+                    { value: "Common Area", label: "Common Area" },
+                    { value: "Mechanical", label: "Mechanical" },
+                    { value: "Parking", label: "Parking" },
+                    { value: "Mixed", label: "Mixed" },
+                  ]}
+                  placeholder="Select..."
+                />
               </Form.Group>
               <Form.Group className="mb-3">
                 <Form.Label className="text-white small">Sort Order</Form.Label>
