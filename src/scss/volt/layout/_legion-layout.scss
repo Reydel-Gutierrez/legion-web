@@ -934,6 +934,361 @@ $legion-search-placeholder: #7B818F;
   }
 }
 
+/* ========== POINT MAPPING ========== */
+.point-mapping-toolbar {
+  .legion-search-bar .form-control {
+    min-width: 240px;
+  }
+}
+
+.point-mapping-status-chip {
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  white-space: nowrap;
+
+  &--success {
+    background: rgba(34, 197, 94, 0.15);
+    color: #22c55e;
+    border: 1px solid rgba(34, 197, 94, 0.3);
+  }
+
+  &--warning {
+    background: rgba($legion-accent-engineering, 0.2);
+    color: $legion-accent-engineering;
+    border: 1px solid rgba($legion-accent-engineering, 0.4);
+  }
+
+  &--muted {
+    background: rgba(255, 255, 255, 0.06);
+    color: $legion-text-muted;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+}
+
+.point-mapping-summary-bar {
+  font-size: 0.875rem;
+}
+
+.point-mapping-table-wrap {
+  overflow-x: auto;
+}
+
+.point-mapping-table {
+  margin-bottom: 0;
+  color: $legion-text;
+
+  thead th {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: rgba(255, 255, 255, 0.85);
+    padding: 0.5rem 0.75rem;
+    white-space: nowrap;
+  }
+
+  tbody td {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+    vertical-align: middle;
+  }
+}
+
+.point-mapping-table-row {
+  cursor: pointer;
+  transition: background 0.15s ease;
+
+  &:hover {
+    background: $legion-hover-bg;
+  }
+
+  &.point-mapping-table-row--selected {
+    background: rgba($legion-accent-engineering, 0.1);
+    box-shadow: inset 3px 0 0 $legion-accent-engineering;
+  }
+}
+
+.point-mapping-table-header {
+  background: transparent;
+}
+
+.point-mapping-table-cell {
+  &.legion-form-select {
+    min-width: 180px;
+  }
+}
+
+.point-mapping-row-chip {
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 0.2rem 0.45rem;
+  border-radius: 4px;
+  white-space: nowrap;
+
+  &--mapped {
+    background: rgba(34, 197, 94, 0.15);
+    color: #22c55e;
+    border: 1px solid rgba(34, 197, 94, 0.3);
+  }
+
+  &--auto-mapped {
+    background: rgba(59, 130, 246, 0.15);
+    color: #60a5fa;
+    border: 1px solid rgba(59, 130, 246, 0.3);
+  }
+
+  &--missing {
+    background: rgba(239, 68, 68, 0.15);
+    color: #ef4444;
+    border: 1px solid rgba(239, 68, 68, 0.3);
+  }
+
+  &--optional {
+    background: rgba(255, 255, 255, 0.06);
+    color: $legion-text-muted;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  &--type-mismatch {
+    background: rgba(234, 179, 8, 0.15);
+    color: #eab308;
+    border: 1px solid rgba(234, 179, 8, 0.3);
+  }
+
+  &--duplicate {
+    background: rgba(239, 68, 68, 0.15);
+    color: #ef4444;
+    border: 1px solid rgba(239, 68, 68, 0.3);
+  }
+
+  &--ignored {
+    background: rgba(255, 255, 255, 0.06);
+    color: $legion-text-muted;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  &--muted {
+    background: rgba(255, 255, 255, 0.06);
+    color: $legion-text-muted;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+}
+
+.unused-objects-table-wrap {
+  .point-mapping-table tbody tr:last-child td {
+    border-bottom: none;
+  }
+}
+
+/* ========== GRAPHICS MANAGER ========== */
+.graphics-manager-toolbar {
+  .legion-search-bar .form-control {
+    min-width: 220px;
+  }
+}
+
+.graphics-explorer-tree {
+  .site-tree-type-badge {
+    font-size: 0.7rem;
+    opacity: 0.8;
+  }
+}
+
+.graphics-canvas-container {
+  background: $legion-panel-bg !important;
+}
+
+.graphics-canvas-toolbar {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.graphics-canvas-grid {
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+.graphics-canvas {
+  position: relative;
+  min-width: 800px;
+  min-height: 500px;
+}
+
+.graphics-canvas-object {
+  position: absolute;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid transparent;
+  border-radius: 4px;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+
+  &:hover {
+    border-color: rgba($legion-accent-engineering, 0.5);
+  }
+
+  &--selected {
+    border-color: $legion-accent-engineering;
+    box-shadow: 0 0 0 1px rgba($legion-accent-engineering, 0.3);
+  }
+
+  &--text,
+  &--value {
+    padding: 0.25rem 0.5rem;
+    color: $legion-text;
+  }
+}
+
+
+/* Searchable equipment selector – dark Legion style */
+.equipment-select-wrapper {
+  width: 100%;
+  max-width: 380px;
+  min-width: 200px;
+
+  .equipment-select-toggle,
+  .dropdown-toggle.legion-form-select-toggle,
+  .dropdown-toggle.equipment-select-toggle {
+    position: relative;
+    display: flex !important;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    min-width: 0;
+    min-height: 36px;
+    padding: 0.4rem 2.25rem 0.4rem 0.75rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    line-height: 1.5;
+    color: $legion-text !important;
+    background: rgba(0, 0, 0, 0.3) !important;
+    border: 1px solid rgba(255, 255, 255, 0.15) !important;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.15s ease, border-color 0.15s ease;
+    text-align: left;
+    text-decoration: none !important;
+    box-shadow: none !important;
+
+    &:hover {
+      background: rgba(0, 0, 0, 0.4) !important;
+      border-color: rgba(255, 255, 255, 0.22) !important;
+      color: $legion-text !important;
+    }
+
+    &:focus {
+      outline: none;
+      border-color: rgba($legion-accent-engineering, 0.5);
+      box-shadow: 0 0 0 2px rgba($legion-accent-engineering, 0.2);
+    }
+
+    &::after {
+      display: none;
+    }
+
+    .legion-form-select-chevron {
+      position: absolute;
+      right: 0.75rem;
+      top: 50%;
+      transform: translateY(-50%);
+      opacity: 0.8;
+      font-size: 0.7rem;
+      color: rgba(255, 255, 255, 0.7);
+    }
+
+    > span:first-child {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      min-width: 0;
+    }
+  }
+}
+
+.equipment-select-dropdown.dropdown-menu,
+.equipment-select-dropdown.legion-form-select-menu {
+  max-height: 360px;
+  min-width: 320px;
+  background: rgba(10, 16, 26, 0.98) !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.6) !important;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  z-index: 1060 !important;
+
+  /* Search area */
+  .equipment-select-search-wrap {
+    background: rgba(0, 0, 0, 0.2);
+  }
+
+  .input-group.legion-search-bar,
+  .input-group {
+    background: rgba(0, 0, 0, 0.25) !important;
+    border-color: rgba(255, 255, 255, 0.1) !important;
+    border-radius: 6px;
+
+    .input-group-text,
+    .legion-search-bar-addon {
+      background: transparent !important;
+      border: none !important;
+      color: rgba(255, 255, 255, 0.7) !important;
+    }
+
+    .form-control,
+    .legion-search-bar-input {
+      background: transparent !important;
+      border: none !important;
+      color: $legion-text !important;
+
+      &::placeholder {
+        color: rgba(255, 255, 255, 0.45);
+      }
+    }
+  }
+
+  .equipment-select-list {
+    max-height: 280px;
+    scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+    scrollbar-width: thin;
+
+    &::-webkit-scrollbar {
+      width: 8px;
+    }
+    &::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    &::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 4px;
+    }
+    &::-webkit-scrollbar-thumb:hover {
+      background: rgba(255, 255, 255, 0.3);
+    }
+  }
+
+  .dropdown-item,
+  .equipment-select-item {
+    color: rgba(255, 255, 255, 0.9) !important;
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.06) !important;
+      color: $legion-text !important;
+    }
+
+    &.active {
+      background: rgba($legion-accent-engineering, 0.12) !important;
+      color: $legion-text !important;
+    }
+  }
+}
+
 /* ========== SITE BUILDER TREE ========== */
 .site-builder-tree {
   padding: 0.5rem 0;

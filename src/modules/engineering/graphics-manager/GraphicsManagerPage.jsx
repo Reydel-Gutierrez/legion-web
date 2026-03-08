@@ -1,0 +1,359 @@
+import React, { useState, useCallback, useMemo, useEffect } from "react";
+import { Container, Row, Col, Card, Button } from "@themesberg/react-bootstrap";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faObjectGroup } from "@fortawesome/free-solid-svg-icons";
+
+import { useSite } from "../../../app/providers/SiteProvider";
+import LegionHeroHeader from "../../../components/legion/LegionHeroHeader";
+import { getGraphicForEquipment } from "../data/mockGraphicsData";
+import {
+  isNewBuildingFlow,
+  getMockSiteTree,
+  getMockEquipmentForSite,
+  enrichEquipmentForPointMapping,
+} from "../data/mockEngineeringData";
+import { getPointsForEquipment } from "../data/mockPointMappingData";
+import GraphicsContextCard from "./components/GraphicsContextCard";
+import GraphicsToolbar from "./components/GraphicsToolbar";
+import GraphicsExplorer from "./components/GraphicsExplorer";
+import GraphicsCanvas from "./components/GraphicsCanvas";
+import GraphicsInspector from "./components/GraphicsInspector";
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+function collectIds(node, acc = new Set()) {
+  if (!node) return acc;
+  if (node.id) acc.add(node.id);
+  (node.children || []).forEach((c) => collectIds(c, acc));
+  return acc;
+}
+
+// ---------------------------------------------------------------------------
+// GraphicsManagerPage
+// ---------------------------------------------------------------------------
+export default function GraphicsManagerPage() {
+  const { site } = useSite();
+  const [siteTree, setSiteTree] = useState(null);
+  const [graphicsByEquipment, setGraphicsByEquipment] = useState({});
+  const [expandedIds, setExpandedIds] = useState(new Set());
+  const [selectedEquipmentId, setSelectedEquipmentId] = useState(null);
+  const [selectedObject, setSelectedObject] = useState(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filterValue, setFilterValue] = useState("all");
+  const handleFilterChange = useCallback((v) => setFilterValue(v), []);
+  const [validationResult, setValidationResult] = useState(null);
+  const [showValidationToast, setShowValidationToast] = useState(false);
+
+  const isNewBuilding = isNewBuildingFlow(site);
+
+  const equipmentList = useMemo(() => {
+    const raw = getMockEquipmentForSite(site) || [];
+    return enrichEquipmentForPointMapping(raw, siteTree, site);
+  }, [site, siteTree]);
+
+  const selectedEquipment = useMemo(
+    () => equipmentList.find((e) => e.id === selectedEquipmentId) || null,
+    [equipmentList, selectedEquipmentId]
+  );
+
+  const availablePoints = useMemo(
+    () => getPointsForEquipment(selectedEquipment),
+    [selectedEquipment]
+  );
+
+  const selectedGraphic = useMemo(
+    () => {
+      const base = getGraphicForEquipment(selectedEquipmentId);
+      if (!base) return null;
+      const stored = graphicsByEquipment[selectedEquipmentId];
+      return stored ? { ...base, objects: stored.objects ?? base.objects } : base;
+    },
+    [selectedEquipmentId, graphicsByEquipment]
+  );
+
+  // Load site tree when site changes
+  useEffect(() => {
+    if (isNewBuilding) {
+      setSiteTree(null);
+      setExpandedIds(new Set());
+      setSelectedEquipmentId(null);
+      setSelectedObject(null);
+      return;
+    }
+    const tree = getMockSiteTree(site);
+    if (tree) {
+      setSiteTree(tree);
+      const ids = collectIds(tree);
+      setExpandedIds(ids);
+      setSelectedEquipmentId(null);
+    }
+  }, [site, isNewBuilding]);
+
+  const toggleExpand = useCallback((id) => {
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const handleSelectEquipment = useCallback((equipment) => {
+    setSelectedEquipmentId(equipment?.id ?? null);
+    setSelectedObject(null);
+  }, []);
+
+  const handleSelectEquipmentById = useCallback((id) => {
+    setSelectedEquipmentId(id || null);
+    setSelectedObject(null);
+  }, []);
+
+  const handleSelectObject = useCallback((obj) => {
+    setSelectedObject(obj);
+  }, []);
+
+  const handleUpdateObject = useCallback((objectId, updates) => {
+    if (!selectedEquipmentId) return;
+    setGraphicsByEquipment((prev) => {
+      const current = prev[selectedEquipmentId] || getGraphicForEquipment(selectedEquipmentId);
+      const objects = (current?.objects || []).map((o) =>
+        o.id === objectId ? { ...o, ...updates } : o
+      );
+      return { ...prev, [selectedEquipmentId]: { ...current, objects } };
+    });
+    setSelectedObject((prev) =>
+      prev?.id === objectId ? { ...prev, ...updates } : prev
+    );
+  }, [selectedEquipmentId]);
+
+  const generateObjectId = useCallback(() => {
+    return `obj-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+  }, []);
+
+  const handleAddText = useCallback(() => {
+    if (!selectedEquipmentId) return;
+    const base = getGraphicForEquipment(selectedEquipmentId);
+    const existingObjects = (graphicsByEquipment[selectedEquipmentId]?.objects ?? base?.objects) || [];
+    const maxY = existingObjects.reduce((m, o) => Math.max(m, (o.y || 0) + (o.height || 24)), 0);
+    const newObj = {
+      id: generateObjectId(),
+      type: "text",
+      label: "Text",
+      x: 100,
+      y: Math.max(80, maxY + 20),
+      width: 60,
+      height: 24,
+    };
+    setGraphicsByEquipment((prev) => {
+      const current = prev[selectedEquipmentId] || base;
+      const objects = [...(current?.objects || []), newObj];
+      return { ...prev, [selectedEquipmentId]: { ...current, objects } };
+    });
+    setSelectedObject(newObj);
+  }, [selectedEquipmentId, graphicsByEquipment, generateObjectId]);
+
+  const handleAddValue = useCallback(() => {
+    if (!selectedEquipmentId) return;
+    const base = getGraphicForEquipment(selectedEquipmentId);
+    const existingObjects = (graphicsByEquipment[selectedEquipmentId]?.objects ?? base?.objects) || [];
+    const maxY = existingObjects.reduce((m, o) => Math.max(m, (o.y || 0) + (o.height || 24)), 0);
+    const newObj = {
+      id: generateObjectId(),
+      type: "value",
+      label: "Point",
+      x: 100,
+      y: Math.max(80, maxY + 20),
+      width: 80,
+      height: 24,
+      bindings: [],
+    };
+    setGraphicsByEquipment((prev) => {
+      const current = prev[selectedEquipmentId] || base;
+      const objects = [...(current?.objects || []), newObj];
+      return { ...prev, [selectedEquipmentId]: { ...current, objects } };
+    });
+    setSelectedObject(newObj);
+  }, [selectedEquipmentId, graphicsByEquipment, generateObjectId]);
+
+  const handleValidate = useCallback(() => {
+    const graphic = selectedGraphic;
+    const issues = [];
+    (graphic?.objects || []).forEach((obj) => {
+      const bindings = obj.bindings || [];
+      bindings.forEach((b) => {
+        if (!b.pointId) issues.push(`${obj.label || "Object"}: missing point reference`);
+      });
+    });
+    setValidationResult({
+      valid: issues.length === 0,
+      issues,
+    });
+    setShowValidationToast(true);
+  }, [selectedGraphic]);
+
+  const handleNewGraphic = useCallback(() => {
+    console.log("New Graphic");
+  }, []);
+  const handleImportSvg = useCallback(() => {
+    console.log("Import SVG");
+  }, []);
+  const handleImportImage = useCallback(() => {
+    console.log("Import Image");
+  }, []);
+  const handleDuplicate = useCallback(() => {
+    console.log("Duplicate");
+  }, []);
+  const handleDelete = useCallback(() => {
+    console.log("Delete");
+  }, []);
+  const handlePreview = useCallback(() => {
+    console.log("Preview");
+  }, []);
+
+  if (isNewBuilding) {
+    return (
+      <Container fluid className="px-0">
+        <div className="px-3 px-md-4 pt-3">
+          <LegionHeroHeader />
+          <hr className="border-light border-opacity-25 my-3" />
+        </div>
+        <div className="px-3 px-md-4 pb-4">
+          <div className="mb-3">
+            <h5 className="text-white fw-bold mb-1">
+              <FontAwesomeIcon icon={faObjectGroup} className="me-2" />
+              Graphics Manager
+            </h5>
+            <div className="text-white-50 small">
+              Create and manage graphical floorplans, equipment diagrams, and system visualizations.
+            </div>
+          </div>
+          <Card className="bg-primary border border-light border-opacity-10 shadow-sm">
+            <Card.Body className="py-5 text-center text-white-50">
+              Select a site to get started.
+            </Card.Body>
+          </Card>
+        </div>
+      </Container>
+    );
+  }
+
+  return (
+    <Container fluid className="px-0">
+      <div className="px-3 px-md-4 pt-3">
+        <LegionHeroHeader />
+        <hr className="border-light border-opacity-25 my-3" />
+      </div>
+
+      <div className="px-3 px-md-4 pb-4">
+        <div className="mb-3">
+          <h5 className="text-white fw-bold mb-1">
+            <FontAwesomeIcon icon={faObjectGroup} className="me-2" />
+            Graphics Manager
+          </h5>
+          <div className="text-white-50 small">
+            Create and manage graphical floorplans, equipment diagrams, and system visualizations.
+          </div>
+        </div>
+
+        <GraphicsContextCard
+          equipment={selectedEquipment}
+          equipmentList={equipmentList}
+          onSelectEquipment={handleSelectEquipmentById}
+        />
+
+        {showValidationToast && validationResult && (
+          <div
+            className={`mb-3 p-3 rounded border ${
+              validationResult.valid
+                ? "border-success border-opacity-50 bg-success bg-opacity-10"
+                : "border-warning border-opacity-50 bg-warning bg-opacity-10"
+            }`}
+          >
+            {validationResult.valid ? (
+              <div className="text-success small fw-semibold">Graphics validation passed.</div>
+            ) : (
+              <div>
+                <div className="text-warning small fw-semibold mb-2">Validation issues:</div>
+                <ul className="mb-0 ps-3 text-white-50 small">
+                  {validationResult.issues.map((msg, i) => (
+                    <li key={i}>{msg}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            <Button
+              size="sm"
+              variant="link"
+              className="text-white-50 p-0 mt-2"
+              onClick={() => setShowValidationToast(false)}
+            >
+              Dismiss
+            </Button>
+          </div>
+        )}
+
+        <GraphicsToolbar
+          searchValue={searchQuery}
+          onSearchChange={setSearchQuery}
+          filterValue={filterValue}
+          onFilterChange={handleFilterChange}
+          onNewGraphic={handleNewGraphic}
+          onImportSvg={handleImportSvg}
+          onImportImage={handleImportImage}
+          onDuplicate={handleDuplicate}
+          onDelete={handleDelete}
+          onPreview={handlePreview}
+          onValidate={handleValidate}
+          hasSelection={!!selectedEquipmentId}
+        />
+
+        <Row className="g-3 align-items-start">
+          <Col xs={12} lg={4} xl={3}>
+            <Card className="bg-primary border border-light border-opacity-10 shadow-sm h-100">
+              <Card.Header className="bg-transparent border-light border-opacity-10 d-flex align-items-center justify-content-between">
+                <span className="text-white fw-bold">
+                  <FontAwesomeIcon icon={faObjectGroup} className="me-2" />
+                  Site & Equipment
+                </span>
+              </Card.Header>
+              <Card.Body className="p-0 overflow-auto" style={{ minHeight: 320 }}>
+                <GraphicsExplorer
+                  siteTree={siteTree}
+                  expandedIds={expandedIds}
+                  selectedId={null}
+                  selectedEquipmentId={selectedEquipmentId}
+                  onToggleExpand={toggleExpand}
+                  onSelect={() => {}}
+                  onSelectEquipment={handleSelectEquipment}
+                />
+              </Card.Body>
+            </Card>
+          </Col>
+
+          <Col xs={12} lg={5} xl={6}>
+            <GraphicsCanvas
+              graphic={selectedGraphic}
+              selectedObjectId={selectedObject?.id}
+              onSelectObject={handleSelectObject}
+              onAddText={handleAddText}
+              onAddValue={handleAddValue}
+              availablePoints={availablePoints}
+              previewMode={false}
+              emptyMessage="Select equipment from the tree or dropdown to create or edit graphics."
+            />
+          </Col>
+
+          <Col xs={12} lg={3} xl={3} className="align-self-start site-builder-editor-col">
+            <GraphicsInspector
+              selectedObject={selectedObject}
+              availablePoints={availablePoints}
+              equipmentName={selectedEquipment?.name}
+              onUpdateObject={handleUpdateObject}
+            />
+          </Col>
+        </Row>
+      </div>
+    </Container>
+  );
+}

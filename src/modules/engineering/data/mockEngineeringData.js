@@ -467,7 +467,7 @@ const MIAMI_HQ_EQUIPMENT = [
   { id: "eq-m5", floorId: "f-miami-ta-1", name: "FCU-1", displayLabel: "FCU-1", type: "FCU", locationLabel: "Floor 1", controllerRef: "43010", protocol: "BACnet/IP", templateName: "LC FCU-2-Pipe", pointsDefined: 8, status: "CONTROLLER_ASSIGNED", notes: "" },
   { id: "eq-m6", floorId: "f-miami-ta-2", name: "AHU-2", displayLabel: "AHU-2", type: "AHU", locationLabel: "Floor 2, North Zone", controllerRef: "43020", protocol: "BACnet/IP", templateName: "LC VMA-1832 AHU", pointsDefined: 5, status: "READY_FOR_MAPPING", notes: "" },
   { id: "eq-m7", floorId: "f-miami-ta-2", name: "VAV-11", displayLabel: "VAV-11", type: "VAV", locationLabel: "Floor 2", controllerRef: "43021", protocol: "BACnet/IP", templateName: "LC VAV-1832", pointsDefined: 12, status: "CONTROLLER_ASSIGNED", notes: "" },
-  { id: "eq-m8", floorId: "f-miami-ta-2", name: "VAV-12", displayLabel: "VAV-12", type: "VAV", locationLabel: "Floor 2", controllerRef: null, protocol: "BACnet/IP", templateName: "LC VAV-1832", pointsDefined: 0, status: "MISSING_CONTROLLER", notes: "" },
+  { id: "eq-m8", floorId: "f-miami-ta-2", name: "VAV-12", displayLabel: "VAV-12", type: "VAV", locationLabel: "Floor 2", controllerRef: "43002", protocol: "BACnet/IP", templateName: "LC VAV-1832", pointsDefined: 12, status: "READY_FOR_MAPPING", notes: "" },
   { id: "eq-m9", floorId: "f-miami-ta-2", name: "FCU-2", displayLabel: "FCU-2", type: "FCU", locationLabel: "Floor 2", controllerRef: "43030", protocol: "BACnet/IP", templateName: "LC FCU-2-Pipe", pointsDefined: 8, status: "CONTROLLER_ASSIGNED", notes: "" },
   { id: "eq-m10", floorId: "f-miami-ta-3", name: "AHU-3", displayLabel: "AHU-3", type: "AHU", locationLabel: "Floor 3", controllerRef: "43040", protocol: "BACnet/IP", templateName: "LC VMA-1832 AHU", pointsDefined: 5, status: "READY_FOR_MAPPING", notes: "" },
   { id: "eq-m11", floorId: "f-miami-ta-3", name: "VAV-21", displayLabel: "VAV-21", type: "VAV", locationLabel: "Floor 3", controllerRef: "43041", protocol: "BACnet/IP", templateName: "LC VAV-1832", pointsDefined: 12, status: "CONTROLLER_ASSIGNED", notes: "" },
@@ -1073,4 +1073,35 @@ export function treeToSiteStructure(siteTree) {
     floors: (b.children || []).map((f) => ({ id: f.id, name: f.name })),
   }));
   return { buildings };
+}
+
+/**
+ * Enrich equipment with site, building, floor names for Point Mapping.
+ * Resolves floorId against the site tree to get hierarchy labels.
+ */
+export function enrichEquipmentForPointMapping(equipmentList, siteTree, siteName) {
+  if (!equipmentList?.length || !siteTree) return [];
+  const site = siteTree.name || siteName;
+  return equipmentList.map((eq) => {
+    let building = "";
+    let floor = "";
+    if (eq.floorId) {
+      for (const b of siteTree.children || []) {
+        const f = (b.children || []).find((fl) => fl.id === eq.floorId);
+        if (f) {
+          building = b.name || "";
+          floor = f.name || "";
+          break;
+        }
+      }
+    }
+    return {
+      ...eq,
+      site: site || siteName,
+      building: building || "—",
+      floor: floor || "—",
+      displayLabel: eq.displayLabel || eq.name,
+      protocol: eq.protocol || "BACnet/IP",
+    };
+  });
 }

@@ -3,7 +3,7 @@ import SimpleBar from 'simplebar-react';
 import { useLocation } from "react-router-dom";
 import { CSSTransition } from 'react-transition-group';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faUsers, faBoxOpen, faChartPie, faCog, faSignOutAlt, faTimes, faCalendarAlt, faMapPin, faInbox, faTachometerAlt, faSitemap, faNetworkWired, faMapMarkerAlt, faImage, faCheckCircle, faRocket, faListAlt } from "@fortawesome/free-solid-svg-icons";
+import { faUsers, faBoxOpen, faChartPie, faCog, faSignOutAlt, faTimes, faCalendarAlt, faMapPin, faInbox, faSitemap, faNetworkWired, faMapMarkerAlt, faObjectGroup, faCheckCircle, faRocket } from "@fortawesome/free-solid-svg-icons";
 import { Nav, Badge, Image, Button, Dropdown, Accordion, Navbar } from '@themesberg/react-bootstrap';
 import { Link } from 'react-router-dom';
 
@@ -72,7 +72,7 @@ export default function Sidebar() {
   return (
     <>
       <Navbar expand={false} collapseOnSelect variant="dark" className="navbar-theme-primary px-4 d-md-none">
-        <Navbar.Brand className="me-lg-5" as={Link} to={currentMode === "engineering" ? Routes.EngineeringDashboard.path : Routes.LegionDashboard.path}>
+        <Navbar.Brand className="me-lg-5" as={Link} to={currentMode === "engineering" ? Routes.EngineeringSiteBuilder.path : Routes.LegionDashboard.path}>
           <Image src={ReactHero} className="navbar-brand-light" />
         </Navbar.Brand>
         <Navbar.Toggle as={Button} aria-controls="main-navbar" onClick={onCollapse}>
@@ -174,14 +174,12 @@ export default function Sidebar() {
                 </>
               ) : (
                 <>
-                  <NavItem title="LCC Dashboard" link={Routes.EngineeringDashboard.path} icon={faTachometerAlt} />
                   <NavItem title="Site Builder" link={Routes.EngineeringSiteBuilder.path} icon={faSitemap} />
                   <NavItem title="Network Discovery" link={Routes.EngineeringNetworkDiscovery.path} icon={faNetworkWired} />
                   <NavItem title="Point Mapping" link={Routes.EngineeringPointMapping.path} icon={faMapMarkerAlt} />
-                  <NavItem title="Graphics Manager" link={Routes.EngineeringGraphicsManager.path} icon={faImage} />
+                  <NavItem title="Graphics Manager" link={Routes.EngineeringGraphicsManager.path} icon={faObjectGroup} />
                   <NavItem title="Validation Center" link={Routes.EngineeringValidationCenter.path} icon={faCheckCircle} />
                   <NavItem title="Deployment" link={Routes.EngineeringDeployment.path} icon={faRocket} />
-                  <NavItem title="Logs" link={Routes.EngineeringLogs.path} icon={faListAlt} />
                 </>
               )}
             </Nav>

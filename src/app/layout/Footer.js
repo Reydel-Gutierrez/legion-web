@@ -13,7 +13,7 @@ export default function Footer({ controllers = 18, devices = "1.42", ...props })
   const handleModeSwitch = (mode) => {
     setCurrentMode(mode);
     if (mode === "engineering") {
-      history.push(Routes.EngineeringDashboard.path);
+      history.push(Routes.EngineeringSiteBuilder.path);
     } else {
       history.push(Routes.LegionDashboard.path);
     }

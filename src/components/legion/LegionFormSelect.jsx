@@ -47,6 +47,7 @@ export default function LegionFormSelect({
     <div ref={containerRef} className="legion-form-select">
       <Dropdown show={show} onToggle={(next) => !disabled && setShow(next)}>
         <Dropdown.Toggle
+          type="button"
           variant="link"
           as="button"
           disabled={disabled}

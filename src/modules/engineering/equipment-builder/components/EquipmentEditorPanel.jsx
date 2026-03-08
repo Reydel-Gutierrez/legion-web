@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import { Card, Form, Button } from "@themesberg/react-bootstrap";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faTrashAlt } from "@fortawesome/free-solid-svg-icons";
+import { faTrashAlt, faMapMarkerAlt } from "@fortawesome/free-solid-svg-icons";
 import LegionFormSelect from "../../../../components/legion/LegionFormSelect";
+import { Routes } from "../../../../routes";
 import { EQUIPMENT_TYPE_OPTIONS } from "../equipmentTypes";
 import { EQUIPMENT_STATUSES } from "../../data/mockEngineeringData";
 
@@ -185,23 +187,36 @@ export default function EquipmentEditorPanel({
           </Form.Group>
         </Form>
 
-        <div className="d-flex gap-2 mt-auto pt-3 border-top border-light border-opacity-10">
+        <div className="d-flex flex-column gap-2 mt-auto pt-3 border-top border-light border-opacity-10">
           <Button
             size="sm"
-            variant="outline-danger"
-            className="border-opacity-25"
-            onClick={handleDelete}
+            as={Link}
+            to={`${Routes.EngineeringPointMapping.path}?equipmentId=${equipment.id}`}
+            className="legion-hero-btn legion-hero-btn--secondary w-100"
+            disabled={!form.controllerRef || !form.templateName}
+            title={!form.controllerRef || !form.templateName ? "Assign a controller and template first" : ""}
           >
-            <FontAwesomeIcon icon={faTrashAlt} className="me-1" />
-            Delete Equipment
+            <FontAwesomeIcon icon={faMapMarkerAlt} className="me-1" />
+            Map Points
           </Button>
-          <Button
-            size="sm"
-            className="legion-hero-btn legion-hero-btn--primary ms-auto"
-            onClick={handleSave}
-          >
-            Save Node
-          </Button>
+          <div className="d-flex gap-2">
+            <Button
+              size="sm"
+              variant="outline-danger"
+              className="border-opacity-25"
+              onClick={handleDelete}
+            >
+              <FontAwesomeIcon icon={faTrashAlt} className="me-1" />
+              Delete Equipment
+            </Button>
+            <Button
+              size="sm"
+              className="legion-hero-btn legion-hero-btn--primary ms-auto"
+              onClick={handleSave}
+            >
+              Save Node
+            </Button>
+          </div>
         </div>
       </Card.Body>
     </Card>

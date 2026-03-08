@@ -104,6 +104,7 @@ export default function SiteTreeNode({
             {type === "site" ? "SITE" : type === "building" ? "BUILDING" : "FLOOR"}
           </span>
         </span>
+        {(onAddChild || onAddEquipment || onEdit || onDelete) && (
         <div className="site-tree-row-actions">
           {canAddChild && onAddChild && (
             <>
@@ -159,6 +160,7 @@ export default function SiteTreeNode({
             <FontAwesomeIcon icon={faTrash} className="fa-xs" />
           </button>
         </div>
+        )}
       </div>
       {hasChildren && isExpanded && (
         <div className="site-tree-children">
