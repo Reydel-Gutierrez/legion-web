@@ -31,6 +31,7 @@ export default function GraphicsExplorer({
         onAddEquipment={undefined}
         onEdit={undefined}
         onDelete={undefined}
+        compactEquipment={true}
       />
     </div>
   );

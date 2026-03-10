@@ -3,7 +3,7 @@ import SimpleBar from 'simplebar-react';
 import { useLocation } from "react-router-dom";
 import { CSSTransition } from 'react-transition-group';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faUsers, faBoxOpen, faChartPie, faCog, faSignOutAlt, faTimes, faCalendarAlt, faMapPin, faInbox, faSitemap, faNetworkWired, faMapMarkerAlt, faObjectGroup, faCheckCircle, faRocket } from "@fortawesome/free-solid-svg-icons";
+import { faUsers, faBoxOpen, faChartPie, faCog, faSignOutAlt, faTimes, faCalendarAlt, faMapPin, faInbox, faSitemap, faNetworkWired, faMapMarkerAlt, faObjectGroup, faCheckCircle, faRocket, faBook } from "@fortawesome/free-solid-svg-icons";
 import { Nav, Badge, Image, Button, Dropdown, Accordion, Navbar } from '@themesberg/react-bootstrap';
 import { Link } from 'react-router-dom';
 
@@ -178,6 +178,7 @@ export default function Sidebar() {
                   <NavItem title="Network Discovery" link={Routes.EngineeringNetworkDiscovery.path} icon={faNetworkWired} />
                   <NavItem title="Point Mapping" link={Routes.EngineeringPointMapping.path} icon={faMapMarkerAlt} />
                   <NavItem title="Graphics Manager" link={Routes.EngineeringGraphicsManager.path} icon={faObjectGroup} />
+                  <NavItem title="Template Library" link={Routes.EngineeringTemplateLibrary.path} icon={faBook} />
                   <NavItem title="Validation Center" link={Routes.EngineeringValidationCenter.path} icon={faCheckCircle} />
                   <NavItem title="Deployment" link={Routes.EngineeringDeployment.path} icon={faRocket} />
                 </>

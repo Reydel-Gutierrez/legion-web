@@ -20,6 +20,9 @@ import EngineeringPlaceholderPage from "../../modules/engineering/EngineeringPla
 import NetworkDiscoveryPage from "../../modules/engineering/network-discovery/NetworkDiscoveryPage";
 import PointMappingPage from "../../modules/engineering/point-mapping/PointMappingPage";
 import GraphicsManagerPage from "../../modules/engineering/graphics-manager/GraphicsManagerPage";
+import TemplateLibraryPage from "../../modules/engineering/template-library/TemplateLibraryPage";
+import ValidationCenterPage from "../../modules/engineering/validation-center/ValidationCenterPage";
+import DeploymentPage from "../../modules/engineering/deployment/DeploymentPage";
 
 // shared layout
 import Sidebar from "../layout/Sidebar";
@@ -85,8 +88,9 @@ export default function AppRoutes() {
       <RouteWithSidebar exact path={Routes.EngineeringNetworkDiscovery.path} component={NetworkDiscoveryPage} />
       <RouteWithSidebar exact path={Routes.EngineeringPointMapping.path} component={PointMappingPage} />
       <RouteWithSidebar exact path={Routes.EngineeringGraphicsManager.path} component={GraphicsManagerPage} />
-      <RouteWithSidebar exact path={Routes.EngineeringValidationCenter.path} render={(props) => <EngineeringPlaceholderPage {...props} title="Validation Center" />} />
-      <RouteWithSidebar exact path={Routes.EngineeringDeployment.path} render={(props) => <EngineeringPlaceholderPage {...props} title="Deployment" />} />
+      <RouteWithSidebar exact path={Routes.EngineeringTemplateLibrary.path} component={TemplateLibraryPage} />
+      <RouteWithSidebar exact path={Routes.EngineeringValidationCenter.path} component={ValidationCenterPage} />
+      <RouteWithSidebar exact path={Routes.EngineeringDeployment.path} component={DeploymentPage} />
 
       <Redirect to={Routes.LegionDashboard.path} />
     </Switch>

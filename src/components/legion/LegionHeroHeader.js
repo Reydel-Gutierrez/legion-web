@@ -1,4 +1,5 @@
 import React from "react";
+import { useHistory } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faSearch } from "@fortawesome/free-solid-svg-icons";
 import { Form, InputGroup } from "@themesberg/react-bootstrap";
@@ -6,14 +7,26 @@ import { Form, InputGroup } from "@themesberg/react-bootstrap";
 import { ReactComponent as LCILogo } from "../../assets/svgs/LCI-logo.svg";
 import { ReactComponent as LCCLogo } from "../../assets/svgs/LCC-logo.svg";
 import { useWorkspaceMode } from "../../app/providers/WorkspaceModeProvider";
+import { useValidation } from "../../app/providers/ValidationProvider";
+import { Routes } from "../../routes";
 
 export default function LegionHeroHeader() {
   const { currentMode } = useWorkspaceMode();
+  const history = useHistory();
+  const { validationSnapshot, hasBlockingErrors } = useValidation();
   const BrandLogo = currentMode === "engineering" ? LCCLogo : LCILogo;
 
   const handleSaveDraft = () => console.log("Save Draft clicked");
-  const handleValidateConfiguration = () => console.log("Validate Configuration clicked");
-  const handleDeployToLive = () => console.log("Deploy to Live clicked");
+  const handleValidateConfiguration = () => {
+    history.push(Routes.EngineeringValidationCenter.path);
+  };
+  const handleDeployToLive = () => {
+    if (hasBlockingErrors) {
+      history.push(Routes.EngineeringValidationCenter.path, { fromDeploy: true });
+    } else {
+      history.push(Routes.EngineeringDeployment.path);
+    }
+  };
 
   return (
     <div className="d-flex w-100 justify-content-between mt-2">

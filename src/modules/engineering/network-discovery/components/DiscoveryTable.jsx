@@ -1,14 +1,13 @@
 import React from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
-  faChevronDown,
-  faChevronRight,
   faServer,
   faMicrochip,
   faNetworkWired,
   faCog,
+  faExternalLinkAlt,
 } from "@fortawesome/free-solid-svg-icons";
-import { Form } from "@themesberg/react-bootstrap";
+import { Form, Button } from "@themesberg/react-bootstrap";
 
 const DEVICE_ICONS = {
   router: faNetworkWired,
@@ -44,18 +43,12 @@ function StatusBadge({ status }) {
 
 function DiscoveryRow({
   device,
-  level,
-  expandedIds,
   selectedIds,
-  onToggleExpand,
   onToggleSelect,
-  onSelectRow,
+  onViewDevice,
 }) {
-  const hasChildren = device.children && device.children.length > 0;
-  const isExpanded = expandedIds.has(device.id);
   const isSelected = selectedIds.has(device.id);
   const Icon = getDeviceIcon(device);
-  const padLeft = 12 + level * 24;
 
   const handleCheckboxChange = (e) => {
     e.stopPropagation();
@@ -64,98 +57,72 @@ function DiscoveryRow({
 
   const handleRowClick = (e) => {
     if (e.target.closest("input[type='checkbox']")) return;
-    if (hasChildren && onToggleExpand) {
-      onToggleExpand(device.id);
-    }
-    if (onSelectRow) onSelectRow(device);
+    if (e.target.closest(".discovery-table-cell--actions")) return;
+    if (onViewDevice) onViewDevice(device);
+  };
+
+  const handleViewClick = (e) => {
+    e.stopPropagation();
+    if (onViewDevice) onViewDevice(device);
   };
 
   return (
-    <>
-      <tr
-        className={`discovery-table-row ${isSelected ? "discovery-table-row--selected" : ""}`}
-        style={{ paddingLeft: 0 }}
-        onClick={handleRowClick}
-      >
-        <td className="discovery-table-cell discovery-table-cell--checkbox">
-          <Form.Check
-            type="checkbox"
-            checked={isSelected}
-            onChange={handleCheckboxChange}
-            onClick={(e) => e.stopPropagation()}
-            className="discovery-checkbox"
-          />
-        </td>
-        <td className="discovery-table-cell discovery-table-cell--name" style={{ paddingLeft: `${padLeft}px` }}>
-          <span className="discovery-table-caret">
-            {hasChildren ? (
-              <FontAwesomeIcon
-                icon={isExpanded ? faChevronDown : faChevronRight}
-                className="fa-sm"
-              />
-            ) : (
-              <span className="discovery-caret-placeholder" />
-            )}
-          </span>
-          <span className="discovery-table-icon">
-            <FontAwesomeIcon icon={Icon} className="fa-sm" />
-          </span>
-          <span className="discovery-table-name">{device.name}</span>
-        </td>
-        <td className="discovery-table-cell">{device.vendor || "—"}</td>
-        <td className="discovery-table-cell">{device.deviceInstance ?? "—"}</td>
-        <td className="discovery-table-cell">{device.network || "—"}</td>
-        <td className="discovery-table-cell">{device.macOrMstpId ?? "—"}</td>
-        <td className="discovery-table-cell">{device.objectCount ?? "—"}</td>
-        <td className="discovery-table-cell discovery-table-cell--muted">{device.lastSeen || "—"}</td>
-        <td className="discovery-table-cell">
-          <StatusBadge status={device.status || "Offline"} />
-        </td>
-      </tr>
-      {hasChildren && isExpanded &&
-        device.children.map((child) => (
-          <DiscoveryRow
-            key={child.id}
-            device={child}
-            level={level + 1}
-            expandedIds={expandedIds}
-            selectedIds={selectedIds}
-            onToggleExpand={onToggleExpand}
-            onToggleSelect={onToggleSelect}
-            onSelectRow={onSelectRow}
-          />
-        ))}
-    </>
+    <tr
+      className={`discovery-table-row ${isSelected ? "discovery-table-row--selected" : ""}`}
+      onClick={handleRowClick}
+    >
+      <td className="discovery-table-cell discovery-table-cell--checkbox">
+        <Form.Check
+          type="checkbox"
+          checked={isSelected}
+          onChange={handleCheckboxChange}
+          onClick={(e) => e.stopPropagation()}
+          className="discovery-checkbox"
+        />
+      </td>
+      <td className="discovery-table-cell discovery-table-cell--name">
+        <span className="discovery-table-icon">
+          <FontAwesomeIcon icon={Icon} className="fa-sm" />
+        </span>
+        <span className="discovery-table-name">{device.name}</span>
+      </td>
+      <td className="discovery-table-cell">{device.vendor || "—"}</td>
+      <td className="discovery-table-cell">{device.deviceInstance ?? "—"}</td>
+      <td className="discovery-table-cell">{device.network || "—"}</td>
+      <td className="discovery-table-cell">{device.macOrMstpId ?? "—"}</td>
+      <td className="discovery-table-cell">{device.objectCount ?? "—"}</td>
+      <td className="discovery-table-cell discovery-table-cell--muted">{device.lastSeen || "—"}</td>
+      <td className="discovery-table-cell">
+        <StatusBadge status={device.status || "Offline"} />
+      </td>
+      <td className="discovery-table-cell discovery-table-cell--actions text-end">
+        <Button
+          variant="link"
+          size="sm"
+          className="text-white-50 p-0"
+          onClick={handleViewClick}
+          title="View device"
+          aria-label="View device"
+        >
+          <FontAwesomeIcon icon={faExternalLinkAlt} className="fa-sm" />
+        </Button>
+      </td>
+    </tr>
   );
-}
-
-function collectVisibleIds(roots, expandedIds) {
-  const ids = new Set();
-  const addVisible = (node) => {
-    if (!node?.id) return;
-    ids.add(node.id);
-    if (expandedIds?.has?.(node.id) && node.children?.length) {
-      node.children.forEach(addVisible);
-    }
-  };
-  (roots || []).forEach(addVisible);
-  return ids;
 }
 
 export default function DiscoveryTable({
   devices,
-  expandedIds,
   selectedIds,
-  onToggleExpand,
   onToggleSelect,
   onSelectAll,
-  onSelectRow,
+  onViewDevice,
   pagedRows,
   emptyMessage,
 }) {
   const visibleIdsOnPage = React.useMemo(
-    () => collectVisibleIds(pagedRows, expandedIds),
-    [pagedRows, expandedIds]
+    () => new Set((pagedRows || []).map((d) => d.id).filter(Boolean)),
+    [pagedRows]
   );
   const visibleArr = [...visibleIdsOnPage];
   const allSelected = visibleArr.length > 0 && visibleArr.every((id) => selectedIds.has(id));
@@ -166,7 +133,9 @@ export default function DiscoveryTable({
     if (onSelectAll) onSelectAll(visibleIdsOnPage, checked);
   };
 
-  if (!devices || devices.length === 0) {
+  const hasRows = pagedRows && pagedRows.length > 0;
+
+  if (!hasRows) {
     return (
       <div className="discovery-table-empty">
         <p className="discovery-table-empty-title">{emptyMessage || "No devices discovered yet"}</p>
@@ -201,6 +170,7 @@ export default function DiscoveryTable({
             <th className="discovery-table-header">Object Count</th>
             <th className="discovery-table-header">Last Seen</th>
             <th className="discovery-table-header">Status</th>
+            <th className="discovery-table-header discovery-table-header--actions" style={{ width: 80 }}>Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -208,12 +178,9 @@ export default function DiscoveryTable({
             <DiscoveryRow
               key={device.id}
               device={device}
-              level={0}
-              expandedIds={expandedIds}
               selectedIds={selectedIds}
-              onToggleExpand={onToggleExpand}
               onToggleSelect={onToggleSelect}
-              onSelectRow={onSelectRow}
+              onViewDevice={onViewDevice}
             />
           ))}
         </tbody>

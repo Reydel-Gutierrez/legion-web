@@ -1084,6 +1084,60 @@ $legion-search-placeholder: #7B818F;
   }
 }
 
+/* ========== VALIDATION CENTER ========== */
+.validation-summary-card {
+  transition: background 0.15s ease;
+}
+
+.validation-readiness-badge {
+  font-size: 0.85rem;
+  padding: 0.35rem 0.75rem;
+}
+
+.validation-tabs.nav-tabs {
+  border-bottom-color: rgba(255, 255, 255, 0.1);
+
+  .nav-link {
+    border-color: transparent;
+    border-bottom: 2px solid transparent;
+
+    &:hover {
+      color: rgba(255, 255, 255, 0.9);
+    }
+
+    &.active {
+      color: $legion-accent-engineering;
+      border-bottom-color: $legion-accent-engineering;
+      background: transparent;
+    }
+  }
+}
+
+.validation-table-wrap {
+  overflow-x: auto;
+}
+
+.validation-table.discovery-table {
+  tbody tr {
+    cursor: pointer;
+  }
+}
+
+.validation-severity-badge {
+  font-size: 0.7rem;
+  text-transform: capitalize;
+}
+
+.validation-table-empty {
+  padding: 3rem 2rem;
+}
+
+.validation-detail-panel {
+  .validation-mapping-table table {
+    font-size: 0.8rem;
+  }
+}
+
 /* ========== GRAPHICS MANAGER ========== */
 .graphics-manager-toolbar {
   .legion-search-bar .form-control {
@@ -1100,6 +1154,10 @@ $legion-search-placeholder: #7B818F;
 
 .graphics-canvas-container {
   background: $legion-panel-bg !important;
+
+  &.graphics-canvas-container--dragging {
+    cursor: grabbing;
+  }
 }
 
 .graphics-canvas-toolbar {
@@ -1121,7 +1179,7 @@ $legion-search-placeholder: #7B818F;
 
 .graphics-canvas-object {
   position: absolute;
-  cursor: pointer;
+  cursor: grab;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1143,6 +1201,16 @@ $legion-search-placeholder: #7B818F;
   &--value {
     padding: 0.25rem 0.5rem;
     color: $legion-text;
+  }
+
+  /* Value state: live vs placeholder vs offline (template point binding) */
+  &--unmapped,
+  &--template_only {
+    opacity: 0.9;
+  }
+  &--offline {
+    opacity: 0.85;
+    color: rgba($legion-text, 0.8);
   }
 }
 
@@ -1346,6 +1414,18 @@ $legion-search-placeholder: #7B818F;
       background: rgba($legion-accent-engineering, 0.1);
       border-color: rgba($legion-accent-engineering, 0.35);
       box-shadow: inset 3px 0 0 $legion-accent-engineering;
+    }
+
+    /* Compact mode (e.g. Graphics Manager): equipment name only */
+    &.hierarchy-equipment-row--compact {
+      display: flex;
+      align-items: center;
+      grid-template-columns: unset;
+      gap: 0.35rem;
+    }
+
+    &.hierarchy-equipment-row--compact .hierarchy-equipment-col-name {
+      min-width: 0;
     }
   }
 
@@ -1608,6 +1688,18 @@ $legion-search-placeholder: #7B818F;
       border-color: rgba($legion-accent-engineering, 0.35);
       box-shadow: inset 3px 0 0 $legion-accent-engineering;
     }
+
+    /* Compact mode (e.g. Graphics Manager): equipment name only */
+    &.hierarchy-equipment-row--compact {
+      display: flex;
+      align-items: center;
+      grid-template-columns: unset;
+      gap: 0.35rem;
+    }
+
+    &.hierarchy-equipment-row--compact .hierarchy-equipment-col-name {
+      min-width: 0;
+    }
   }
 
   .hierarchy-equipment-status-chip {
@@ -1810,5 +1902,172 @@ $legion-search-placeholder: #7B818F;
         color: $legion-accent;
       }
     }
+  }
+}
+
+/* ========== TEMPLATE LIBRARY ========== */
+/* Table is not scrollable; grows with content so dropdowns show naturally. Horizontal scroll only on small viewports. */
+.template-library-table-wrap {
+  overflow: visible;
+  min-width: 0;
+}
+
+/* Only horizontal scroll on narrow viewports; never vertical scroll (overflow-y: hidden when overflow-x is auto) */
+@media (max-width: 991.98px) {
+  .template-library-table-wrap {
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+/* Bootstrap .table-responsive: no vertical scroll or clip so dropdowns show naturally */
+.template-library-table-wrap .table-responsive {
+  overflow-x: visible;
+  overflow-y: visible;
+}
+
+@media (max-width: 991.98px) {
+  .template-library-table-wrap .table-responsive {
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
+}
+
+/* Action dropdown in template table: ensure it renders above table and isn't clipped */
+.template-library-table-wrap .dropdown-menu.legion-dropdown-menu {
+  z-index: 1070;
+}
+
+.template-library-table.discovery-table thead th {
+  white-space: nowrap;
+}
+
+.template-library-source-badge {
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  white-space: nowrap;
+
+  &--global {
+    background: rgba(59, 130, 246, 0.15);
+    color: #60a5fa;
+    border: 1px solid rgba(59, 130, 246, 0.3);
+  }
+
+  &--site {
+    background: rgba($legion-accent-engineering, 0.2);
+    color: $legion-accent-engineering;
+    border: 1px solid rgba($legion-accent-engineering, 0.4);
+  }
+}
+
+.template-library-tabs.nav-tabs,
+.legion-tabs.nav-tabs {
+  border-bottom-color: rgba(255, 255, 255, 0.1);
+
+  .nav-link {
+    border-color: transparent;
+    border-radius: $legion-panel-radius $legion-panel-radius 0 0;
+
+    &:hover {
+      border-color: rgba(255, 255, 255, 0.1);
+      color: $legion-text;
+    }
+
+    &.active {
+      background: rgba(255, 255, 255, 0.06);
+      border-color: rgba(255, 255, 255, 0.1);
+      color: $legion-text;
+      border-bottom-color: transparent;
+    }
+
+    &:disabled {
+      cursor: not-allowed;
+    }
+  }
+}
+
+.dropdown-toggle-no-caret::after {
+  display: none;
+}
+
+/* ========== LEGION DRAWER (reusable right-side drawer) ========== */
+/* Inset below topbar and above footer so it does not cover chrome */
+$legion-drawer-z-overlay: 1060;
+$legion-drawer-z-panel: 1061;
+
+.legion-drawer-overlay {
+  position: fixed;
+  top: var(--legion-topbar-h, 44px);
+  right: 0;
+  bottom: var(--legion-footer-h, 40px);
+  left: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: $legion-drawer-z-overlay;
+  animation: legion-drawer-fade-in 0.2s ease;
+}
+
+.legion-drawer-panel {
+  position: fixed;
+  top: var(--legion-topbar-h, 44px);
+  right: 0;
+  bottom: var(--legion-footer-h, 40px);
+  width: 100%;
+  max-width: var(--legion-drawer-max-width, 960px);
+  z-index: $legion-drawer-z-panel;
+  box-shadow: -4px 0 24px rgba(0, 0, 0, 0.4);
+  animation: legion-drawer-slide-in 0.25s ease;
+  display: flex;
+  flex-direction: column;
+  background: $legion-panel-bg;
+  border-left: 1px solid $legion-panel-border;
+}
+
+@keyframes legion-drawer-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes legion-drawer-slide-in {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+
+/* Content inside drawer that has header + scrollable body */
+.legion-drawer-panel .equipment-template-editor-panel,
+.legion-drawer-panel .legion-drawer-content,
+.legion-drawer-panel .device-inspector-panel {
+  .equipment-template-editor-header {
+    flex-shrink: 0;
+  }
+
+  .equipment-template-editor-body {
+    min-height: 0;
+  }
+}
+
+.equipment-template-editor-empty-points {
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.equipment-template-points-table {
+  thead th {
+    white-space: nowrap;
+  }
+
+  tbody td {
+    vertical-align: middle;
+  }
+
+  .form-control-sm {
+    min-height: 31px;
+    font-size: 0.875rem;
+  }
+
+  .legion-form-select .legion-form-select-toggle {
+    min-height: 31px;
+    font-size: 0.875rem;
   }
 }

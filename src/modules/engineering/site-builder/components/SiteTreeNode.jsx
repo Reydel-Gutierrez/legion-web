@@ -37,6 +37,7 @@ export default function SiteTreeNode({
   onAddEquipment,
   onEdit,
   onDelete,
+  compactEquipment = false,
 }) {
   const { id, type, name, children = [], equipmentCount = 0, equipmentPreview = [] } = node;
   const hasEquipmentPreview = type === "floor" && equipmentPreview?.length > 0;
@@ -179,6 +180,7 @@ export default function SiteTreeNode({
               onAddEquipment={onAddEquipment}
               onEdit={onEdit}
               onDelete={onDelete}
+              compactEquipment={compactEquipment}
             />
           ))}
           {hasEquipmentPreview && isExpanded && type === "floor" && (
@@ -186,6 +188,7 @@ export default function SiteTreeNode({
               equipment={equipmentPreview}
               selectedEquipmentId={selectedEquipmentId}
               onSelectEquipment={onSelectEquipment}
+              compact={compactEquipment}
             />
           )}
         </div>

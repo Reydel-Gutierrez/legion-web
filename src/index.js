@@ -27,13 +27,16 @@ import AppRoutes from "./app/router/AppRoutes";
 import ScrollToTop from "./app/router/ScrollToTop";
 import { SiteProvider } from "./app/providers/SiteProvider";
 import { WorkspaceModeProvider } from "./app/providers/WorkspaceModeProvider";
+import { ValidationProvider } from "./app/providers/ValidationProvider";
 
 ReactDOM.render(
   <HashRouter>
     <SiteProvider>
       <WorkspaceModeProvider>
-        <ScrollToTop />
-        <AppRoutes />
+        <ValidationProvider>
+          <ScrollToTop />
+          <AppRoutes />
+        </ValidationProvider>
       </WorkspaceModeProvider>
     </SiteProvider>
   </HashRouter>,

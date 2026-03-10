@@ -49,7 +49,7 @@ const GRAPHICS_BY_EQUIPMENT = {
     lastEdited: "2 hours ago",
     objects: [
       { id: "obj-m1-1", type: "text", label: "Supply Air Temp", x: 100, y: 80 },
-      { id: "obj-m1-2", type: "value", label: "Point", x: 160, y: 95, bindings: [{ pointId: "obj-d1-1", displayMode: "value" }] },
+      { id: "obj-m1-2", type: "value", label: "Point", x: 160, y: 95, bindings: [{ pointId: "tp-ahu-1", displayMode: "value" }] },
     ],
   },
   "eq-m2": {
@@ -60,7 +60,7 @@ const GRAPHICS_BY_EQUIPMENT = {
     lastEdited: "1 day ago",
     objects: [
       { id: "obj-m2-1", type: "text", label: "Zone Temp", x: 100, y: 80 },
-      { id: "obj-m2-2", type: "value", label: "Point", x: 170, y: 80, bindings: [{ pointId: "obj-1", displayMode: "value" }] },
+      { id: "obj-m2-2", type: "value", label: "Point", x: 170, y: 80, bindings: [{ pointId: "tp-vav-1", displayMode: "value" }] },
     ],
   },
   "eq-m8": {
@@ -70,8 +70,8 @@ const GRAPHICS_BY_EQUIPMENT = {
     status: "DRAFT",
     lastEdited: "3 hours ago",
     objects: [
-      { id: "obj-m8-1", type: "value", label: "Point", x: 100, y: 100, bindings: [{ pointId: "obj-1", displayMode: "value" }] },
-      { id: "obj-m8-2", type: "value", label: "Point", x: 180, y: 100, bindings: [{ pointId: "obj-5b", displayMode: "value" }] },
+      { id: "obj-m8-1", type: "value", label: "Point", x: 100, y: 100, bindings: [{ pointId: "tp-vav-1", displayMode: "value" }] },
+      { id: "obj-m8-2", type: "value", label: "Point", x: 180, y: 100, bindings: [{ pointId: "tp-vav-5", displayMode: "value" }] },
     ],
   },
   "eq-m14": {

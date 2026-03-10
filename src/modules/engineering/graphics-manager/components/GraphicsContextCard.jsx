@@ -89,10 +89,15 @@ export default function GraphicsContextCard({
                   <span className="ms-3">Template: {equipment.templateName}</span>
                 )}
               </div>
+              <div className="text-white-50 small mt-1 opacity-75">
+                Graphics bind to template points. Controller status does not block creating or editing graphics.
+              </div>
             </div>
           </div>
           <div className="ms-auto">
-            <span className={statusClass}>{formatStatus(equipment.status)}</span>
+            <span className={statusClass} title="Equipment status (informational only for graphics)">
+              {formatStatus(equipment.status)}
+            </span>
           </div>
         </div>
       </Card.Body>

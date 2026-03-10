@@ -18,15 +18,30 @@ import DiscoveryStatusBanner from "./components/DiscoveryStatusBanner";
 import DiscoveryToolbar from "./components/DiscoveryToolbar";
 import DiscoveryTable from "./components/DiscoveryTable";
 import AssignDevicesModal from "./components/AssignDevicesModal";
+import DeviceInspectorDrawer from "./components/DeviceInspectorDrawer";
 import EmptyDiscoveryState from "./components/EmptyDiscoveryState";
 import NoSiteSelectedState from "./components/NoSiteSelectedState";
 import NoSearchResultsState from "./components/NoSearchResultsState";
+import { POINTS_STATUS } from "./components/DeviceInspectorPanel";
 
 // ---------------------------------------------------------------------------
-// Helpers: filter tree by search query
+// Helpers: flatten tree to list, then filter (no hierarchy in UI)
 // ---------------------------------------------------------------------------
-function filterDiscoveryTree(roots, query) {
-  if (!query || !query.trim()) return roots;
+function flattenDiscoveryTree(roots) {
+  const out = [];
+  function walk(nodes) {
+    if (!nodes || !nodes.length) return;
+    nodes.forEach((node) => {
+      if (node?.id) out.push({ ...node, children: undefined });
+      walk(node?.children);
+    });
+  }
+  walk(Array.isArray(roots) ? roots : []);
+  return out;
+}
+
+function filterFlatDevices(flatList, query) {
+  if (!query || !query.trim()) return flatList;
   const lower = query.trim().toLowerCase();
   const matches = (d) =>
     (d.name || "").toLowerCase().includes(lower) ||
@@ -34,15 +49,42 @@ function filterDiscoveryTree(roots, query) {
     String(d.deviceInstance || "").toLowerCase().includes(lower) ||
     (d.network || "").toLowerCase().includes(lower) ||
     String(d.macOrMstpId || "").toLowerCase().includes(lower);
+  return flatList.filter(matches);
+}
 
-  function filterNode(node) {
-    const childResults = (node.children || []).map(filterNode).filter(Boolean);
-    if (matches(node) || childResults.length > 0) {
-      return { ...node, children: childResults };
+/** Build path string for equipment assigned to this device (Site / Building / Floor / Equipment). */
+function getAssignedEquipmentPath(device, equipmentList, siteTree, siteName) {
+  if (!device?.deviceInstance || !equipmentList?.length || !siteTree) return null;
+  const ref = String(device.deviceInstance);
+  const eq = equipmentList.find(
+    (e) => String(e.controllerRef || e.deviceInstance || "") === ref
+  );
+  if (!eq?.floorId) return null;
+  let building = "";
+  let floor = "";
+  for (const b of siteTree.children || []) {
+    const f = (b.children || []).find((fl) => fl.id === eq.floorId);
+    if (f) {
+      building = b.name || "";
+      floor = f.name || "";
+      break;
     }
-    return null;
   }
-  return roots.map(filterNode).filter(Boolean);
+  const site = siteTree.name || siteName || "";
+  const parts = [site, building, floor, eq.displayLabel || eq.name].filter(Boolean);
+  return parts.length ? parts.join(" / ") : null;
+}
+
+/** Generate mock BACnet objects for MVP (replaced by real discovery later). */
+function generateMockDiscoveredObjects(device) {
+  const now = "1 min ago";
+  return [
+    { id: `obj-${device?.id}-1`, objectName: "Zone Temp", objectType: "AI", instance: 3, presentValue: "72.4", units: "°F", lastRead: now },
+    { id: `obj-${device?.id}-2`, objectName: "Cooling Setpoint", objectType: "AV", instance: 5, presentValue: "74", units: "°F", lastRead: now },
+    { id: `obj-${device?.id}-3`, objectName: "Damper Command", objectType: "AO", instance: 2, presentValue: "45%", units: "%", lastRead: now },
+    { id: `obj-${device?.id}-4`, objectName: "Occupancy", objectType: "BI", instance: 1, presentValue: "Active", units: "", lastRead: now },
+    { id: `obj-${device?.id}-5`, objectName: "Supply Air Temp", objectType: "AI", instance: 4, presentValue: "55.2", units: "°F", lastRead: now },
+  ];
 }
 
 // ---------------------------------------------------------------------------
@@ -52,10 +94,12 @@ export default function NetworkDiscoveryPage() {
   const { site } = useSite();
   const [devices, setDevices] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
-  const [expandedIds, setExpandedIds] = useState(new Set());
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
+  const [inspectorDevice, setInspectorDevice] = useState(null);
+  /** Per-device point discovery state: deviceId -> { pointsStatus, lastPointDiscoveryTime, discoveredObjects } */
+  const [devicePointDiscovery, setDevicePointDiscovery] = useState({});
 
   const isNewBuilding = isNewBuildingFlow(site);
   const siteTree = useMemo(() => getMockSiteTree(site), [site]);
@@ -66,19 +110,22 @@ export default function NetworkDiscoveryPage() {
   useEffect(() => {
     if (isNewBuilding) {
       setDevices([]);
-      setExpandedIds(new Set());
       setSelectedIds(new Set());
+      setInspectorDevice(null);
+      setDevicePointDiscovery({});
       return;
     }
     const data = getMockDiscoveryForSite(site);
     setDevices(Array.isArray(data) ? data : []);
-    setExpandedIds(new Set());
     setSelectedIds(new Set());
+    setInspectorDevice(null);
+    setDevicePointDiscovery({});
   }, [site, isNewBuilding]);
 
-  const filteredRoots = useMemo(
-    () => filterDiscoveryTree(devices, searchQuery),
-    [devices, searchQuery]
+  const flatDevices = useMemo(() => flattenDiscoveryTree(devices), [devices]);
+  const filteredDevices = useMemo(
+    () => filterFlatDevices(flatDevices, searchQuery),
+    [flatDevices, searchQuery]
   );
 
   const {
@@ -92,34 +139,13 @@ export default function NetworkDiscoveryPage() {
     pageSize,
     hasPrev,
     hasNext,
-  } = useTablePagination(filteredRoots, 10, "discovery", searchQuery);
-
-  const toggleExpand = useCallback((id) => {
-    setExpandedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  }, []);
+  } = useTablePagination(filteredDevices, 10, "discovery", searchQuery);
 
   const toggleSelect = useCallback((device) => {
     setSelectedIds((prev) => {
       const next = new Set(prev);
-      const collectIds = (d) => {
-        if (d?.id) next.add(d.id);
-        (d?.children || []).forEach(collectIds);
-      };
-      const hasId = prev.has(device.id);
-      if (hasId) {
-        const removeIds = (d) => {
-          if (d?.id) next.delete(d.id);
-          (d?.children || []).forEach(removeIds);
-        };
-        removeIds(device);
-      } else {
-        collectIds(device);
-      }
+      if (next.has(device.id)) next.delete(device.id);
+      else next.add(device.id);
       return next;
     });
   }, []);
@@ -154,6 +180,56 @@ export default function NetworkDiscoveryPage() {
     setShowAssignModal(true);
   }, []);
 
+  const handleViewDevice = useCallback((device) => {
+    setInspectorDevice(device);
+  }, []);
+
+  const handleCloseInspector = useCallback(() => {
+    setInspectorDevice(null);
+  }, []);
+
+  const handleDiscoverPoints = useCallback((deviceId) => {
+    setDevicePointDiscovery((prev) => {
+      const next = { ...prev };
+      const device = inspectorDevice;
+      const discoveredObjects = generateMockDiscoveredObjects(device);
+      next[deviceId] = {
+        pointsStatus: POINTS_STATUS.DISCOVERED,
+        lastPointDiscoveryTime: new Date().toLocaleString(),
+        discoveredObjects,
+      };
+      return next;
+    });
+  }, [inspectorDevice]);
+
+  const handleRefreshPoints = useCallback((deviceId) => {
+    setDevicePointDiscovery((prev) => {
+      const next = { ...prev };
+      const current = next[deviceId];
+      if (!current?.discoveredObjects?.length) return prev;
+      const device = inspectorDevice;
+      const discoveredObjects = generateMockDiscoveredObjects(device);
+      next[deviceId] = {
+        ...current,
+        pointsStatus: POINTS_STATUS.DISCOVERED,
+        lastPointDiscoveryTime: new Date().toLocaleString(),
+        discoveredObjects,
+      };
+      return next;
+    });
+  }, [inspectorDevice]);
+
+  const inspectorPointDiscovery = inspectorDevice
+    ? devicePointDiscovery[inspectorDevice.id] ?? null
+    : null;
+  const assignedEquipmentPath = useMemo(
+    () =>
+      inspectorDevice
+        ? getAssignedEquipmentPath(inspectorDevice, equipmentList, siteTree, site)
+        : null,
+    [inspectorDevice, equipmentList, siteTree, site]
+  );
+
   if (isNewBuilding) {
     return (
       <Container fluid className="px-0">
@@ -179,7 +255,7 @@ export default function NetworkDiscoveryPage() {
   }
 
   const hasDevices = devices.length > 0;
-  const hasFilteredResults = filteredRoots.length > 0;
+  const hasFilteredResults = filteredDevices.length > 0;
 
   return (
     <Container fluid className="px-0">
@@ -224,12 +300,11 @@ export default function NetworkDiscoveryPage() {
               <NoSearchResultsState />
             ) : (
               <DiscoveryTable
-                devices={devices}
-                expandedIds={expandedIds}
+                devices={flatDevices}
                 selectedIds={selectedIds}
-                onToggleExpand={toggleExpand}
                 onToggleSelect={toggleSelect}
                 onSelectAll={selectAllOnPage}
+                onViewDevice={handleViewDevice}
                 pagedRows={pagedRows}
                 emptyMessage="No devices match your search."
               />
@@ -260,6 +335,24 @@ export default function NetworkDiscoveryPage() {
         onAssign={handleAssign}
         siteStructure={siteStructure}
         equipmentOptions={equipmentList.map((e) => ({ value: e.id, label: e.displayLabel || e.name }))}
+      />
+
+      <DeviceInspectorDrawer
+        open={!!inspectorDevice}
+        onClose={handleCloseInspector}
+        device={inspectorDevice}
+        assignedEquipmentPath={assignedEquipmentPath}
+        pointDiscovery={inspectorPointDiscovery}
+        onDiscoverPoints={
+          inspectorDevice
+            ? () => handleDiscoverPoints(inspectorDevice.id)
+            : undefined
+        }
+        onRefreshPoints={
+          inspectorDevice
+            ? () => handleRefreshPoints(inspectorDevice.id)
+            : undefined
+        }
       />
     </Container>
   );

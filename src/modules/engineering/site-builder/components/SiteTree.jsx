@@ -16,6 +16,7 @@ export default function SiteTree({
   onAddEquipment,
   onEdit,
   onDelete,
+  compactEquipment = false,
 }) {
   if (!site) return null;
 
@@ -34,6 +35,7 @@ export default function SiteTree({
         onAddEquipment={onAddEquipment}
         onEdit={onEdit}
         onDelete={onDelete}
+        compactEquipment={compactEquipment}
       />
     </div>
   );

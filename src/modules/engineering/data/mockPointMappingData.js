@@ -27,6 +27,14 @@ export const MAPPING_STATUSES = {
   IGNORED: "Ignored",
 };
 
+// Graphics value states: Template Point -> optional mapped BACnet Object
+export const GRAPHICS_VALUE_STATES = {
+  TEMPLATE_ONLY: "template_only",   // No controller; using template point only
+  UNMAPPED: "unmapped",             // Controller assigned but no BACnet mapping yet
+  MAPPED: "mapped",                 // Mapped and live value available
+  OFFLINE: "offline",               // Controller missing or device offline
+};
+
 // ---------------------------------------------------------------------------
 // Template point definitions by template name
 // ---------------------------------------------------------------------------
@@ -100,9 +108,9 @@ export const DISCOVERED_OBJECTS_BY_DEVICE = {
 };
 
 /**
- * Get available points for an equipment (for Graphics Manager Bind Point).
- * Uses discovered BACnet objects when controller is assigned, else template points as fallback.
- * Each point has: id, displayName, units, presentValue (actual value to display)
+ * Get available points for an equipment (for Point Mapping / legacy).
+ * Prefer discovered BACnet when controller assigned; else template points.
+ * @deprecated For Graphics Manager use getPointDisplayInfoForEquipment (bind to template points only).
  */
 export function getPointsForEquipment(equipment) {
   if (!equipment) return [];
@@ -124,6 +132,113 @@ export function getPointsForEquipment(equipment) {
     units: tp.units || "",
     presentValue: null,
   }));
+}
+
+// ---------------------------------------------------------------------------
+// Graphics Manager: bind to Template Points only; value from mapping when available
+// ---------------------------------------------------------------------------
+
+/**
+ * Template points only (for Bind Point dropdown). No controller or BACnet required.
+ */
+export function getTemplatePointsForGraphics(equipment) {
+  if (!equipment?.templateName) return [];
+  return getTemplatePoints(equipment.templateName);
+}
+
+/**
+ * Mock point mappings per equipment (template point id -> BACnet object id).
+ * In production this would come from Point Mapping store/API.
+ */
+function getMappingsForEquipment(equipment) {
+  if (!equipment?.controllerRef || !equipment?.templateName) return {};
+  const templatePoints = getTemplatePoints(equipment.templateName);
+  const discovered = getDiscoveredObjects(equipment.controllerRef);
+  return autoMapPoints(templatePoints, discovered, {});
+}
+
+/**
+ * Placeholder value for unmapped/template-only points (for preview/draft).
+ */
+function getPlaceholderValue(templatePoint) {
+  if (!templatePoint) return "—";
+  const u = templatePoint.units || "";
+  if (templatePoint.expectedObjectType === "AI" || templatePoint.expectedObjectType === "AV") {
+    if (u === "°F") return 72;
+    if (u === "%") return 50;
+    if (u === "CFM") return 400;
+  }
+  if (templatePoint.expectedObjectType === "BI" || templatePoint.expectedObjectType === "BO") return "—";
+  return "—";
+}
+
+/**
+ * Get display info for each template point for Graphics Manager.
+ * Binding is always to template point id. Value comes from mapped BACnet when available.
+ * Returns: id (template point id), displayName, units, valueState, displayValue, mappedBacnetRef?, mappedBacnetId?
+ */
+export function getPointDisplayInfoForEquipment(equipment) {
+  if (!equipment) return [];
+  const templatePoints = getTemplatePoints(equipment.templateName);
+  if (!templatePoints.length) return [];
+
+  const mappings = getMappingsForEquipment(equipment);
+  const discovered = getDiscoveredObjects(equipment.controllerRef);
+  const controllerOffline = equipment.controllerRef && discovered.length === 0; // e.g. device not discovered yet
+
+  return templatePoints.map((tp) => {
+    const bacnetId = mappings[tp.id];
+    const bacnetObj = bacnetId && discovered.find((o) => o.id === bacnetId);
+
+    let valueState = GRAPHICS_VALUE_STATES.TEMPLATE_ONLY;
+    let displayValue = getPlaceholderValue(tp);
+    let mappedBacnetRef = null;
+    let mappedBacnetId = null;
+
+    if (!equipment.controllerRef) {
+      valueState = GRAPHICS_VALUE_STATES.TEMPLATE_ONLY;
+      displayValue = getPlaceholderValue(tp);
+    } else if (controllerOffline) {
+      valueState = GRAPHICS_VALUE_STATES.OFFLINE;
+      displayValue = null;
+      if (bacnetId) mappedBacnetRef = bacnetId; // mapping exists but device offline
+    } else if (!bacnetId) {
+      valueState = GRAPHICS_VALUE_STATES.UNMAPPED;
+      displayValue = getPlaceholderValue(tp);
+    } else if (!bacnetObj) {
+      valueState = GRAPHICS_VALUE_STATES.OFFLINE;
+      displayValue = null;
+      mappedBacnetId = bacnetId;
+    } else {
+      const isOnline = (bacnetObj.status || "").toLowerCase() !== "offline";
+      if (isOnline) {
+        valueState = GRAPHICS_VALUE_STATES.MAPPED;
+        displayValue = bacnetObj.presentValue;
+        mappedBacnetRef = bacnetObj.bacnetRef;
+        mappedBacnetId = bacnetObj.id;
+      } else {
+        valueState = GRAPHICS_VALUE_STATES.OFFLINE;
+        displayValue = null;
+        mappedBacnetRef = bacnetObj.bacnetRef;
+        mappedBacnetId = bacnetObj.id;
+      }
+    }
+
+    return {
+      id: tp.id,
+      displayName: tp.displayName,
+      units: tp.units || "",
+      key: tp.key,
+      pointCategory: tp.pointCategory,
+      required: tp.required,
+      valueState,
+      displayValue,
+      mappedBacnetRef,
+      mappedBacnetId,
+      // presentValue: for backward compat in UI (same as displayValue for display)
+      presentValue: displayValue,
+    };
+  });
 }
 
 // ---------------------------------------------------------------------------

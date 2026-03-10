@@ -20,15 +20,38 @@ function formatStatus(status) {
 
 /**
  * Equipment section under a floor in the Site Builder hierarchy.
- * Renders clickable equipment rows with metadata (Equipment, Location, Controller, Point Template, Points Defined, Status).
- * Matches floor row styling and Legion dark panel language.
+ * Renders clickable equipment rows. When compact=true (e.g. Graphics Manager), only equipment names are shown.
+ * Otherwise shows full metadata (Equipment, Location, Controller, Point Template, Points Defined, Status).
  */
 export default function HierarchyEquipmentSection({
   equipment = [],
   selectedEquipmentId,
   onSelectEquipment,
+  compact = false,
 }) {
   if (!equipment?.length) return null;
+
+  if (compact) {
+    return (
+      <div className="hierarchy-equipment-section hierarchy-equipment-section--compact">
+        {equipment.map((eq) => {
+          const isSelected = selectedEquipmentId === eq.id;
+          return (
+            <div
+              key={eq.id}
+              className={`hierarchy-equipment-row hierarchy-equipment-row--compact ${isSelected ? "site-tree-row--active" : ""}`}
+              onClick={() => onSelectEquipment?.(eq)}
+            >
+              <span className="hierarchy-equipment-col-name">
+                <FontAwesomeIcon icon={faFolder} className="fa-xs me-1 text-white-50" />
+                {eq.name}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
 
   return (
     <div className="hierarchy-equipment-section">

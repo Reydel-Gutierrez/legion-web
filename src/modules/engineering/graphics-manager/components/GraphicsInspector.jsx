@@ -1,20 +1,22 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Card, Form, Button } from "@themesberg/react-bootstrap";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faLink, faUnlink } from "@fortawesome/free-solid-svg-icons";
-import LegionFormSelect from "../../../../components/legion/LegionFormSelect";
+import { faLink, faUnlink, faTrash } from "@fortawesome/free-solid-svg-icons";
 import SearchablePointSelect from "./SearchablePointSelect";
 import { BINDING_DISPLAY_OPTIONS } from "../../data/mockGraphicsData";
+import { GRAPHICS_VALUE_STATES } from "../../data/mockPointMappingData";
 
 /**
  * Right-side inspector panel for selected graphic object.
- * Point Binding uses equipment's available points (from Point Mapping / discovered BACnet).
+ * Bind Point binds to Template Points only. Values come from mapped BACnet when available.
+ * Mental model: Graphic Object → Template Point → optional mapped BACnet Object.
  */
 export default function GraphicsInspector({
   selectedObject,
   availablePoints = [],
   equipmentName,
   onUpdateObject,
+  onDeleteObject,
 }) {
   const [form, setForm] = useState({
     objectType: "",
@@ -33,18 +35,35 @@ export default function GraphicsInspector({
     bindingDisplayMode: "value",
   });
 
+  const bindPointSectionRef = useRef(null);
+
   const selectedPoint = availablePoints.find((p) => p.id === form.bindingPointId);
+  const boundPointUnavailable = form.bindingPointId && !selectedPoint;
   const boundValueDisplay = selectedPoint
-    ? selectedPoint.presentValue != null
-      ? typeof selectedPoint.presentValue === "number"
-        ? `${selectedPoint.presentValue}${selectedPoint.units || ""}`
-        : String(selectedPoint.presentValue)
-      : "—"
+    ? selectedPoint.displayValue != null
+      ? typeof selectedPoint.displayValue === "number"
+        ? `${selectedPoint.displayValue}${selectedPoint.units || ""}`
+        : String(selectedPoint.displayValue)
+      : (selectedPoint.valueState === GRAPHICS_VALUE_STATES.OFFLINE ? "Offline" : "—")
     : null;
+  const valueStateLabel =
+    selectedPoint?.valueState === GRAPHICS_VALUE_STATES.MAPPED
+      ? "Live value"
+      : selectedPoint?.valueState === GRAPHICS_VALUE_STATES.OFFLINE
+        ? "Controller offline"
+        : selectedPoint?.valueState === GRAPHICS_VALUE_STATES.UNMAPPED
+          ? "No mapped BACnet object yet"
+          : selectedPoint?.valueState === GRAPHICS_VALUE_STATES.TEMPLATE_ONLY
+            ? "Using template point only"
+            : null;
 
   useEffect(() => {
     if (!selectedObject) return;
-    const bind = selectedObject.bindings?.[0];
+    const isText = selectedObject.type === "text";
+    const bind = isText ? null : selectedObject.bindings?.[0];
+    if (isText && selectedObject.bindings?.length && onUpdateObject) {
+      onUpdateObject(selectedObject.id, { ...selectedObject, bindings: [] });
+    }
     setForm({
       objectType: selectedObject.type || "text",
       layer: selectedObject.layer || "default",
@@ -63,21 +82,34 @@ export default function GraphicsInspector({
     });
   }, [selectedObject]);
 
+  useEffect(() => {
+    if (selectedObject?.type === "value" && bindPointSectionRef.current) {
+      bindPointSectionRef.current.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
+  }, [selectedObject?.id, selectedObject?.type]);
+
   const handleChange = (field, value) => {
     setForm((prev) => ({ ...prev, [field]: value }));
     if (onUpdateObject && selectedObject) {
       const updates = { ...selectedObject };
-      if (["x", "y", "width", "height", "rotation", "opacity", "color", "stroke", "fill", "label"].includes(field)) {
+      if (["x", "y", "width", "height", "rotation", "opacity", "color", "stroke", "fill", "layer"].includes(field)) {
         updates[field] = value;
       }
-      if (field === "bindingPointId" || field === "bindingDisplayMode") {
-        updates.bindings = value ? [{ pointId: form.bindingPointId || value, displayMode: form.bindingDisplayMode }] : [];
+      if (field === "labelText") {
+        updates.label = value;
+      }
+      // Point binding only for non-text objects
+      if (selectedObject.type !== "text" && (field === "bindingPointId" || field === "bindingDisplayMode")) {
+        const pointId = field === "bindingPointId" ? value : form.bindingPointId;
+        const displayMode = field === "bindingDisplayMode" ? value : form.bindingDisplayMode;
+        updates.bindings = pointId ? [{ pointId, displayMode }] : [];
       }
       onUpdateObject(selectedObject.id, updates);
     }
   };
 
   const handleBindingChange = (pointId) => {
+    if (selectedObject?.type === "text") return; // Text objects cannot have point bindings
     setForm((prev) => ({ ...prev, bindingPointId: pointId || "" }));
     if (onUpdateObject && selectedObject) {
       const updates = { ...selectedObject };
@@ -87,12 +119,15 @@ export default function GraphicsInspector({
   };
 
   const handleClearBinding = () => {
+    if (selectedObject?.type === "text") return;
     setForm((prev) => ({ ...prev, bindingPointId: "", bindingDisplayMode: "value" }));
     if (onUpdateObject && selectedObject) {
       const updates = { ...selectedObject, bindings: [] };
       onUpdateObject(selectedObject.id, updates);
     }
   };
+
+  const canBindPoint = selectedObject?.type !== "text";
 
   if (!selectedObject) {
     return (
@@ -254,62 +289,99 @@ export default function GraphicsInspector({
           </div>
         </div>
 
-        {/* Point Binding */}
-        <div className="mb-3">
-          <div className="text-white small fw-semibold mb-2">
-            <FontAwesomeIcon icon={faLink} className="me-1" />
-            Bind Point
-          </div>
-          {availablePoints.length === 0 ? (
-            <div className="text-white-50 small py-2">
-              No points available for {equipmentName || "this equipment"}. Assign a controller in Site Builder first.
+        {/* Point Binding - only for value (point) objects, not text */}
+        {canBindPoint && (
+          <div ref={bindPointSectionRef} className="mb-3">
+            <div className="text-white small fw-semibold mb-2">
+              <FontAwesomeIcon icon={faLink} className="me-1" />
+              Bind Point
             </div>
-          ) : (
-            <>
-              <SearchablePointSelect
-                points={availablePoints}
-                value={form.bindingPointId}
-                onChange={handleBindingChange}
-                placeholder="— Select point to bind —"
-              />
-              {form.bindingPointId && selectedPoint && (
-                <div className="mt-2 p-2 rounded bg-dark bg-opacity-25 border border-light border-opacity-10">
-                  <div className="text-white-50 small">Current Value</div>
-                  <div className="text-white fw-semibold">
-                    {boundValueDisplay ?? "—"}
+            <div className="text-white-50 small mb-2">
+              Bind to template points. Values come from mapped BACnet when available.
+            </div>
+            {availablePoints.length === 0 ? (
+              <div className="text-white-50 small py-2">
+                No template points for {equipmentName || "this equipment"}. Add an equipment template in Site Builder to bind points.
+              </div>
+            ) : (
+              <>
+                {boundPointUnavailable && (
+                  <div className="text-warning small py-2 mb-2 rounded bg-dark bg-opacity-25 border border-warning border-opacity-50">
+                    Previously bound point is not available. Bind to a template point below. (Graphics now bind to template points only.)
                   </div>
-                </div>
-              )}
-              {form.bindingPointId && (
-                <>
-                  <Form.Group className="mt-2">
-                    <Form.Label className="text-white-50 small">Display Mode</Form.Label>
-                    <select
-                      className="form-select form-select-sm bg-dark bg-opacity-25 border border-light border-opacity-10 text-white"
-                      value={form.bindingDisplayMode}
-                      onChange={(e) => handleChange("bindingDisplayMode", e.target.value)}
+                )}
+                <SearchablePointSelect
+                  points={availablePoints}
+                  value={selectedPoint ? form.bindingPointId : ""}
+                  onChange={handleBindingChange}
+                  placeholder="— Select template point —"
+                />
+                {form.bindingPointId && selectedPoint && (
+                  <div className="mt-2 p-2 rounded bg-dark bg-opacity-25 border border-light border-opacity-10">
+                    <div className="text-white-50 small mb-1">Bound Template Point</div>
+                    <div className="text-white fw-semibold">{selectedPoint.displayName}</div>
+                    <div className="text-white-50 small mt-2 mb-1">Mapped BACnet Object</div>
+                    <div className="text-white small">
+                      {selectedPoint.mappedBacnetRef || "No mapped BACnet object yet"}
+                    </div>
+                    <div className="text-white-50 small mt-2 mb-1">Value</div>
+                    <div className="text-white fw-semibold">
+                      {boundValueDisplay ?? "—"}
+                      {valueStateLabel && (
+                        <span className="text-white-50 small fw-normal ms-2">({valueStateLabel})</span>
+                      )}
+                    </div>
+                  </div>
+                )}
+                {form.bindingPointId && (
+                  <>
+                    <Form.Group className="mt-2">
+                      <Form.Label className="text-white-50 small">Display Mode</Form.Label>
+                      <select
+                        className="form-select form-select-sm bg-dark bg-opacity-25 border border-light border-opacity-10 text-white"
+                        value={form.bindingDisplayMode}
+                        onChange={(e) => handleChange("bindingDisplayMode", e.target.value)}
+                      >
+                        {BINDING_DISPLAY_OPTIONS.map((o) => (
+                          <option key={o.value} value={o.value}>
+                            {o.label}
+                          </option>
+                        ))}
+                      </select>
+                    </Form.Group>
+                    <Button
+                      size="sm"
+                      variant="link"
+                      className="text-white-50 p-0 mt-2"
+                      onClick={handleClearBinding}
                     >
-                      {BINDING_DISPLAY_OPTIONS.map((o) => (
-                        <option key={o.value} value={o.value}>
-                          {o.label}
-                        </option>
-                      ))}
-                    </select>
-                  </Form.Group>
-                  <Button
-                    size="sm"
-                    variant="link"
-                    className="text-white-50 p-0 mt-2"
-                    onClick={handleClearBinding}
-                  >
-                    <FontAwesomeIcon icon={faUnlink} className="me-1" />
-                    Clear Binding
-                  </Button>
-                </>
-              )}
-            </>
-          )}
-        </div>
+                      <FontAwesomeIcon icon={faUnlink} className="me-1" />
+                      Clear Binding
+                    </Button>
+                  </>
+                )}
+              </>
+            )}
+          </div>
+        )}
+        {selectedObject.type === "text" && (
+          <div className="text-white-50 small mb-3">Point binding is only available for Value objects.</div>
+        )}
+
+        {/* Delete object */}
+        {onDeleteObject && (
+          <div className="mt-3 pt-3 border-top border-light border-opacity-10">
+            <Button
+              size="sm"
+              variant="outline-danger"
+              className="w-100"
+              onClick={() => onDeleteObject(selectedObject.id)}
+            >
+              <FontAwesomeIcon icon={faTrash} className="me-1" />
+              Delete object
+            </Button>
+          </div>
+        )}
       </Card.Body>
     </Card>
   );

@@ -12,7 +12,7 @@ import {
   getMockEquipmentForSite,
   enrichEquipmentForPointMapping,
 } from "../data/mockEngineeringData";
-import { getPointsForEquipment } from "../data/mockPointMappingData";
+import { getPointDisplayInfoForEquipment } from "../data/mockPointMappingData";
 import GraphicsContextCard from "./components/GraphicsContextCard";
 import GraphicsToolbar from "./components/GraphicsToolbar";
 import GraphicsExplorer from "./components/GraphicsExplorer";
@@ -57,8 +57,9 @@ export default function GraphicsManagerPage() {
     [equipmentList, selectedEquipmentId]
   );
 
+  // Template points only; values resolve from mapping when available (never blocks graphics)
   const availablePoints = useMemo(
-    () => getPointsForEquipment(selectedEquipment),
+    () => getPointDisplayInfoForEquipment(selectedEquipment),
     [selectedEquipment]
   );
 
@@ -176,18 +177,35 @@ export default function GraphicsManagerPage() {
     setSelectedObject(newObj);
   }, [selectedEquipmentId, graphicsByEquipment, generateObjectId]);
 
+  const handleDeleteObject = useCallback(
+    (objectId) => {
+      if (!selectedEquipmentId || !objectId) return;
+      const base = getGraphicForEquipment(selectedEquipmentId);
+      setGraphicsByEquipment((prev) => {
+        const current = prev[selectedEquipmentId] || base;
+        const objects = (current?.objects || []).filter((o) => o.id !== objectId);
+        return { ...prev, [selectedEquipmentId]: { ...current, objects } };
+      });
+      if (selectedObject?.id === objectId) {
+        setSelectedObject(null);
+      }
+    },
+    [selectedEquipmentId, selectedObject?.id]
+  );
+
   const handleValidate = useCallback(() => {
     const graphic = selectedGraphic;
     const issues = [];
     (graphic?.objects || []).forEach((obj) => {
       const bindings = obj.bindings || [];
       bindings.forEach((b) => {
-        if (!b.pointId) issues.push(`${obj.label || "Object"}: missing point reference`);
+        if (!b.pointId) issues.push(`${obj.label || "Object"}: missing template point reference`);
       });
     });
     setValidationResult({
       valid: issues.length === 0,
       issues,
+      note: "Graphics authoring is allowed with equipment + template only. Deployment may warn if required template points are still unmapped.",
     });
     setShowValidationToast(true);
   }, [selectedGraphic]);
@@ -282,6 +300,9 @@ export default function GraphicsManagerPage() {
                 </ul>
               </div>
             )}
+            {validationResult.note && (
+              <div className="text-white-50 small mt-2">{validationResult.note}</div>
+            )}
             <Button
               size="sm"
               variant="link"
@@ -309,7 +330,7 @@ export default function GraphicsManagerPage() {
         />
 
         <Row className="g-3 align-items-start">
-          <Col xs={12} lg={4} xl={3}>
+          <Col xs={12} lg={3} xl={2}>
             <Card className="bg-primary border border-light border-opacity-10 shadow-sm h-100">
               <Card.Header className="bg-transparent border-light border-opacity-10 d-flex align-items-center justify-content-between">
                 <span className="text-white fw-bold">
@@ -331,13 +352,15 @@ export default function GraphicsManagerPage() {
             </Card>
           </Col>
 
-          <Col xs={12} lg={5} xl={6}>
+          <Col xs={12} lg={6} xl={7}>
             <GraphicsCanvas
               graphic={selectedGraphic}
               selectedObjectId={selectedObject?.id}
               onSelectObject={handleSelectObject}
+              onUpdateObject={handleUpdateObject}
               onAddText={handleAddText}
               onAddValue={handleAddValue}
+              onDeleteObject={handleDeleteObject}
               availablePoints={availablePoints}
               previewMode={false}
               emptyMessage="Select equipment from the tree or dropdown to create or edit graphics."
@@ -350,6 +373,7 @@ export default function GraphicsManagerPage() {
               availablePoints={availablePoints}
               equipmentName={selectedEquipment?.name}
               onUpdateObject={handleUpdateObject}
+              onDeleteObject={handleDeleteObject}
             />
           </Col>
         </Row>
