@@ -8,18 +8,7 @@ import {
   faUserShield,
 } from "@fortawesome/free-solid-svg-icons";
 import { faUserCircle } from "@fortawesome/free-regular-svg-icons";
-import {
-  Row,
-  Col,
-  Nav,
-  Image,
-  Navbar,
-  Dropdown,
-  Container,
-  ListGroup,
-  Button,
-  Modal,
-} from "@themesberg/react-bootstrap";
+import { Row, Col, Nav, Navbar, Dropdown, Container, ListGroup, Button, Modal } from "@themesberg/react-bootstrap";
 import { Link, useHistory } from "react-router-dom";
 import PageBreadcrumbs from "../../components/ui/PageBreadcrumbs";
 import NOTIFICATIONS_DATA from "../../lib/data/notifications";
@@ -32,6 +21,7 @@ export default function TopNavbar() {
   const history = useHistory();
   const [notifications, setNotifications] = useState(NOTIFICATIONS_DATA);
   const [showHelp, setShowHelp] = useState(false);
+  const [alarmsMuted, setAlarmsMuted] = useState(false);
 
   const areNotificationsRead = notifications.every((n) => n.read);
   const markNotificationsAsRead = () =>
@@ -85,36 +75,68 @@ export default function TopNavbar() {
                     </Dropdown.Toggle>
 
                     <Dropdown.Menu className="legion-topbar-menu legion-topbar-menu--notifications mt-2 py-0">
-                      <ListGroup className="list-group-flush">
-                        <div className="legion-topbar-menu-title">Notifications</div>
-
-                        {notifications.map((n) => (
-                          <ListGroup.Item
-                            key={`notification-${n.id}`}
-                            action
-                            href={n.link}
-                            className="legion-topbar-menu-item"
+                      <div className="legion-topbar-menu-header d-flex align-items-center justify-content-between px-3 py-2">
+                        <div className="d-flex flex-column">
+                          <span className="legion-topbar-menu-title mb-0">Notifications</span>
+                          <small className="text-white-50">
+                            {alarmsMuted
+                              ? "Alarms muted"
+                              : `${notifications.filter((n) => !n.read).length} unread`}
+                          </small>
+                        </div>
+                        <div className="d-flex gap-2">
+                          <Button
+                            size="sm"
+                            variant={alarmsMuted ? "outline-warning" : "outline-light"}
+                            onClick={() => setAlarmsMuted((prev) => !prev)}
                           >
-                            <Row className="align-items-center g-2">
-                              <Col className="col-auto">
-                                <Image src={n.image} className="user-avatar lg-avatar rounded-circle" />
-                              </Col>
-                              <Col className="ps-0">
-                                <div className="d-flex justify-content-between align-items-center">
-                                  <div className="fw-semibold text-white" style={{ fontSize: 12 }}>
-                                    {n.sender}
-                                  </div>
-                                  <small className={n.read ? "text-white-50" : "text-warning"}>
-                                    {n.time}
-                                  </small>
-                                </div>
-                                <div className="text-white-50" style={{ fontSize: 12 }}>
-                                  {n.message}
-                                </div>
-                              </Col>
-                            </Row>
+                            {alarmsMuted ? "Unmute alarms" : "Mute all alarms"}
+                          </Button>
+                          {!areNotificationsRead && (
+                            <Button
+                              size="sm"
+                              variant="outline-light"
+                              onClick={() =>
+                                setNotifications((prev) => prev.map((n) => ({ ...n, read: true })))
+                              }
+                            >
+                              Mark all read
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+
+                      <ListGroup className="list-group-flush">
+                        {notifications.length === 0 ? (
+                          <ListGroup.Item className="legion-topbar-menu-item text-center text-white-50">
+                            No notifications
                           </ListGroup.Item>
-                        ))}
+                        ) : (
+                          notifications.map((n) => (
+                            <ListGroup.Item
+                              key={`notification-${n.id}`}
+                              action
+                              href={n.link}
+                              className="legion-topbar-menu-item"
+                            >
+                              <Row className="align-items-start g-2">
+                                <Col className="ps-1">
+                                  <div className="d-flex justify-content-between align-items-center mb-1">
+                                    <div className="fw-semibold text-white" style={{ fontSize: 12 }}>
+                                      {n.sender}
+                                    </div>
+                                    <small className={n.read ? "text-white-50" : "text-warning"}>
+                                      {n.time}
+                                    </small>
+                                  </div>
+                                  <div className="text-white-50" style={{ fontSize: 12 }}>
+                                    {n.message}
+                                  </div>
+                                </Col>
+                              </Row>
+                            </ListGroup.Item>
+                          ))
+                        )}
 
                         <Dropdown.Item className="legion-topbar-menu-footer">
                           View all

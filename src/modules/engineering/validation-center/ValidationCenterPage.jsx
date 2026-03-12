@@ -24,13 +24,15 @@ import {
 
 import LegionHeroHeader from "../../../components/legion/LegionHeroHeader";
 import LegionDrawer from "../../../components/legion/LegionDrawer";
-import * as mockValidation from "./data/mockValidationData";
-import { CATEGORY, SEVERITY, READINESS_STATUS } from "./data/mockValidationData";
+import { engineeringRepository } from "../../../lib/data";
+import { CATEGORY, SEVERITY, READINESS_STATUS } from "../../../lib/data/repositories/engineeringRepository";
+import { validateDraft } from "../draft/validateDraft";
 import ValidationSummaryCards from "./components/ValidationSummaryCards";
 import ValidationIssuesTable from "./components/ValidationIssuesTable";
 import ValidationIssueDetailPanel from "./components/ValidationIssueDetailPanel";
 import DeployAnywayModal from "./components/DeployAnywayModal";
 import { useValidation } from "../../../app/providers/ValidationProvider";
+import { useEngineeringDraft } from "../../../hooks/useEngineeringDraft";
 
 // Route paths for navigation placeholders
 const ROUTE_PATHS = {
@@ -57,8 +59,9 @@ export default function ValidationCenterPage() {
   const history = useHistory();
   const location = useLocation();
   const { setValidationState: syncValidationToContext } = useValidation();
+  const { draft, actions } = useEngineeringDraft();
   const [validationState, setValidationState] = useState(() =>
-    mockValidation.getEmptyValidationState()
+    engineeringRepository.getEmptyValidationState()
   );
   const [activeCategory, setActiveCategory] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
@@ -83,7 +86,7 @@ export default function ValidationCenterPage() {
   const { issues, summary, readiness, message } = validationState;
 
   const handleRunValidation = useCallback(() => {
-    const result = mockValidation.runValidation("");
+    const result = validateDraft(draft);
     setValidationState({
       issues: result.issues,
       summary: result.summary,
@@ -91,13 +94,14 @@ export default function ValidationCenterPage() {
       message: result.message,
       lastRunAt: result.lastRunAt,
     });
+    actions.setValidation(result);
     syncValidationToContext({
       summary: result.summary,
       readiness: result.readiness,
       lastRunAt: result.lastRunAt,
     });
     setSelectedIssueId(null);
-  }, [syncValidationToContext]);
+  }, [draft, actions, syncValidationToContext]);
 
   const handleExportReport = useCallback(() => {
     console.log("Export Report (placeholder)");
@@ -119,11 +123,16 @@ export default function ValidationCenterPage() {
     history.push(ROUTE_PATHS.deployment);
   }, [summary?.errors, history]);
 
-  const handleConfirmDeployOverride = useCallback((reason) => {
-    console.log("Deploy override confirmed", reason);
-    setToastMessage("Override deployment initiated.");
-    setTimeout(() => setToastMessage(null), 3000);
-  }, []);
+  const handleConfirmDeployOverride = useCallback(
+    (reason) => {
+      setShowDeployModal(false);
+      actions.deployDraftConfiguration({ notes: reason || "Override deployment" });
+      setToastMessage("Deployment successful.");
+      setTimeout(() => setToastMessage(null), 3000);
+      history.push(ROUTE_PATHS.deployment);
+    },
+    [actions, history]
+  );
 
   const handleOpenTarget = useCallback(
     (target) => {

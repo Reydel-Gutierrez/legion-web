@@ -14,9 +14,10 @@ import LegionHeroHeader from "../../../components/legion/LegionHeroHeader";
 import LegionTablePagination from "../../../components/legion/LegionTablePagination";
 import StatusDotLabel from "../../../components/legion/StatusDotLabel";
 import { useTablePagination } from "../../../hooks/useTablePagination";
+import { operatorRepository } from "../../../lib/data";
 
 export default function AlarmsPage() {
-  useSite(); // consume context for global site sync
+  const { site } = useSite(); // consume context for global site sync
 
   // Filters (MVP-friendly)
   const [search, setSearch] = useState("");
@@ -24,82 +25,8 @@ export default function AlarmsPage() {
   const [state, setState] = useState("Active"); // Active | History | All
   const [ack, setAck] = useState("All"); // All | Acked | Unacked
 
-  // Mock data (replace with API later)
-  const alarms = useMemo(
-    () => [
-      {
-        id: "ALM-10021",
-        equipName: "AHU-1",
-        equipType: "AHU",
-        point: "Supply Air Temp",
-        message: "High SAT — above limit",
-        severity: "Major",
-        state: "Active",
-        ack: false,
-        value: "78.4°F",
-        occurredAt: "2026-02-22 14:11",
-        clearedAt: null,
-        durationMin: null,
-      },
-      {
-        id: "ALM-10018",
-        equipName: "VAV-2",
-        equipType: "VAV",
-        point: "Damper Position",
-        message: "Stuck damper suspected",
-        severity: "Minor",
-        state: "Active",
-        ack: true,
-        value: "0%",
-        occurredAt: "2026-02-22 12:42",
-        clearedAt: null,
-        durationMin: null,
-      },
-      {
-        id: "ALM-09987",
-        equipName: "CHW-P-1",
-        equipType: "Pump",
-        point: "Run Status",
-        message: "Fail to start",
-        severity: "Critical",
-        state: "History",
-        ack: true,
-        value: "OFF",
-        occurredAt: "2026-02-21 09:05",
-        clearedAt: "2026-02-21 09:22",
-        durationMin: 17,
-      },
-      {
-        id: "ALM-09955",
-        equipName: "OAU-1",
-        equipType: "OAU",
-        point: "Filter DP",
-        message: "Filter dirty — DP high",
-        severity: "Major",
-        state: "History",
-        ack: false,
-        value: "1.42 in.w.c.",
-        occurredAt: "2026-02-20 16:10",
-        clearedAt: "2026-02-20 18:41",
-        durationMin: 151,
-      },
-      {
-        id: "ALM-09902",
-        equipName: "FCU-3",
-        equipType: "FCU",
-        point: "Condensate",
-        message: "High condensate level",
-        severity: "Minor",
-        state: "History",
-        ack: true,
-        value: "TRIP",
-        occurredAt: "2026-02-18 07:54",
-        clearedAt: "2026-02-18 08:03",
-        durationMin: 9,
-      },
-    ],
-    []
-  );
+  // Canonical alarm list via repository (currently mock-backed)
+  const alarms = useMemo(() => operatorRepository.getAlarms(site), [site]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -107,8 +34,8 @@ export default function AlarmsPage() {
     return alarms.filter((a) => {
       const matchesSearch =
         !q ||
-        a.equipName.toLowerCase().includes(q) ||
-        a.equipType.toLowerCase().includes(q) ||
+        a.equipmentName.toLowerCase().includes(q) ||
+        a.equipmentType.toLowerCase().includes(q) ||
         a.point.toLowerCase().includes(q) ||
         a.message.toLowerCase().includes(q) ||
         a.id.toLowerCase().includes(q);
@@ -297,8 +224,8 @@ export default function AlarmsPage() {
                         pagedRows.map((a) => (
                           <tr key={a.id}>
                             <td>
-                              <div className="fw-bold text-white">{a.equipName}</div>
-                              <div className="text-white">{a.equipType}</div>
+                              <div className="fw-bold text-white">{a.equipmentName}</div>
+                              <div className="text-white">{a.equipmentType}</div>
                             </td>
 
                             <td>

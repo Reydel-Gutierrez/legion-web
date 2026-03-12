@@ -1,6 +1,6 @@
 import React from "react";
 import { Card, Row, Col } from "@themesberg/react-bootstrap";
-import { READINESS_STATUS } from "../data/mockValidationData";
+import { READINESS_STATUS } from "../../../../lib/data/repositories/engineeringRepository";
 
 /**
  * Summary cards and overall readiness badge for Validation Center.

@@ -1,6 +1,6 @@
 import React from "react";
 import { Form } from "@themesberg/react-bootstrap";
-import { SEVERITY } from "../data/mockValidationData";
+import { SEVERITY } from "../../../../lib/data/repositories/engineeringRepository";
 
 function SeverityBadge({ severity }) {
   const variant =

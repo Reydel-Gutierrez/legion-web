@@ -166,8 +166,8 @@ const POPULATED_SITE_GRAPHIC = [
 export function getSiteTemplates(siteKey, useSampleData = true) {
   if (!siteKey) return EMPTY_SITE_TEMPLATES;
   if (!useSampleData) return EMPTY_SITE_TEMPLATES;
-  // For MVP: treat "New Building" as empty, others as populated
-  if (siteKey === "New Building") return EMPTY_SITE_TEMPLATES;
+  // For MVP: treat "New Building" / "New Site" as empty, others as populated
+  if (siteKey === "New Building" || siteKey === "New Site") return EMPTY_SITE_TEMPLATES;
   return {
     equipment: [...POPULATED_SITE_EQUIPMENT],
     graphic: [...POPULATED_SITE_GRAPHIC],

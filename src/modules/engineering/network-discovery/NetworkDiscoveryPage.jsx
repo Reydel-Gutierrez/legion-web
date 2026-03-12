@@ -4,16 +4,12 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faNetworkWired } from "@fortawesome/free-solid-svg-icons";
 
 import { useSite } from "../../../app/providers/SiteProvider";
+import { useEngineeringDraft } from "../../../hooks/useEngineeringDraft";
 import LegionHeroHeader from "../../../components/legion/LegionHeroHeader";
 import LegionTablePagination from "../../../components/legion/LegionTablePagination";
 import { useTablePagination } from "../../../hooks/useTablePagination";
-import {
-  getMockDiscoveryForSite,
-  getMockSiteTree,
-  getMockEquipmentForSite,
-  treeToSiteStructure,
-  isNewBuildingFlow,
-} from "../data/mockEngineeringData";
+import { engineeringRepository } from "../../../lib/data";
+import { selectSiteTree } from "../../../hooks/useEngineeringDraft";
 import DiscoveryStatusBanner from "./components/DiscoveryStatusBanner";
 import DiscoveryToolbar from "./components/DiscoveryToolbar";
 import DiscoveryTable from "./components/DiscoveryTable";
@@ -84,7 +80,16 @@ function generateMockDiscoveredObjects(device) {
     { id: `obj-${device?.id}-3`, objectName: "Damper Command", objectType: "AO", instance: 2, presentValue: "45%", units: "%", lastRead: now },
     { id: `obj-${device?.id}-4`, objectName: "Occupancy", objectType: "BI", instance: 1, presentValue: "Active", units: "", lastRead: now },
     { id: `obj-${device?.id}-5`, objectName: "Supply Air Temp", objectType: "AI", instance: 4, presentValue: "55.2", units: "°F", lastRead: now },
-  ];
+  ].map((o) => ({
+    ...o,
+    objectType: o.objectType,
+    bacnetRef: `${o.objectType}-${o.instance}`,
+    displayName: o.objectName,
+    presentValue: o.presentValue,
+    writable: o.objectType === "AV" || o.objectType === "AO",
+    sourceDevice: device?.deviceInstance ? `BACnet/IP:${device.deviceInstance}` : null,
+    status: "Online",
+  }));
 }
 
 // ---------------------------------------------------------------------------
@@ -92,35 +97,22 @@ function generateMockDiscoveredObjects(device) {
 // ---------------------------------------------------------------------------
 export default function NetworkDiscoveryPage() {
   const { site } = useSite();
-  const [devices, setDevices] = useState([]);
+  const { draft, actions } = useEngineeringDraft();
+  const siteTree = selectSiteTree(draft);
+  const siteStructure = useMemo(
+    () => engineeringRepository.getEngineeringSiteStructureFromTree(siteTree),
+    [siteTree]
+  );
+  const equipmentList = draft.equipment ?? [];
+  const devices = draft.discoveredDevices ?? [];
+
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
   const [inspectorDevice, setInspectorDevice] = useState(null);
-  /** Per-device point discovery state: deviceId -> { pointsStatus, lastPointDiscoveryTime, discoveredObjects } */
-  const [devicePointDiscovery, setDevicePointDiscovery] = useState({});
-
-  const isNewBuilding = isNewBuildingFlow(site);
-  const siteTree = useMemo(() => getMockSiteTree(site), [site]);
-  const siteStructure = useMemo(() => treeToSiteStructure(siteTree), [siteTree]);
-  const equipmentList = useMemo(() => getMockEquipmentForSite(site) || [], [site]);
-
-  // Load discovery data when site changes
-  useEffect(() => {
-    if (isNewBuilding) {
-      setDevices([]);
-      setSelectedIds(new Set());
-      setInspectorDevice(null);
-      setDevicePointDiscovery({});
-      return;
-    }
-    const data = getMockDiscoveryForSite(site);
-    setDevices(Array.isArray(data) ? data : []);
-    setSelectedIds(new Set());
-    setInspectorDevice(null);
-    setDevicePointDiscovery({});
-  }, [site, isNewBuilding]);
+  /** Per-device point discovery state: deviceId -> { pointsStatus, lastPointDiscoveryTime } — UI only; objects live in draft.discoveredObjects */
+  const [devicePointDiscoveryMeta, setDevicePointDiscoveryMeta] = useState({});
 
   const flatDevices = useMemo(() => flattenDiscoveryTree(devices), [devices]);
   const filteredDevices = useMemo(
@@ -164,11 +156,9 @@ export default function NetworkDiscoveryPage() {
   const handleScanNetwork = useCallback(() => {
     setIsScanning(true);
     setTimeout(() => {
-      const data = getMockDiscoveryForSite(site);
-      setDevices(Array.isArray(data) ? data : []);
       setIsScanning(false);
     }, 1500);
-  }, [site]);
+  }, []);
 
   const handleAssign = useCallback((payload) => {
     console.log("Assign devices:", payload);
@@ -189,38 +179,49 @@ export default function NetworkDiscoveryPage() {
   }, []);
 
   const handleDiscoverPoints = useCallback((deviceId) => {
-    setDevicePointDiscovery((prev) => {
-      const next = { ...prev };
-      const device = inspectorDevice;
-      const discoveredObjects = generateMockDiscoveredObjects(device);
-      next[deviceId] = {
+    const device = inspectorDevice;
+    if (!device) return;
+    const key = String(device.deviceInstance ?? deviceId);
+    const discoveredObjects = generateMockDiscoveredObjects(device);
+    actions.setDiscoveredObjectsForDevice(key, discoveredObjects);
+    setDevicePointDiscoveryMeta((prev) => ({
+      ...prev,
+      [deviceId]: {
         pointsStatus: POINTS_STATUS.DISCOVERED,
         lastPointDiscoveryTime: new Date().toLocaleString(),
-        discoveredObjects,
-      };
-      return next;
-    });
-  }, [inspectorDevice]);
+      },
+    }));
+  }, [inspectorDevice, actions]);
 
   const handleRefreshPoints = useCallback((deviceId) => {
-    setDevicePointDiscovery((prev) => {
-      const next = { ...prev };
-      const current = next[deviceId];
-      if (!current?.discoveredObjects?.length) return prev;
-      const device = inspectorDevice;
-      const discoveredObjects = generateMockDiscoveredObjects(device);
-      next[deviceId] = {
-        ...current,
+    const device = inspectorDevice;
+    if (!device) return;
+    const key = String(device.deviceInstance ?? deviceId);
+    const discoveredObjects = generateMockDiscoveredObjects(device);
+    actions.setDiscoveredObjectsForDevice(key, discoveredObjects);
+    setDevicePointDiscoveryMeta((prev) => ({
+      ...prev,
+      [deviceId]: {
+        ...prev[deviceId],
         pointsStatus: POINTS_STATUS.DISCOVERED,
         lastPointDiscoveryTime: new Date().toLocaleString(),
-        discoveredObjects,
-      };
-      return next;
-    });
-  }, [inspectorDevice]);
+      },
+    }));
+  }, [inspectorDevice, actions]);
 
+  const isNewBuilding = engineeringRepository.isNewEngineeringBuildingFlow(site);
+  const hasNoSite = isNewBuilding && !draft?.site;
   const inspectorPointDiscovery = inspectorDevice
-    ? devicePointDiscovery[inspectorDevice.id] ?? null
+    ? (() => {
+        const meta = devicePointDiscoveryMeta[inspectorDevice.id] ?? null;
+        const key = String(inspectorDevice.deviceInstance ?? inspectorDevice.id);
+        const discoveredObjects = (draft.discoveredObjects || {})[key] ?? [];
+        return meta
+          ? { ...meta, discoveredObjects }
+          : discoveredObjects.length > 0
+          ? { pointsStatus: POINTS_STATUS.DISCOVERED, lastPointDiscoveryTime: null, discoveredObjects }
+          : null;
+      })()
     : null;
   const assignedEquipmentPath = useMemo(
     () =>
@@ -230,7 +231,7 @@ export default function NetworkDiscoveryPage() {
     [inspectorDevice, equipmentList, siteTree, site]
   );
 
-  if (isNewBuilding) {
+  if (hasNoSite) {
     return (
       <Container fluid className="px-0">
         <div className="px-3 px-md-4 pt-3">
@@ -281,7 +282,7 @@ export default function NetworkDiscoveryPage() {
           searchValue={searchQuery}
           onSearchChange={setSearchQuery}
           onScan={handleScanNetwork}
-          onRefresh={() => setDevices(getMockDiscoveryForSite(site) || [])}
+          onRefresh={() => {}}
           onAssign={handleAssignFromBanner}
           isScanning={isScanning}
         />

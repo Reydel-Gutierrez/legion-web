@@ -4,14 +4,9 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faObjectGroup } from "@fortawesome/free-solid-svg-icons";
 
 import { useSite } from "../../../app/providers/SiteProvider";
+import { useEngineeringDraft, selectSiteTree } from "../../../hooks/useEngineeringDraft";
 import LegionHeroHeader from "../../../components/legion/LegionHeroHeader";
-import { getGraphicForEquipment } from "../data/mockGraphicsData";
-import {
-  isNewBuildingFlow,
-  getMockSiteTree,
-  getMockEquipmentForSite,
-  enrichEquipmentForPointMapping,
-} from "../data/mockEngineeringData";
+import { engineeringRepository } from "../../../lib/data";
 import { getPointDisplayInfoForEquipment } from "../data/mockPointMappingData";
 import GraphicsContextCard from "./components/GraphicsContextCard";
 import GraphicsToolbar from "./components/GraphicsToolbar";
@@ -34,8 +29,10 @@ function collectIds(node, acc = new Set()) {
 // ---------------------------------------------------------------------------
 export default function GraphicsManagerPage() {
   const { site } = useSite();
-  const [siteTree, setSiteTree] = useState(null);
-  const [graphicsByEquipment, setGraphicsByEquipment] = useState({});
+  const { draft, actions } = useEngineeringDraft();
+  const siteTree = selectSiteTree(draft);
+  const draftEquipment = draft?.equipment ?? [];
+  const draftGraphics = draft?.graphics ?? {};
   const [expandedIds, setExpandedIds] = useState(new Set());
   const [selectedEquipmentId, setSelectedEquipmentId] = useState(null);
   const [selectedObject, setSelectedObject] = useState(null);
@@ -45,51 +42,50 @@ export default function GraphicsManagerPage() {
   const [validationResult, setValidationResult] = useState(null);
   const [showValidationToast, setShowValidationToast] = useState(false);
 
-  const isNewBuilding = isNewBuildingFlow(site);
+  const isNewBuilding = engineeringRepository.isNewEngineeringBuildingFlow(site);
+  const hasNoSite = isNewBuilding && !draft?.site;
 
   const equipmentList = useMemo(() => {
-    const raw = getMockEquipmentForSite(site) || [];
-    return enrichEquipmentForPointMapping(raw, siteTree, site);
-  }, [site, siteTree]);
+    return engineeringRepository.enrichEquipmentForEngineeringPointMapping(
+      draftEquipment,
+      siteTree,
+      site
+    );
+  }, [draftEquipment, siteTree, site]);
 
   const selectedEquipment = useMemo(
     () => equipmentList.find((e) => e.id === selectedEquipmentId) || null,
     [equipmentList, selectedEquipmentId]
   );
 
-  // Template points only; values resolve from mapping when available (never blocks graphics)
   const availablePoints = useMemo(
     () => getPointDisplayInfoForEquipment(selectedEquipment),
     [selectedEquipment]
   );
 
-  const selectedGraphic = useMemo(
-    () => {
-      const base = getGraphicForEquipment(selectedEquipmentId);
-      if (!base) return null;
-      const stored = graphicsByEquipment[selectedEquipmentId];
-      return stored ? { ...base, objects: stored.objects ?? base.objects } : base;
-    },
-    [selectedEquipmentId, graphicsByEquipment]
-  );
+  const selectedGraphic = useMemo(() => {
+    const base = draftGraphics[selectedEquipmentId] ?? null;
+    if (!base) return null;
+    return { ...base, objects: base.objects ?? [] };
+  }, [selectedEquipmentId, draftGraphics]);
 
-  // Load site tree when site changes
+  // Stabilize effect: siteTree is a new object every render, so don't depend on it directly.
+  // Only run when site or presence of tree changes (draft?.site?.id).
+  const siteTreeKey = draft?.site?.id ?? "";
   useEffect(() => {
-    if (isNewBuilding) {
-      setSiteTree(null);
+    if (hasNoSite) {
       setExpandedIds(new Set());
       setSelectedEquipmentId(null);
       setSelectedObject(null);
       return;
     }
-    const tree = getMockSiteTree(site);
-    if (tree) {
-      setSiteTree(tree);
-      const ids = collectIds(tree);
+    if (siteTree) {
+      const ids = collectIds(siteTree);
       setExpandedIds(ids);
       setSelectedEquipmentId(null);
     }
-  }, [site, isNewBuilding]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [site, hasNoSite, siteTreeKey]);
 
   const toggleExpand = useCallback((id) => {
     setExpandedIds((prev) => {
@@ -114,19 +110,18 @@ export default function GraphicsManagerPage() {
     setSelectedObject(obj);
   }, []);
 
-  const handleUpdateObject = useCallback((objectId, updates) => {
-    if (!selectedEquipmentId) return;
-    setGraphicsByEquipment((prev) => {
-      const current = prev[selectedEquipmentId] || getGraphicForEquipment(selectedEquipmentId);
-      const objects = (current?.objects || []).map((o) =>
+  const handleUpdateObject = useCallback(
+    (objectId, updates) => {
+      if (!selectedEquipmentId) return;
+      const current = draftGraphics[selectedEquipmentId] || { objects: [] };
+      const objects = (current.objects || []).map((o) =>
         o.id === objectId ? { ...o, ...updates } : o
       );
-      return { ...prev, [selectedEquipmentId]: { ...current, objects } };
-    });
-    setSelectedObject((prev) =>
-      prev?.id === objectId ? { ...prev, ...updates } : prev
-    );
-  }, [selectedEquipmentId]);
+      actions.setGraphicForEquipment(selectedEquipmentId, { ...current, objects });
+      setSelectedObject((prev) => (prev?.id === objectId ? { ...prev, ...updates } : prev));
+    },
+    [selectedEquipmentId, draftGraphics, actions]
+  );
 
   const generateObjectId = useCallback(() => {
     return `obj-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
@@ -134,8 +129,8 @@ export default function GraphicsManagerPage() {
 
   const handleAddText = useCallback(() => {
     if (!selectedEquipmentId) return;
-    const base = getGraphicForEquipment(selectedEquipmentId);
-    const existingObjects = (graphicsByEquipment[selectedEquipmentId]?.objects ?? base?.objects) || [];
+    const current = draftGraphics[selectedEquipmentId] || { objects: [] };
+    const existingObjects = current.objects || [];
     const maxY = existingObjects.reduce((m, o) => Math.max(m, (o.y || 0) + (o.height || 24)), 0);
     const newObj = {
       id: generateObjectId(),
@@ -146,18 +141,17 @@ export default function GraphicsManagerPage() {
       width: 60,
       height: 24,
     };
-    setGraphicsByEquipment((prev) => {
-      const current = prev[selectedEquipmentId] || base;
-      const objects = [...(current?.objects || []), newObj];
-      return { ...prev, [selectedEquipmentId]: { ...current, objects } };
+    actions.setGraphicForEquipment(selectedEquipmentId, {
+      ...current,
+      objects: [...existingObjects, newObj],
     });
     setSelectedObject(newObj);
-  }, [selectedEquipmentId, graphicsByEquipment, generateObjectId]);
+  }, [selectedEquipmentId, draftGraphics, actions, generateObjectId]);
 
   const handleAddValue = useCallback(() => {
     if (!selectedEquipmentId) return;
-    const base = getGraphicForEquipment(selectedEquipmentId);
-    const existingObjects = (graphicsByEquipment[selectedEquipmentId]?.objects ?? base?.objects) || [];
+    const current = draftGraphics[selectedEquipmentId] || { objects: [] };
+    const existingObjects = current.objects || [];
     const maxY = existingObjects.reduce((m, o) => Math.max(m, (o.y || 0) + (o.height || 24)), 0);
     const newObj = {
       id: generateObjectId(),
@@ -169,28 +163,24 @@ export default function GraphicsManagerPage() {
       height: 24,
       bindings: [],
     };
-    setGraphicsByEquipment((prev) => {
-      const current = prev[selectedEquipmentId] || base;
-      const objects = [...(current?.objects || []), newObj];
-      return { ...prev, [selectedEquipmentId]: { ...current, objects } };
+    actions.setGraphicForEquipment(selectedEquipmentId, {
+      ...current,
+      objects: [...existingObjects, newObj],
     });
     setSelectedObject(newObj);
-  }, [selectedEquipmentId, graphicsByEquipment, generateObjectId]);
+  }, [selectedEquipmentId, draftGraphics, actions, generateObjectId]);
 
   const handleDeleteObject = useCallback(
     (objectId) => {
       if (!selectedEquipmentId || !objectId) return;
-      const base = getGraphicForEquipment(selectedEquipmentId);
-      setGraphicsByEquipment((prev) => {
-        const current = prev[selectedEquipmentId] || base;
-        const objects = (current?.objects || []).filter((o) => o.id !== objectId);
-        return { ...prev, [selectedEquipmentId]: { ...current, objects } };
-      });
+      const current = draftGraphics[selectedEquipmentId] || { objects: [] };
+      const objects = (current.objects || []).filter((o) => o.id !== objectId);
+      actions.setGraphicForEquipment(selectedEquipmentId, { ...current, objects });
       if (selectedObject?.id === objectId) {
         setSelectedObject(null);
       }
     },
-    [selectedEquipmentId, selectedObject?.id]
+    [selectedEquipmentId, selectedObject?.id, draftGraphics, actions]
   );
 
   const handleValidate = useCallback(() => {
@@ -229,7 +219,7 @@ export default function GraphicsManagerPage() {
     console.log("Preview");
   }, []);
 
-  if (isNewBuilding) {
+  if (hasNoSite) {
     return (
       <Container fluid className="px-0">
         <div className="px-3 px-md-4 pt-3">

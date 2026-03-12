@@ -2,8 +2,7 @@ import React from "react";
 import { Button } from "@themesberg/react-bootstrap";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faExternalLinkAlt, faTimes } from "@fortawesome/free-solid-svg-icons";
-import { SEVERITY } from "../data/mockValidationData";
-import { getMockPointMappingRows } from "../data/mockValidationData";
+import { SEVERITY, getMockPointMappingRows } from "../../../../lib/data/repositories/engineeringRepository";
 
 /**
  * Right-side detail panel for a selected validation issue.

@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo, useEffect } from "react";
+import React, { useState, useCallback } from "react";
 import {
   Container,
   Nav,
@@ -17,9 +17,9 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 
 import { useSite } from "../../../app/providers/SiteProvider";
+import { useEngineeringDraft } from "../../../hooks/useEngineeringDraft";
 import LegionHeroHeader from "../../../components/legion/LegionHeroHeader";
 import {
-  getSiteTemplates,
   SOURCE,
 } from "../data/mockTemplateLibraryData";
 import EmptyTemplateState from "./components/EmptyTemplateState";
@@ -70,7 +70,7 @@ function globalGraphicToSite(globalRow, equipmentTemplates) {
 // ---------------------------------------------------------------------------
 export default function TemplateLibraryPage() {
   const { site } = useSite();
-  const [siteTemplates, setSiteTemplates] = useState({ equipment: [], graphic: [] });
+  const { draft, actions } = useEngineeringDraft();
   const [activeTab, setActiveTab] = useState("equipment");
   const [showImportModal, setShowImportModal] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -78,15 +78,10 @@ export default function TemplateLibraryPage() {
   const [equipmentEditorContext, setEquipmentEditorContext] = useState({ template: null, mode: "create" });
   const [showCreateGraphicModal, setShowCreateGraphicModal] = useState(false);
 
-  const useSampleData = true;
-  const initialFromMock = useMemo(
-    () => getSiteTemplates(site, useSampleData),
-    [site, useSampleData]
-  );
-
-  useEffect(() => {
-    setSiteTemplates(initialFromMock);
-  }, [initialFromMock]);
+  const siteTemplates = {
+    equipment: draft.templates?.equipmentTemplates ?? [],
+    graphic: draft.templates?.graphicTemplates ?? [],
+  };
 
   const hasEquipment = (siteTemplates.equipment || []).length > 0;
   const hasGraphic = (siteTemplates.graphic || []).length > 0;
@@ -97,36 +92,32 @@ export default function TemplateLibraryPage() {
 
   const handleImportFromGlobal = useCallback((payload) => {
     const { equipment: eqList, graphic: gfxList } = payload || {};
-    setSiteTemplates((prev) => {
-      const nextEq = [...(prev.equipment || [])];
-      (eqList || []).forEach((g) => {
-        if (!nextEq.some((e) => e.name === g.name)) {
-          nextEq.push(globalEquipmentToSite(g));
-        }
-      });
-      const nextGfx = [...(prev.graphic || [])];
-      (gfxList || []).forEach((g) => {
-        if (!nextGfx.some((x) => x.name === g.name)) {
-          nextGfx.push(globalGraphicToSite(g, nextEq));
-        }
-      });
-      return { equipment: nextEq, graphic: nextGfx };
+    const prevEq = draft.templates?.equipmentTemplates ?? [];
+    const prevGfx = draft.templates?.graphicTemplates ?? [];
+    const nextEq = [...prevEq];
+    (eqList || []).forEach((g) => {
+      if (!nextEq.some((e) => e.name === g.name)) {
+        nextEq.push(globalEquipmentToSite(g));
+      }
     });
-  }, []);
+    const nextGfx = [...prevGfx];
+    (gfxList || []).forEach((g) => {
+      if (!nextGfx.some((x) => x.name === g.name)) {
+        nextGfx.push(globalGraphicToSite(g, nextEq));
+      }
+    });
+    actions.setTemplates({ equipmentTemplates: nextEq, graphicTemplates: nextGfx });
+  }, [draft.templates, actions]);
 
   const handleRemoveEquipment = useCallback((row) => {
-    setSiteTemplates((prev) => ({
-      ...prev,
-      equipment: (prev.equipment || []).filter((e) => e.id !== row.id),
-    }));
-  }, []);
+    const nextEq = (draft.templates?.equipmentTemplates ?? []).filter((e) => e.id !== row.id);
+    actions.setTemplates({ equipmentTemplates: nextEq, graphicTemplates: draft.templates?.graphicTemplates ?? [] });
+  }, [draft.templates, actions]);
 
   const handleRemoveGraphic = useCallback((row) => {
-    setSiteTemplates((prev) => ({
-      ...prev,
-      graphic: (prev.graphic || []).filter((g) => g.id !== row.id),
-    }));
-  }, []);
+    const nextGfx = (draft.templates?.graphicTemplates ?? []).filter((g) => g.id !== row.id);
+    actions.setTemplates({ equipmentTemplates: draft.templates?.equipmentTemplates ?? [], graphicTemplates: nextGfx });
+  }, [draft.templates, actions]);
 
   const handleViewEquipment = useCallback((row) => {
     setEquipmentEditorContext({ template: row, mode: "view" });
@@ -150,29 +141,24 @@ export default function TemplateLibraryPage() {
       points: payload.points || [],
       lastUpdated: new Date().toISOString().slice(0, 10),
     };
+    const prevEq = draft.templates?.equipmentTemplates ?? [];
+    const prevGfx = draft.templates?.graphicTemplates ?? [];
     if (payload.id) {
-      setSiteTemplates((prev) => ({
-        ...prev,
-        equipment: (prev.equipment || []).map((e) =>
-          e.id === payload.id ? { ...e, ...templateData } : e
-        ),
-      }));
+      const nextEq = prevEq.map((e) =>
+        e.id === payload.id ? { ...e, ...templateData } : e
+      );
+      actions.setTemplates({ equipmentTemplates: nextEq, graphicTemplates: prevGfx });
     } else {
-      setSiteTemplates((prev) => ({
-        ...prev,
-        equipment: [
-          ...(prev.equipment || []),
-          {
-            id: generateId("site-eq"),
-            ...templateData,
-            source: SOURCE.SITE_CUSTOM,
-          },
-        ],
-      }));
+      const newTemplate = {
+        id: generateId("site-eq"),
+        ...templateData,
+        source: SOURCE.SITE_CUSTOM,
+      };
+      actions.setTemplates({ equipmentTemplates: [...prevEq, newTemplate], graphicTemplates: prevGfx });
     }
     setShowEquipmentEditorDrawer(false);
     setEquipmentEditorContext({ template: null, mode: "create" });
-  }, []);
+  }, [draft.templates, actions]);
   const handleCloseEquipmentEditor = useCallback(() => {
     setShowEquipmentEditorDrawer(false);
     setEquipmentEditorContext({ template: null, mode: "create" });
@@ -193,34 +179,28 @@ export default function TemplateLibraryPage() {
       source: SOURCE.SITE_CUSTOM,
       lastUpdated: new Date().toISOString().slice(0, 10),
     };
-    setSiteTemplates((prev) => ({
-      ...prev,
-      equipment: [...(prev.equipment || []), newTemplate],
-    }));
+    const prevEq = draft.templates?.equipmentTemplates ?? [];
+    actions.setTemplates({ equipmentTemplates: [...prevEq, newTemplate], graphicTemplates: draft.templates?.graphicTemplates ?? [] });
     setShowEquipmentEditorDrawer(false);
     setEquipmentEditorContext({ template: null, mode: "create" });
-  }, []);
+  }, [draft.templates, actions]);
   const handleDuplicateEquipment = useCallback((row) => {
     const pointCount = (row.points && row.points.length) || row.pointCount || 0;
-    setSiteTemplates((prev) => ({
-      ...prev,
-      equipment: [
-        ...(prev.equipment || []),
-        {
-          ...row,
-          id: generateId("site-eq"),
-          name: `${row.name} (Copy)`,
-          pointCount,
-          points: (row.points || []).map((p) => ({
-            ...p,
-            id: `pt-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
-          })),
-          source: SOURCE.SITE_CUSTOM,
-          lastUpdated: new Date().toISOString().slice(0, 10),
-        },
-      ],
-    }));
-  }, []);
+    const newTemplate = {
+      ...row,
+      id: generateId("site-eq"),
+      name: `${row.name} (Copy)`,
+      pointCount,
+      points: (row.points || []).map((p) => ({
+        ...p,
+        id: `pt-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+      })),
+      source: SOURCE.SITE_CUSTOM,
+      lastUpdated: new Date().toISOString().slice(0, 10),
+    };
+    const prevEq = draft.templates?.equipmentTemplates ?? [];
+    actions.setTemplates({ equipmentTemplates: [...prevEq, newTemplate], graphicTemplates: draft.templates?.graphicTemplates ?? [] });
+  }, [draft.templates, actions]);
 
   const handleViewGraphic = useCallback((row) => {
     console.log("View graphic template", row);
@@ -229,20 +209,16 @@ export default function TemplateLibraryPage() {
     console.log("Edit graphic template", row);
   }, []);
   const handleDuplicateGraphic = useCallback((row) => {
-    setSiteTemplates((prev) => ({
-      ...prev,
-      graphic: [
-        ...(prev.graphic || []),
-        {
-          ...row,
-          id: generateId("site-gfx"),
-          name: `${row.name} (Copy)`,
-          source: SOURCE.SITE_CUSTOM,
-          lastUpdated: new Date().toISOString().slice(0, 10),
-        },
-      ],
-    }));
-  }, []);
+    const newGfx = {
+      ...row,
+      id: generateId("site-gfx"),
+      name: `${row.name} (Copy)`,
+      source: SOURCE.SITE_CUSTOM,
+      lastUpdated: new Date().toISOString().slice(0, 10),
+    };
+    const prevGfx = draft.templates?.graphicTemplates ?? [];
+    actions.setTemplates({ equipmentTemplates: draft.templates?.equipmentTemplates ?? [], graphicTemplates: [...prevGfx, newGfx] });
+  }, [draft.templates, actions]);
 
   return (
     <Container fluid className="px-0">

@@ -21,7 +21,7 @@ export default function SettingsPage() {
       username: "reydel",
       email: "reydel@legion.local",
       role: "Engineer",
-      sites: ["Miami HQ", "Tampa Demo"],
+      sites: ["Miami HQ", "New Site"],
       lastLogin: "2/22/26 14:03",
     }),
     []

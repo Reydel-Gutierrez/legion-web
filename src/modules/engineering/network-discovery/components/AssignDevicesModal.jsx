@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Modal, Button, Form } from "@themesberg/react-bootstrap";
 import LegionFormSelect from "../../../../components/legion/LegionFormSelect";
-import { EQUIPMENT_GROUPS } from "../../data/mockEngineeringData";
+import { engineeringRepository } from "../../../../lib/data";
 
 /**
  * Modal for assigning selected discovered devices to equipment or equipment groups.
@@ -29,7 +29,8 @@ export default function AssignDevicesModal({
     equipmentOptions.length > 0
       ? equipmentOptions
       : [{ value: "", label: "No equipment defined yet" }];
-  const groupOptions = EQUIPMENT_GROUPS.map((g) => ({ value: g.id, label: g.label }));
+  const groupSource = engineeringRepository.EQUIPMENT_GROUPS || [];
+  const groupOptions = groupSource.map((g) => ({ value: g.id, label: g.label }));
 
   const handleSubmit = (e) => {
     e.preventDefault();

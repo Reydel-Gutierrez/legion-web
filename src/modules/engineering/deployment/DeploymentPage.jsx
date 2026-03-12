@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useMemo } from "react";
 import { useHistory } from "react-router-dom";
 import {
   Container,
@@ -20,27 +20,35 @@ import {
 import LegionHeroHeader from "../../../components/legion/LegionHeroHeader";
 import DeployAnywayModal from "../validation-center/components/DeployAnywayModal";
 import { useValidation } from "../../../app/providers/ValidationProvider";
+import { useEngineeringDraft } from "../../../hooks/useEngineeringDraft";
 import { Routes } from "../../../routes";
-import { READINESS_STATUS } from "../validation-center/data/mockValidationData";
-import {
-  getMockCurrentDeployment,
-  getMockPendingDraftChanges,
-  getMockDeploymentHistory,
-  getEmptyPendingChanges,
-  hasPendingChanges,
-} from "./data/mockDeploymentData";
+import { READINESS_STATUS } from "../../../lib/data/repositories/engineeringRepository";
+import { hasPendingChanges } from "./data/mockDeploymentData";
 
 export default function DeploymentPage() {
   const history = useHistory();
   const { validationSnapshot } = useValidation();
+  const { draft, actions } = useEngineeringDraft();
   const { summary } = validationSnapshot;
   const errors = summary?.errors ?? 0;
   const warnings = summary?.warnings ?? 0;
   const readiness = validationSnapshot.readiness;
 
-  const [currentDeployment, setCurrentDeployment] = useState(getMockCurrentDeployment);
-  const [pendingChanges, setPendingChanges] = useState(getMockPendingDraftChanges);
-  const [historyList, setHistoryList] = useState(getMockDeploymentHistory);
+  const currentDeployment = draft.activeDeploymentSnapshot ?? {
+    version: "v0",
+    lastDeployedAt: null,
+    deployedBy: null,
+    systemStatus: "Unknown",
+  };
+  const historyList = draft.deploymentHistory ?? [];
+  const pendingChanges = useMemo(() => {
+    const eqCount = (draft.equipment || []).length;
+    const mappingCount = Object.values(draft.mappings || {}).reduce((acc, m) => acc + Object.keys(m || {}).length, 0);
+    const gfxCount = Object.keys(draft.graphics || {}).length;
+    const templateCount = (draft.templates?.equipmentTemplates?.length || 0) + (draft.templates?.graphicTemplates?.length || 0);
+    return { equipment: eqCount, pointMappings: mappingCount, graphics: gfxCount, templates: templateCount };
+  }, [draft.equipment, draft.mappings, draft.graphics, draft.templates]);
+
   const [showOverrideModal, setShowOverrideModal] = useState(false);
   const [toastMessage, setToastMessage] = useState(null);
 
@@ -66,27 +74,8 @@ export default function DeploymentPage() {
     if (errors > 0) return;
     setToastMessage("Deployment successful.");
     setTimeout(() => setToastMessage(null), 3000);
-    const now = new Date();
-    const versionNum = parseInt(currentDeployment.version.replace("v", ""), 10) + 1;
-    const newVersion = `v${versionNum}`;
-    setCurrentDeployment({
-      version: newVersion,
-      lastDeployedAt: now.toISOString(),
-      deployedBy: "Reydel Gutierrez",
-      systemStatus: "Running",
-    });
-    setPendingChanges(getEmptyPendingChanges());
-    setHistoryList((prev) => [
-      {
-        version: newVersion,
-        date: now.toISOString().slice(0, 10),
-        user: "Reydel",
-        result: "Success",
-        notes: "",
-      },
-      ...prev,
-    ]);
-  }, [currentDeployment.version, errors]);
+    actions.deployDraftConfiguration();
+  }, [errors, actions]);
 
   const handleDeployAnyway = useCallback(() => {
     if (errors > 0) {
@@ -101,28 +90,9 @@ export default function DeploymentPage() {
       setShowOverrideModal(false);
       setToastMessage("Deployment successful.");
       setTimeout(() => setToastMessage(null), 3000);
-      const now = new Date();
-      const versionNum = parseInt(currentDeployment.version.replace("v", ""), 10) + 1;
-      const newVersion = `v${versionNum}`;
-      setCurrentDeployment({
-        version: newVersion,
-        lastDeployedAt: now.toISOString(),
-        deployedBy: "Reydel Gutierrez",
-        systemStatus: "Running",
-      });
-      setPendingChanges(getEmptyPendingChanges());
-      setHistoryList((prev) => [
-        {
-          version: newVersion,
-          date: now.toISOString().slice(0, 10),
-          user: "Reydel",
-          result: "Success",
-          notes: reason || "Override deployment",
-        },
-        ...prev,
-      ]);
+      actions.deployDraftConfiguration({ notes: reason || "Override deployment" });
     },
-    [currentDeployment.version]
+    [actions]
   );
 
   const formatDate = (isoDate) => {

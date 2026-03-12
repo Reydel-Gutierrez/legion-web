@@ -6,7 +6,7 @@ import { faTrashAlt, faMapMarkerAlt } from "@fortawesome/free-solid-svg-icons";
 import LegionFormSelect from "../../../../components/legion/LegionFormSelect";
 import { Routes } from "../../../../routes";
 import { EQUIPMENT_TYPE_OPTIONS } from "../equipmentTypes";
-import { EQUIPMENT_STATUSES } from "../../data/mockEngineeringData";
+import { engineeringRepository } from "../../../../lib/data";
 
 /**
  * Right panel: Edit selected equipment.
@@ -71,7 +71,8 @@ export default function EquipmentEditorPanel({
     );
   }
 
-  const statusLabel = EQUIPMENT_STATUSES[equipment.status] || equipment.status || "Draft";
+  const STATUSES = engineeringRepository.EQUIPMENT_STATUSES || {};
+  const statusLabel = STATUSES[equipment.status] || equipment.status || "Draft";
 
   return (
     <Card className="bg-primary border border-light border-opacity-10 align-self-start">

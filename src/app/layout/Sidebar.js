@@ -12,10 +12,16 @@ import ReactHero from "../../assets/img/technologies/react-hero-logo.svg";
 import LegionLogo from "../../assets/img/legionlogo.png";
 import { useSite } from "../providers/SiteProvider";
 import { useWorkspaceMode } from "../providers/WorkspaceModeProvider";
+import { useDraftContext } from "../providers/EngineeringDraftProvider";
+import { SITE_IDS } from "../../lib/sites";
 
 export default function Sidebar() {
   const { site, setSite } = useSite();
   const { currentMode } = useWorkspaceMode();
+  const { draft } = useDraftContext();
+  const draftSiteName = draft?.site?.name;
+  const isBuiltInSite = site === SITE_IDS.MIAMI_HQ || site === SITE_IDS.NEW_SITE || site === "New Building";
+  const displaySiteName = !isBuiltInSite ? site : (site === SITE_IDS.NEW_SITE && draftSiteName ? draftSiteName : site);
   const location = useLocation();
   const { pathname } = location;
   const [show, setShow] = useState(false);
@@ -109,7 +115,7 @@ export default function Sidebar() {
                 >
                   <span className="d-flex align-items-center">
                     <FontAwesomeIcon icon={faMapPin} className="me-2" />
-                    <span className="fw-semibold">{site}</span>
+                    <span className="fw-semibold">{displaySiteName}</span>
                   </span>
                   <span className="ms-2">▾</span>
                 </Dropdown.Toggle>
@@ -117,34 +123,37 @@ export default function Sidebar() {
                 <Dropdown.Menu className="w-100 legion-dropdown-menu">
                   {currentMode === "engineering" ? (
                     <>
-                      <Dropdown.Item onClick={() => setSite("New Building")}>
-                        New Building
-                      </Dropdown.Item>
                       <Dropdown.Item onClick={() => setSite("Miami HQ")}>
                         Miami HQ
                       </Dropdown.Item>
-                      <Dropdown.Item onClick={() => setSite("Parkline")}>
-                        Parkline
+                      <Dropdown.Item onClick={() => setSite("New Site")}>
+                        New Site
                       </Dropdown.Item>
-                      <Dropdown.Divider className="border-light border-opacity-10" />
-                      <Dropdown.Item onClick={() => setSite("Tampa Site")}>
-                        Tampa Site
-                      </Dropdown.Item>
-                      <Dropdown.Item onClick={() => setSite("Orlando Site")}>
-                        Orlando Site
-                      </Dropdown.Item>
+                      {draftSiteName && draftSiteName !== "Miami HQ" && draftSiteName !== "New Site" && (
+                        <>
+                          <Dropdown.Divider className="border-light border-opacity-10" />
+                          <Dropdown.Item onClick={() => setSite(draftSiteName)}>
+                            {draftSiteName} <span className="text-white-50 small">(draft)</span>
+                          </Dropdown.Item>
+                        </>
+                      )}
                     </>
                   ) : (
                     <>
                       <Dropdown.Item onClick={() => setSite("Miami HQ")}>
                         Miami HQ
                       </Dropdown.Item>
-                      <Dropdown.Item onClick={() => setSite("Tampa Site")}>
-                        Tampa Site
+                      <Dropdown.Item onClick={() => setSite("New Site")}>
+                        New Site
                       </Dropdown.Item>
-                      <Dropdown.Item onClick={() => setSite("Orlando Site")}>
-                        Orlando Site
-                      </Dropdown.Item>
+                      {draftSiteName && draftSiteName !== "Miami HQ" && draftSiteName !== "New Site" && (
+                        <>
+                          <Dropdown.Divider className="border-light border-opacity-10" />
+                          <Dropdown.Item onClick={() => setSite(draftSiteName)}>
+                            {draftSiteName}
+                          </Dropdown.Item>
+                        </>
+                      )}
                     </>
                   )}
                 </Dropdown.Menu>

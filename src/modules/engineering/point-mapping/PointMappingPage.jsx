@@ -1,24 +1,19 @@
-import React, { useState, useCallback, useMemo, useEffect } from "react";
+import React, { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { useLocation } from "react-router-dom";
 import { Container, Row, Col, Card } from "@themesberg/react-bootstrap";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faMapMarkerAlt } from "@fortawesome/free-solid-svg-icons";
 
 import { useSite } from "../../../app/providers/SiteProvider";
+import { useEngineeringDraft } from "../../../hooks/useEngineeringDraft";
 import LegionHeroHeader from "../../../components/legion/LegionHeroHeader";
 import {
   getTemplatePoints,
-  getDiscoveredObjects,
   autoMapPoints,
-  DEFAULT_MAPPING_EQUIPMENT,
   MAPPING_STATUSES,
 } from "../data/mockPointMappingData";
-import {
-  getMockEquipmentForSite,
-  getMockSiteTree,
-  enrichEquipmentForPointMapping,
-  isNewBuildingFlow,
-} from "../data/mockEngineeringData";
+import { engineeringRepository } from "../../../lib/data";
+import { selectSiteTree } from "../../../hooks/useEngineeringDraft";
 import MappingContextCard from "./components/MappingContextCard";
 import MappingSummaryBar from "./components/MappingSummaryBar";
 import MappingToolbar from "./components/MappingToolbar";
@@ -79,16 +74,30 @@ function parseEquipmentIdFromSearch(search) {
   return params.get("equipmentId") || null;
 }
 
+function getDiscoveredObjectsFromDraft(draft, controllerRef) {
+  if (!draft?.discoveredObjects || controllerRef == null) return [];
+  return draft.discoveredObjects[String(controllerRef)] || [];
+}
+
 export default function PointMappingPage() {
   const { site } = useSite();
   const location = useLocation();
   const equipmentIdFromUrl = parseEquipmentIdFromSearch(location.search);
-
-  const siteTree = useMemo(() => getMockSiteTree(site), [site]);
+  const { draft, actions } = useEngineeringDraft();
+  const siteTree = selectSiteTree(draft);
   const equipmentList = useMemo(() => {
-    const raw = getMockEquipmentForSite(site) || [];
-    return enrichEquipmentForPointMapping(raw, siteTree, site);
-  }, [site, siteTree]);
+    const raw = draft.equipment ?? [];
+    return engineeringRepository.enrichEquipmentForEngineeringPointMapping(
+      raw,
+      siteTree,
+      site
+    );
+  }, [draft.equipment, siteTree, site]);
+
+  // Ref to avoid effect dependency on equipmentList (siteTree is new every render → equipmentList new → infinite loop)
+  const equipmentListRef = useRef(equipmentList);
+  equipmentListRef.current = equipmentList;
+  const equipmentListStableKey = `${site}-${(draft?.equipment?.length ?? 0)}`;
 
   const [equipment, setEquipment] = useState(null);
   const [mappings, setMappings] = useState({});
@@ -98,42 +107,52 @@ export default function PointMappingPage() {
   const [filterValue, setFilterValue] = useState("all");
   const [unusedExpanded, setUnusedExpanded] = useState(false);
 
-  // Initialize equipment from URL or pick first mappable
+  // Sync mappings from draft when equipment changes
   useEffect(() => {
-    if (!equipmentList?.length) {
-      setEquipment(DEFAULT_MAPPING_EQUIPMENT);
+    if (equipment) {
+      const fromDraft = (draft.mappings || {})[equipment.id] ?? {};
+      setMappings(fromDraft);
+    }
+  }, [equipment?.id, draft.mappings]);
+
+  // Initialize equipment from URL or pick first mappable. Use stable deps to avoid loop (equipmentList is new ref every render).
+  useEffect(() => {
+    const list = equipmentListRef.current ?? [];
+    if (!list.length) {
+      setEquipment(null);
       return;
     }
     if (equipmentIdFromUrl) {
-      const found = equipmentList.find((eq) => eq.id === equipmentIdFromUrl);
-      setEquipment(found || equipmentList[0]);
+      const found = list.find((eq) => eq.id === equipmentIdFromUrl);
+      setEquipment(found || list[0]);
       return;
     }
-    const mappable = equipmentList.filter((eq) => eq.controllerRef && eq.templateName);
-    const preferred = mappable.length > 0 ? mappable[0] : equipmentList[0];
+    const mappable = list.filter((eq) => eq.controllerRef && eq.templateName);
+    const preferred = mappable.length > 0 ? mappable[0] : list[0];
     setEquipment((prev) => {
       if (!prev) return preferred;
-      if (!equipmentList.some((eq) => eq.id === prev.id)) return preferred;
+      if (!list.some((eq) => eq.id === prev.id)) return preferred;
       return prev;
     });
-  }, [equipmentIdFromUrl, equipmentList]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [equipmentIdFromUrl, equipmentListStableKey]);
 
   // When user selects different equipment from dropdown, reset mapping state
   const handleSelectEquipment = useCallback((id) => {
     const found = equipmentList.find((eq) => eq.id === id);
     setEquipment(found || null);
-    setMappings({});
+    setMappings(found ? (draft.mappings || {})[found.id] ?? {} : {});
     setAutoMappedIds(new Set());
     setSelectedPointId(null);
-  }, [equipmentList]);
+  }, [equipmentList, draft.mappings]);
 
   const templatePoints = useMemo(
     () => getTemplatePoints(equipment?.templateName),
     [equipment?.templateName]
   );
   const discoveredObjects = useMemo(
-    () => getDiscoveredObjects(equipment?.controllerRef),
-    [equipment?.controllerRef]
+    () => getDiscoveredObjectsFromDraft(draft, equipment?.controllerRef),
+    [draft, equipment?.controllerRef]
   );
 
   const mappingStatuses = useMemo(() => {
@@ -176,49 +195,53 @@ export default function PointMappingPage() {
   );
 
   const handleAssignObject = useCallback((pointId, objectId) => {
-    setMappings((prev) => ({ ...prev, [pointId]: objectId }));
+    if (!equipment) return;
+    const next = { ...mappings, [pointId]: objectId };
+    setMappings(next);
+    actions.setMappingsForEquipment(equipment.id, next);
     setAutoMappedIds((prev) => {
-      const next = new Set(prev);
-      next.delete(pointId);
-      return next;
+      const nextSet = new Set(prev);
+      nextSet.delete(pointId);
+      return nextSet;
     });
-  }, []);
+  }, [equipment, mappings, actions]);
 
   const handleClearMapping = useCallback((pointId) => {
-    setMappings((prev) => {
-      const next = { ...prev };
-      delete next[pointId];
-      return next;
-    });
+    if (!equipment) return;
+    const next = { ...mappings };
+    delete next[pointId];
+    setMappings(next);
+    actions.setMappingsForEquipment(equipment.id, next);
     setAutoMappedIds((prev) => {
-      const next = new Set(prev);
-      next.delete(pointId);
-      return next;
+      const nextSet = new Set(prev);
+      nextSet.delete(pointId);
+      return nextSet;
     });
-  }, []);
+  }, [equipment, mappings, actions]);
 
   const handleAutoMap = useCallback(() => {
     const newMappings = autoMapPoints(templatePoints, discoveredObjects, mappings);
     const newAutoIds = new Set();
     Object.keys(newMappings).forEach((tpId) => {
-      if (newMappings[tpId] && !mappings[tpId]) {
-        newAutoIds.add(tpId);
-      }
+      if (newMappings[tpId] && !mappings[tpId]) newAutoIds.add(tpId);
     });
-    setMappings((prev) => ({ ...prev, ...newMappings }));
+    const merged = { ...mappings, ...newMappings };
+    setMappings(merged);
+    if (equipment) actions.setMappingsForEquipment(equipment.id, merged);
     setAutoMappedIds((prev) => new Set([...prev, ...newAutoIds]));
-  }, [templatePoints, discoveredObjects, mappings]);
+  }, [templatePoints, discoveredObjects, mappings, equipment, actions]);
 
   const handleClearUnmapped = useCallback(() => {
     setAutoMappedIds(new Set());
   }, []);
 
-  const isNewBuilding = isNewBuildingFlow(site);
+  const isNewBuilding = engineeringRepository.isNewEngineeringBuildingFlow(site);
+  const hasNoSite = isNewBuilding && !draft?.site;
   const hasController = !!(equipment?.controllerRef && String(equipment.controllerRef).trim());
   const hasTemplate = !!(equipment?.templateName && String(equipment.templateName).trim());
   const hasDiscovered = (discoveredObjects || []).length > 0;
 
-  if (isNewBuilding) {
+  if (hasNoSite) {
     return (
       <Container fluid className="px-0">
         <div className="px-3 px-md-4 pt-3">

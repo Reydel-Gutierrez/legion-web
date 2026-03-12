@@ -1,69 +1,18 @@
 import React, { useCallback, useMemo, useState, useEffect, useRef } from "react";
 import { useSite } from "../../../app/providers/SiteProvider";
+import { useActiveDeployment } from "../../../hooks/useEngineeringDraft";
+import { activeDeploymentToEquipmentTree } from "../../../lib/activeDeploymentUtils";
 import { Container, Row, Col, Card, Button, ButtonGroup, Form, Table, Modal, Toast } from "@themesberg/react-bootstrap";
 import { useHistory } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faChevronDown, faChevronRight, faBuilding, faLayerGroup, faSnowflake, faFolder } from "@fortawesome/free-solid-svg-icons";
 import LegionHeroHeader from "../../../components/legion/LegionHeroHeader";
 import StatusDotLabel from "../../../components/legion/StatusDotLabel";
-
-// ---------------------------------------
-// Mock points per equipment type (4-5 points each)
-// ---------------------------------------
-const MOCK_POINTS = {
-  vav: [
-    { pointId: "DA-T", name: "Discharge Air Temp", value: "72.5", unit: "°F" },
-    { pointId: "SA-T", name: "Supply Air Temp", value: "55.2", unit: "°F" },
-    { pointId: "Space-T", name: "Space Temperature", value: "71.0", unit: "°F" },
-    { pointId: "Flow", name: "Airflow", value: "245", unit: "CFM" },
-    { pointId: "Damper-Cmd", name: "Damper Command", value: "62", unit: "%" },
-  ],
-  ahu: [
-    { pointId: "SAT", name: "Supply Air Temp", value: "55.0", unit: "°F" },
-    { pointId: "MAT", name: "Mixed Air Temp", value: "62.5", unit: "°F" },
-    { pointId: "Fan-Cmd", name: "Fan Command", value: "85", unit: "%" },
-    { pointId: "Status", name: "Run Status", value: "On", unit: "" },
-    { pointId: "Economizer", name: "Economizer Pos", value: "45", unit: "%" },
-  ],
-  chiller: [
-    { pointId: "CWST", name: "CHW Supply Temp", value: "44.0", unit: "°F" },
-    { pointId: "CWRT", name: "CHW Return Temp", value: "54.2", unit: "°F" },
-    { pointId: "Status", name: "Run Status", value: "On", unit: "" },
-    { pointId: "Cap", name: "Capacity", value: "78", unit: "%" },
-    { pointId: "Alarms", name: "Active Alarms", value: "0", unit: "" },
-  ],
-};
-
-/** Unique row id: equipmentId + pointId */
-function rowId(equipmentId, pointId) {
-  return `${equipmentId}-${pointId}`;
-}
-
-function getPointsForEquipment(equipmentId, equipmentName, status) {
-  const idStr = String(equipmentId || "").toLowerCase();
-  const isChiller = typeof equipmentId === "number" && equipmentId >= 9000;
-  const isAhu = idStr.includes("ahu");
-  let points;
-  if (isChiller) points = MOCK_POINTS.chiller;
-  else if (isAhu) points = MOCK_POINTS.ahu;
-  else points = MOCK_POINTS.vav;
-  return points.map((pt) => ({
-    id: rowId(equipmentId, pt.pointId),
-    equipmentId,
-    equipmentName,
-    pointId: pt.pointId,
-    pointName: pt.name,
-    value: pt.unit ? `${pt.value} ${pt.unit}`.trim() : pt.value,
-    units: pt.unit || "",
-    status: status || "OK",
-  }));
-}
+import { operatorRepository } from "../../../lib/data";
 
 // ---------------------------------------
 // Reusable tree row component (Site Builder hierarchy style)
 // ---------------------------------------
-const ONLINE_STATUSES = ["ok", "normal", "online", "active", "enabled"];
-
 const NODE_ICONS = {
   group: faSnowflake,
   floor: faLayerGroup,
@@ -72,8 +21,6 @@ const NODE_ICONS = {
 
 function EquipmentTreeRow({ level = 0, active, onClick, isGroup, isOpen, node, isLeaf, isDraggable, onDragStart }) {
   const pad = 8 + level * 20;
-  const rawStatus = (node.status || "Normal").toString().toLowerCase();
-  const dotOnly = ONLINE_STATUSES.includes(rawStatus);
   const showCaret = isGroup;
   const Icon = NODE_ICONS[node.type] || faFolder;
 
@@ -88,7 +35,7 @@ function EquipmentTreeRow({ level = 0, active, onClick, isGroup, isOpen, node, i
       </span>
       <span className="site-tree-icon">
         {isLeaf ? (
-          <StatusDotLabel value={node.status || "Normal"} kind="status" dotOnly={dotOnly} />
+          <StatusDotLabel value={node.status || "Normal"} kind="status" dotOnly />
         ) : (
           <FontAwesomeIcon icon={Icon} className="fa-sm" />
         )}
@@ -217,7 +164,11 @@ function WorkspacePanel({
     const results = [];
     for (const node of equipNodes) {
       if (!scopeEquipIds.has(node.id)) continue;
-      const points = getPointsForEquipment(node.id, node.label, node.status);
+      const points = operatorRepository.getWorkspacePointsForEquipment(
+        node.id,
+        node.label,
+        node.status
+      );
       const matched = points.filter(
         (p) => matches(p.pointId) || matches(p.pointName) || matches(p.units)
       );
@@ -239,7 +190,11 @@ function WorkspacePanel({
 
   const addAllPointsForEquipment = useCallback(
     (equipmentId, equipmentName, status) => {
-      const points = getPointsForEquipment(equipmentId, equipmentName, status);
+      const points = operatorRepository.getWorkspacePointsForEquipment(
+        equipmentId,
+        equipmentName,
+        status
+      );
       setWorkspace((prev) => {
         const prevRows = prev.rows || [];
         const existing = new Set(prevRows.map((r) => r.id));
@@ -356,12 +311,20 @@ function WorkspacePanel({
       setDropActive((p) => ({ ...p, [zone]: false }));
       try {
         const data = JSON.parse(e.dataTransfer.getData("text/plain") || "{}");
-        const equipmentList = data.equipment && Array.isArray(data.equipment) ? data.equipment : (data.id && data.label ? [{ id: data.id, label: data.label, status: data.status || "OK" }] : []);
+        const equipmentList = data.equipment && Array.isArray(data.equipment)
+          ? data.equipment
+          : (data.id && data.label
+            ? [{ id: data.id, label: data.label, status: data.status || "OK" }]
+            : []);
         if (equipmentList.length === 0) return;
         const existing = new Set(rows.map((r) => r.id));
         let newPointCount = 0;
         equipmentList.forEach((eq) => {
-          const points = getPointsForEquipment(eq.id, eq.label, eq.status || "OK");
+          const points = operatorRepository.getWorkspacePointsForEquipment(
+            eq.id,
+            eq.label,
+            eq.status || "OK"
+          );
           newPointCount += points.filter((p) => !existing.has(p.id)).length;
         });
         if (newPointCount === 0) {
@@ -750,7 +713,11 @@ function WorkspacePanel({
             const existing = new Set(rows.map((r) => r.id));
             let newPointCount = 0;
             equipmentList.forEach((eq) => {
-              const pts = getPointsForEquipment(eq.id, eq.label, eq.status || "OK");
+              const pts = operatorRepository.getWorkspacePointsForEquipment(
+                eq.id,
+                eq.label,
+                eq.status || "OK"
+              );
               newPointCount += pts.filter((p) => !existing.has(p.id)).length;
             });
             return (
@@ -836,31 +803,13 @@ function WorkspacePanel({
 
 export default function EquipmentPage() {
   const history = useHistory();
-  useSite();
+  const { site } = useSite();
+  const activeDeployment = useActiveDeployment();
   const goToEquipment = (id) => history.push(`/legion/equipment/${id}`);
 
   const treeData = useMemo(
-    () => {
-      const floor1Equip = [
-        { id: "ahu1", label: "AHU-1", status: "Normal", type: "equip" },
-        ...Array.from({ length: 12 }, (_, i) => ({ id: 6100 + i + 1, label: `VAV-${i + 1}`, status: "Normal", type: "equip" })),
-      ];
-      const floor2Equip = [
-        { id: "ahu2", label: "AHU-2", status: "Normal", type: "equip" },
-        ...Array.from({ length: 8 }, (_, i) => ({ id: 6200 + i + 1, label: `VAV-${i + 13}`, status: "Normal", type: "equip" })),
-      ];
-      const floor3Equip = [
-        { id: "ahu3", label: "AHU-3", status: "Normal", type: "equip" },
-        ...Array.from({ length: 6 }, (_, i) => ({ id: 6300 + i + 1, label: `VAV-${i + 21}`, status: "Normal", type: "equip" })),
-      ];
-      return [
-        { id: "plant", label: "Chiller Plant", sub: "Chiller", type: "group", children: [{ id: 9001, label: "CH-1", status: "Online", type: "equip" }] },
-        { id: "f1", label: "Floor 1", sub: "AHU-1 • 12 VAVs", type: "floor", children: floor1Equip },
-        { id: "f2", label: "Floor 2", sub: "AHU-2 • 8 VAVs", type: "floor", children: floor2Equip },
-        { id: "f3", label: "Floor 3", sub: "AHU-3 • 6 VAVs", type: "floor", children: floor3Equip },
-      ];
-    },
-    []
+    () => activeDeploymentToEquipmentTree(activeDeployment),
+    [activeDeployment]
   );
 
   const [treeSearch, setTreeSearch] = useState("");

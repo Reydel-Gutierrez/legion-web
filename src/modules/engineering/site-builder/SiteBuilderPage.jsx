@@ -14,18 +14,15 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 
 import { useSite } from "../../../app/providers/SiteProvider";
+import { useEngineeringDraft } from "../../../hooks/useEngineeringDraft";
 import LegionHeroHeader from "../../../components/legion/LegionHeroHeader";
 import SiteTree from "./components/SiteTree";
 import NodeEditorPanel from "./components/NodeEditorPanel";
 import CreateSiteModal from "./components/CreateSiteModal";
 import EmptySiteState from "./components/EmptySiteState";
 import AddEquipmentModal from "../equipment-builder/components/AddEquipmentModal";
-import {
-  getMockSiteTree,
-  getMockEquipmentForSite,
-  isNewBuildingFlow,
-  treeToSiteStructure,
-} from "../data/mockEngineeringData";
+import { engineeringRepository } from "../../../lib/data";
+import { selectSiteTree, siteTreeToDraftSite } from "../../../hooks/useEngineeringDraft";
 
 // ---------------------------------------------------------------------------
 // Data helpers: build nested tree from flat structure
@@ -114,6 +111,15 @@ function treeToFlatData(siteTree) {
   return { site, buildings, floors };
 }
 
+/** Collect all floor IDs under a tree node (for delete: remove equipment on those floors) */
+function collectFloorIdsUnder(node) {
+  if (!node) return [];
+  if (node.type === "floor") return [node.id];
+  const ids = [];
+  (node.children || []).forEach((c) => ids.push(...collectFloorIdsUnder(c)));
+  return ids;
+}
+
 // ---------------------------------------------------------------------------
 // Validation
 // ---------------------------------------------------------------------------
@@ -150,8 +156,11 @@ function validateStructure(siteTree) {
 // SiteBuilderPage
 // ---------------------------------------------------------------------------
 export default function SiteBuilderPage() {
-  const { site } = useSite();
-  const [siteTree, setSiteTree] = useState(null);
+  const { site, setSite } = useSite();
+  const { draft, actions } = useEngineeringDraft();
+  const siteTree = selectSiteTree(draft);
+  const equipmentList = draft.equipment ?? [];
+
   const [expandedIds, setExpandedIds] = useState(new Set());
   const [selectedId, setSelectedId] = useState(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -159,8 +168,21 @@ export default function SiteBuilderPage() {
   const [validationErrors, setValidationErrors] = useState([]);
   const [showValidationToast, setShowValidationToast] = useState(false);
   const [deleteConfirmNode, setDeleteConfirmNode] = useState(null);
-  const [equipmentList, setEquipmentList] = useState([]);
   const [selectedEquipmentId, setSelectedEquipmentId] = useState(null);
+
+  // Expand all and set selected when draft has a site
+  useEffect(() => {
+    if (siteTree) {
+      const allIds = new Set();
+      const collectIds = (n) => {
+        if (n?.id) allIds.add(n.id);
+        (n?.children || []).forEach(collectIds);
+      };
+      collectIds(siteTree);
+      setExpandedIds(allIds);
+      if (!selectedId) setSelectedId(siteTree?.id ?? null);
+    }
+  }, [siteTree?.id]);
 
   const selectedNode = siteTree ? findNodeById(siteTree, selectedId) : null;
   const selectedEquipment = equipmentList.find((e) => e.id === selectedEquipmentId) || null;
@@ -168,31 +190,7 @@ export default function SiteBuilderPage() {
     ? getEquipmentBreadcrumb(selectedEquipment, siteTree)
     : getBreadcrumb(selectedNode, siteTree);
 
-  // Sync with Site Selector: New Building = empty, Miami HQ / Parkline = load mock
-  useEffect(() => {
-    if (isNewBuildingFlow(site)) {
-      setSiteTree(null);
-      setEquipmentList([]);
-      setExpandedIds(new Set());
-      setSelectedId(null);
-      setSelectedEquipmentId(null);
-      return;
-    }
-    const tree = getMockSiteTree(site);
-    const equipment = getMockEquipmentForSite(site);
-    if (tree) {
-      setSiteTree(tree);
-      setEquipmentList(equipment);
-      const allIds = new Set();
-      const collectIds = (n) => {
-        if (n?.id) allIds.add(n.id);
-        (n?.children || []).forEach(collectIds);
-      };
-      collectIds(tree);
-      setExpandedIds(allIds);
-      setSelectedId(tree?.id ?? null);
-    }
-  }, [site]);
+  // No longer load from mock on site change — draft is synced by EngineeringDraftProvider
 
   const toggleExpand = useCallback((id) => {
     setExpandedIds((prev) => {
@@ -213,7 +211,7 @@ export default function SiteBuilderPage() {
       parentId: siteId,
       children: [],
     };
-    const site = {
+    const tree = {
       id: siteId,
       type: "site",
       name: data.name,
@@ -223,14 +221,18 @@ export default function SiteBuilderPage() {
       parentId: null,
       children: [building],
     };
-    setSiteTree(site);
+    const newSite = siteTreeToDraftSite(tree);
+    if (newSite) actions.setSite(newSite);
+    actions.setEquipment([]);
     setExpandedIds(new Set([siteId, buildingId]));
     setSelectedId(buildingId);
     setShowCreateModal(false);
-  }, []);
+    // Switch current site to the new site name so it becomes "draft 1" in the selector and other pages see it
+    if (data.name && typeof setSite === "function") setSite(data.name.trim() || "New Site");
+  }, [actions, setSite]);
 
   const handleAddBuilding = useCallback(() => {
-    if (!siteTree) return;
+    if (!siteTree || !draft.site) return;
     const id = generateId();
     const building = {
       id,
@@ -239,16 +241,16 @@ export default function SiteBuilderPage() {
       parentId: siteTree.id,
       children: [],
     };
-    setSiteTree((prev) => ({
-      ...prev,
-      children: [...(prev.children || []), building],
-    }));
+    const newTree = { ...siteTree, children: [...(siteTree.children || []), building] };
+    const newSite = siteTreeToDraftSite(newTree);
+    if (newSite) actions.setSite(newSite);
     setExpandedIds((prev) => new Set([...prev, siteTree.id, id]));
     setSelectedId(id);
-  }, [siteTree]);
+  }, [siteTree, draft.site, actions]);
 
   const handleSaveNode = useCallback((id, form) => {
-    setSiteTree((prev) => updateNodeInTree(prev, id, {
+    if (!siteTree) return;
+    const updated = updateNodeInTree(siteTree, id, {
       name: form.name,
       displayLabel: form.displayLabel,
       description: form.description,
@@ -263,17 +265,25 @@ export default function SiteBuilderPage() {
       buildingCode: form.buildingCode,
       floorType: form.floorType,
       occupancyType: form.occupancyType,
-    }));
-  }, []);
+    });
+    const newSite = siteTreeToDraftSite(updated);
+    if (newSite) actions.setSite(newSite);
+  }, [siteTree, actions]);
 
   const handleDeleteNode = useCallback((id) => {
-    setSiteTree((prev) => {
-      const next = deleteNodeFromTree(prev, id);
-      return next;
-    });
+    if (!siteTree) return;
+    const node = findNodeById(siteTree, id);
+    const deletedFloorIds = node ? collectFloorIdsUnder(node) : [];
+    const newTree = deleteNodeFromTree(siteTree, id);
+    const newSite = newTree ? siteTreeToDraftSite(newTree) : null;
+    if (newSite) actions.setSite(newSite);
+    if (deletedFloorIds.length > 0) {
+      const newEquipment = (draft.equipment || []).filter((e) => !deletedFloorIds.includes(e.floorId));
+      actions.setEquipment(newEquipment);
+    }
     if (selectedId === id) setSelectedId(null);
     setDeleteConfirmNode(null);
-  }, [selectedId]);
+  }, [siteTree, draft.equipment, selectedId, actions]);
 
   const handleDeleteConfirm = useCallback((node) => {
     setDeleteConfirmNode(node);
@@ -314,47 +324,15 @@ export default function SiteBuilderPage() {
       status,
       notes: form.notes ?? "",
     };
-    setEquipmentList((prev) =>
-      prev.map((e) => (e.id === id ? { ...e, ...updates } : e))
-    );
-    setSiteTree((prev) => {
-      if (!prev) return prev;
-      const updateFloor = (node) => {
-        if (node.type !== "floor" || !node.equipmentPreview) return node;
-        const updated = node.equipmentPreview.map((eq) =>
-          eq.id === id ? { ...eq, ...updates } : eq
-        );
-        return { ...node, equipmentPreview: updated };
-      };
-      return {
-        ...prev,
-        children: (prev.children || []).map((b) => ({
-          ...b,
-          children: (b.children || []).map(updateFloor),
-        })),
-      };
-    });
-  }, []);
+    const next = (draft.equipment || []).map((e) => (e.id === id ? { ...e, ...updates } : e));
+    actions.setEquipment(next);
+  }, [draft.equipment, actions]);
 
   const handleDeleteEquipment = useCallback((id) => {
-    setEquipmentList((prev) => prev.filter((e) => e.id !== id));
-    setSiteTree((prev) => {
-      if (!prev) return prev;
-      const updateFloor = (node) => {
-        if (node.type !== "floor" || !node.equipmentPreview) return node;
-        const filtered = node.equipmentPreview.filter((eq) => eq.id !== id);
-        return { ...node, equipmentPreview: filtered, equipmentCount: filtered.length };
-      };
-      return {
-        ...prev,
-        children: (prev.children || []).map((b) => ({
-          ...b,
-          children: (b.children || []).map(updateFloor),
-        })),
-      };
-    });
+    const next = (draft.equipment || []).filter((e) => e.id !== id);
+    actions.setEquipment(next);
     setSelectedEquipmentId(null);
-  }, []);
+  }, [draft.equipment, actions]);
 
   const handleAddChild = useCallback(
     (node) => {
@@ -369,16 +347,16 @@ export default function SiteBuilderPage() {
           sortOrder: (node.children || []).length,
           children: [],
         };
-        setSiteTree((prev) =>
-          updateNodeInTree(prev, node.id, {
-            children: [...(node.children || []), floor],
-          })
-        );
+        const newTree = updateNodeInTree(siteTree, node.id, {
+          children: [...(node.children || []), floor],
+        });
+        const newSite = siteTreeToDraftSite(newTree);
+        if (newSite) actions.setSite(newSite);
         setExpandedIds((prev) => new Set([...prev, node.id]));
         setSelectedId(id);
       }
     },
-    [handleAddBuilding]
+    [handleAddBuilding, siteTree, actions]
   );
 
   const handleValidate = useCallback(() => {
@@ -394,6 +372,7 @@ export default function SiteBuilderPage() {
     const status = hasController ? "CONTROLLER_ASSIGNED" : "MISSING_CONTROLLER";
     const newEq = {
       id: `eq-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      siteId: draft.site?.id,
       floorId,
       name: data.name,
       displayLabel: data.displayLabel || data.name,
@@ -405,15 +384,9 @@ export default function SiteBuilderPage() {
       status,
       notes: data.notes || "",
     };
-    setSiteTree((prev) =>
-      updateNodeInTree(prev, floorId, {
-        equipmentPreview: [...(selectedNode.equipmentPreview || []), newEq],
-        equipmentCount: (selectedNode.equipmentPreview?.length || 0) + 1,
-      })
-    );
-    setEquipmentList((prev) => [...prev, newEq]);
+    actions.setEquipment([...(draft.equipment || []), newEq]);
     setShowAddEquipment(false);
-  }, [selectedNode]);
+  }, [selectedNode, draft.site, draft.equipment, actions]);
 
   const handleExpandAll = useCallback(() => {
     if (!siteTree) return;
@@ -620,7 +593,7 @@ export default function SiteBuilderPage() {
         show={showAddEquipment}
         onHide={() => setShowAddEquipment(false)}
         onCreate={handleAddEquipment}
-        siteStructure={treeToSiteStructure(siteTree)}
+        siteStructure={engineeringRepository.getEngineeringSiteStructureFromTree(siteTree)}
         defaultBuildingId={selectedNode?.type === "floor" ? selectedNode?.parentId : siteTree?.children?.[0]?.id}
         defaultFloorId={selectedNode?.type === "floor" ? selectedNode?.id : undefined}
       />

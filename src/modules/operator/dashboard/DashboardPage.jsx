@@ -1,5 +1,10 @@
 import React, { useMemo, useState, useEffect } from "react";
 import { useSite } from "../../../app/providers/SiteProvider";
+import { useActiveDeployment } from "../../../hooks/useEngineeringDraft";
+import {
+  getSummaryFromActiveDeployment,
+  getEquipmentHealthFromActiveDeployment,
+} from "../../../lib/activeDeploymentUtils";
 import {
   Container,
   Row,
@@ -14,13 +19,7 @@ import {
 import { Link } from "react-router-dom";
 import LegionHeroHeader from "../../../components/legion/LegionHeroHeader";
 import { Routes } from "../../../routes";
-import {
-  getDashboardSummary,
-  getRecentEvents,
-  getDashboardAlarms,
-  getEquipmentHealth,
-  getWeather,
-} from "../../../lib/data/mockDashboard";
+import { operatorRepository } from "../../../lib/data";
 import StatusDotLabel from "../../../components/legion/StatusDotLabel";
 
 const norm = (v) => String(v ?? "").trim().toLowerCase();
@@ -34,13 +33,26 @@ const normalizeSeverityKey = (severity) => {
 
 export default function DashboardPage() {
   const { site } = useSite();
+  const activeDeployment = useActiveDeployment();
   const [alarmFilter, setAlarmFilter] = useState("All");
   const [weather, setWeather] = useState(null);
 
-  const summary = useMemo(() => getDashboardSummary(), []);
-  const recentEvents = useMemo(() => getRecentEvents(), []);
-  const allAlarms = useMemo(() => getDashboardAlarms(), []);
-  const equipmentHealth = useMemo(() => getEquipmentHealth(), []);
+  const summary = useMemo(
+    () => (activeDeployment ? getSummaryFromActiveDeployment(activeDeployment) : { equipmentCount: 0, activeAlarms: 0, unackedAlarms: 0, devicesOffline: 0, openTasks: 0, energyRuntime: null }),
+    [activeDeployment]
+  );
+  const recentEvents = useMemo(
+    () => operatorRepository.getRecentEvents(site),
+    [site]
+  );
+  const allAlarms = useMemo(
+    () => operatorRepository.getOperatorDashboardAlarms(site),
+    [site]
+  );
+  const equipmentHealth = useMemo(
+    () => (activeDeployment ? getEquipmentHealthFromActiveDeployment(activeDeployment) : []),
+    [activeDeployment]
+  );
 
   const filteredAlarms = useMemo(() => {
     if (alarmFilter === "Unacked") return allAlarms.filter((a) => !a.ack);
@@ -59,11 +71,13 @@ export default function DashboardPage() {
 
   useEffect(() => {
     let mounted = true;
-    getWeather().then((w) => mounted && setWeather(w));
+    operatorRepository.getWeather(site).then((w) => {
+      if (mounted) setWeather(w);
+    });
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [site]);
 
   const renderTooltip = (text) => <Tooltip id="tooltip">{text}</Tooltip>;
 
