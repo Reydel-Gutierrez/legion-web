@@ -1,3 +1,4 @@
+import { USE_MOCK_DATA } from "../config";
 import {
   getSitesMock,
   getSiteByIdMock,
@@ -8,14 +9,15 @@ import {
   getEquipmentHealthMock,
   getWeatherMock,
   getWorkspacePointsForEquipmentMock,
+  getSchedulesMock,
+  getEventsMock,
+  getUsersMock,
+  getCurrentUserMock,
+  getTrendEquipmentListMock,
+  getTrendDataMock,
 } from "../adapters/mock/operatorAdapter";
 
-// Simple toggle so we can swap mock -> API later without touching pages.
-// By default we use mock data until a backend is available.
-export const USE_MOCK_DATA =
-  typeof process !== "undefined" && process.env && process.env.REACT_APP_USE_MOCK_DATA === "false"
-    ? false
-    : true;
+export { USE_MOCK_DATA };
 
 // Sites
 export function getSites() {
@@ -65,5 +67,39 @@ export function getAlarms(siteId) {
 export function getWorkspacePointsForEquipment(equipmentId, equipmentName, status) {
   if (USE_MOCK_DATA) return getWorkspacePointsForEquipmentMock(equipmentId, equipmentName, status);
   return getWorkspacePointsForEquipmentMock(equipmentId, equipmentName, status);
+}
+
+// Schedules
+export function getSchedules(siteId) {
+  if (USE_MOCK_DATA) return getSchedulesMock(siteId);
+  return getSchedulesMock(siteId);
+}
+
+// Events (full list)
+export function getEvents(siteId) {
+  if (USE_MOCK_DATA) return getEventsMock(siteId);
+  return getEventsMock(siteId);
+}
+
+// Users
+export function getCurrentUser() {
+  if (USE_MOCK_DATA) return getCurrentUserMock();
+  return getCurrentUserMock();
+}
+
+export function getUsers(siteId) {
+  if (USE_MOCK_DATA) return getUsersMock(siteId);
+  return getUsersMock(siteId);
+}
+
+// Trends
+export function getTrendEquipmentList(siteId) {
+  if (USE_MOCK_DATA) return getTrendEquipmentListMock(siteId);
+  return getTrendEquipmentListMock(siteId);
+}
+
+export function getTrendData(siteId, equipmentId, range) {
+  if (USE_MOCK_DATA) return getTrendDataMock(siteId, equipmentId, range);
+  return getTrendDataMock(siteId, equipmentId, range);
 }
 

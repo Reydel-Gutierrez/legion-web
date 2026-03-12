@@ -37,6 +37,8 @@
  * @typedef {Object} Alarm
  * @property {string} id
  * @property {string} siteId
+ * @property {string} [source] // equipment or system source
+ * @property {string} [priority] // alias or same as severity for API
  * @property {string} equipmentName
  * @property {string} equipmentType
  * @property {string} point
@@ -65,6 +67,14 @@
  * @property {number} controllerCount
  * @property {number} graphicsCount
  * @property {number} unmappedRequiredPoints
+ */
+
+/**
+ * @typedef {Object} DeploymentSummary
+ * @property {string} version
+ * @property {string|null} lastDeployedAt
+ * @property {string|null} deployedBy
+ * @property {string} systemStatus
  */
 
 export {};

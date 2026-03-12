@@ -1,6 +1,7 @@
 {
   "name": "legion-web",
   "version": "0.1.0",
+  "description": "Legion Web — Building Automation Systems (BAS) operator and engineering frontend.",
   "private": true,
   "dependencies": {
     "@fortawesome/fontawesome-free": "^5.15.4",

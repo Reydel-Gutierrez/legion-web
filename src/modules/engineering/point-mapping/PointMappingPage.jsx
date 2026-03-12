@@ -7,11 +7,6 @@ import { faMapMarkerAlt } from "@fortawesome/free-solid-svg-icons";
 import { useSite } from "../../../app/providers/SiteProvider";
 import { useEngineeringDraft } from "../../../hooks/useEngineeringDraft";
 import LegionHeroHeader from "../../../components/legion/LegionHeroHeader";
-import {
-  getTemplatePoints,
-  autoMapPoints,
-  MAPPING_STATUSES,
-} from "../data/mockPointMappingData";
 import { engineeringRepository } from "../../../lib/data";
 import { selectSiteTree } from "../../../hooks/useEngineeringDraft";
 import MappingContextCard from "./components/MappingContextCard";
@@ -147,7 +142,7 @@ export default function PointMappingPage() {
   }, [equipmentList, draft.mappings]);
 
   const templatePoints = useMemo(
-    () => getTemplatePoints(equipment?.templateName),
+    () => engineeringRepository.getTemplatePoints(equipment?.templateName),
     [equipment?.templateName]
   );
   const discoveredObjects = useMemo(
@@ -160,9 +155,9 @@ export default function PointMappingPage() {
     (templatePoints || []).forEach((tp) => {
       const mapId = mappings[tp.id];
       if (mapId) {
-        statuses[tp.id] = autoMappedIds.has(tp.id) ? MAPPING_STATUSES.AUTO_MAPPED : MAPPING_STATUSES.MAPPED;
+        statuses[tp.id] = autoMappedIds.has(tp.id) ? engineeringRepository.MAPPING_STATUSES.AUTO_MAPPED : engineeringRepository.MAPPING_STATUSES.MAPPED;
       } else {
-        statuses[tp.id] = tp.required ? MAPPING_STATUSES.MISSING : MAPPING_STATUSES.OPTIONAL_UNMAPPED;
+        statuses[tp.id] = tp.required ? engineeringRepository.MAPPING_STATUSES.MISSING : engineeringRepository.MAPPING_STATUSES.OPTIONAL_UNMAPPED;
       }
     });
     return statuses;
@@ -220,7 +215,7 @@ export default function PointMappingPage() {
   }, [equipment, mappings, actions]);
 
   const handleAutoMap = useCallback(() => {
-    const newMappings = autoMapPoints(templatePoints, discoveredObjects, mappings);
+    const newMappings = engineeringRepository.autoMapPoints(templatePoints, discoveredObjects, mappings);
     const newAutoIds = new Set();
     Object.keys(newMappings).forEach((tpId) => {
       if (newMappings[tpId] && !mappings[tpId]) newAutoIds.add(tpId);

@@ -19,9 +19,7 @@ import {
 import { useSite } from "../../../app/providers/SiteProvider";
 import { useEngineeringDraft } from "../../../hooks/useEngineeringDraft";
 import LegionHeroHeader from "../../../components/legion/LegionHeroHeader";
-import {
-  SOURCE,
-} from "../data/mockTemplateLibraryData";
+import { engineeringRepository } from "../../../lib/data";
 import EmptyTemplateState from "./components/EmptyTemplateState";
 import EquipmentTemplatesTable from "./components/EquipmentTemplatesTable";
 import GraphicTemplatesTable from "./components/GraphicTemplatesTable";
@@ -46,7 +44,7 @@ function globalEquipmentToSite(globalRow) {
     defaultGraphic: globalRow.defaultGraphicName || null,
     description: "",
     points: [],
-    source: SOURCE.GLOBAL_IMPORTED,
+    source: engineeringRepository.SOURCE.GLOBAL_IMPORTED,
     lastUpdated: new Date().toISOString().slice(0, 10),
   };
 }
@@ -60,7 +58,7 @@ function globalGraphicToSite(globalRow, equipmentTemplates) {
     name: globalRow.name,
     appliesTo,
     boundPointCount: globalRow.boundPointCount,
-    source: SOURCE.GLOBAL_IMPORTED,
+    source: engineeringRepository.SOURCE.GLOBAL_IMPORTED,
     lastUpdated: new Date().toISOString().slice(0, 10),
   };
 }
@@ -152,7 +150,7 @@ export default function TemplateLibraryPage() {
       const newTemplate = {
         id: generateId("site-eq"),
         ...templateData,
-        source: SOURCE.SITE_CUSTOM,
+        source: engineeringRepository.SOURCE.SITE_CUSTOM,
       };
       actions.setTemplates({ equipmentTemplates: [...prevEq, newTemplate], graphicTemplates: prevGfx });
     }
@@ -176,7 +174,7 @@ export default function TemplateLibraryPage() {
         ...p,
         id: `pt-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
       })),
-      source: SOURCE.SITE_CUSTOM,
+      source: engineeringRepository.SOURCE.SITE_CUSTOM,
       lastUpdated: new Date().toISOString().slice(0, 10),
     };
     const prevEq = draft.templates?.equipmentTemplates ?? [];
@@ -195,7 +193,7 @@ export default function TemplateLibraryPage() {
         ...p,
         id: `pt-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
       })),
-      source: SOURCE.SITE_CUSTOM,
+      source: engineeringRepository.SOURCE.SITE_CUSTOM,
       lastUpdated: new Date().toISOString().slice(0, 10),
     };
     const prevEq = draft.templates?.equipmentTemplates ?? [];
@@ -213,7 +211,7 @@ export default function TemplateLibraryPage() {
       ...row,
       id: generateId("site-gfx"),
       name: `${row.name} (Copy)`,
-      source: SOURCE.SITE_CUSTOM,
+      source: engineeringRepository.SOURCE.SITE_CUSTOM,
       lastUpdated: new Date().toISOString().slice(0, 10),
     };
     const prevGfx = draft.templates?.graphicTemplates ?? [];

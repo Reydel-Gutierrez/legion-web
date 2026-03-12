@@ -22,8 +22,7 @@ import DeployAnywayModal from "../validation-center/components/DeployAnywayModal
 import { useValidation } from "../../../app/providers/ValidationProvider";
 import { useEngineeringDraft } from "../../../hooks/useEngineeringDraft";
 import { Routes } from "../../../routes";
-import { READINESS_STATUS } from "../../../lib/data/repositories/engineeringRepository";
-import { hasPendingChanges } from "./data/mockDeploymentData";
+import { engineeringRepository, deploymentRepository } from "../../../lib/data";
 
 export default function DeploymentPage() {
   const history = useHistory();
@@ -52,21 +51,21 @@ export default function DeploymentPage() {
   const [showOverrideModal, setShowOverrideModal] = useState(false);
   const [toastMessage, setToastMessage] = useState(null);
 
-  const hasPending = hasPendingChanges(pendingChanges);
+  const hasPending = deploymentRepository.hasPendingChanges(pendingChanges);
   const readinessLabel =
-    readiness === READINESS_STATUS.READY
+    readiness === engineeringRepository.READINESS_STATUS.READY
       ? "Ready"
-      : readiness === READINESS_STATUS.BLOCKED
+      : readiness === engineeringRepository.READINESS_STATUS.BLOCKED
       ? "Deployment Blocked"
-      : readiness === READINESS_STATUS.WARNINGS
+      : readiness === engineeringRepository.READINESS_STATUS.WARNINGS
       ? "Ready with Warnings"
       : "—";
   const readinessVariant =
-    readiness === READINESS_STATUS.READY
+    readiness === engineeringRepository.READINESS_STATUS.READY
       ? "success"
-      : readiness === READINESS_STATUS.BLOCKED
+      : readiness === engineeringRepository.READINESS_STATUS.BLOCKED
       ? "danger"
-      : readiness === READINESS_STATUS.WARNINGS
+      : readiness === engineeringRepository.READINESS_STATUS.WARNINGS
       ? "warning"
       : "secondary";
 
@@ -204,7 +203,7 @@ export default function DeploymentPage() {
         <Card className="bg-primary border border-light border-opacity-10 shadow-sm mb-3">
           <Card.Header className="bg-transparent border-light border-opacity-10 d-flex align-items-center justify-content-between flex-wrap gap-2">
             <span className="text-white fw-bold">Deployment Readiness</span>
-            {readiness === READINESS_STATUS.BLOCKED && (
+            {readiness === engineeringRepository.READINESS_STATUS.BLOCKED && (
               <Badge bg="danger">Deployment Blocked</Badge>
             )}
           </Card.Header>

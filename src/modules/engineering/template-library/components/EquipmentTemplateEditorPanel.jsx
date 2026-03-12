@@ -10,11 +10,7 @@ import {
   faCopy as faDuplicate,
 } from "@fortawesome/free-solid-svg-icons";
 import LegionFormSelect from "../../../../components/legion/LegionFormSelect";
-import {
-  SOURCE,
-  EXPECTED_POINT_TYPES,
-  getStarterPointsForEquipmentType,
-} from "../../data/mockTemplateLibraryData";
+import { engineeringRepository } from "../../../../lib/data";
 
 const EQUIPMENT_TYPES = [
   { value: "VAV", label: "VAV" },
@@ -112,7 +108,7 @@ export default function EquipmentTemplateEditorPanel({
 
   const loadStarterSet = useCallback((type) => {
     if (readOnly) return;
-    const starter = getStarterPointsForEquipmentType(type);
+    const starter = engineeringRepository.getStarterPointsForEquipmentType(type);
     if (starter.length) setPoints(starter.map(toPointRow));
   }, [readOnly]);
 
@@ -235,7 +231,7 @@ export default function EquipmentTemplateEditorPanel({
               {template?.source && (
                 <span
                   className={`template-library-source-badge ${
-                    template.source === SOURCE.SITE_CUSTOM
+                    template.source === engineeringRepository.SOURCE.SITE_CUSTOM
                       ? "template-library-source-badge--site"
                       : "template-library-source-badge--global"
                   }`}
@@ -453,7 +449,7 @@ export default function EquipmentTemplateEditorPanel({
                             <LegionFormSelect
                               value={p.expectedType}
                               onChange={(e) => updatePoint(p.id, "expectedType", e.target.value)}
-                              options={EXPECTED_POINT_TYPES}
+                              options={engineeringRepository.EXPECTED_POINT_TYPES}
                               placeholder="Type"
                             />
                           )}

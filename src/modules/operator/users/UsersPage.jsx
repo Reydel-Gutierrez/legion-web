@@ -14,6 +14,7 @@ import LegionHeroHeader from "../../../components/legion/LegionHeroHeader";
 import LegionTablePagination from "../../../components/legion/LegionTablePagination";
 import StatusDotLabel from "../../../components/legion/StatusDotLabel";
 import { useTablePagination } from "../../../hooks/useTablePagination";
+import { operatorRepository } from "../../../lib/data";
 
 export default function UsersPage() {
   const { site } = useSite();
@@ -23,77 +24,8 @@ export default function UsersPage() {
   const [role, setRole] = useState("All"); // All | Operator | Engineer | Admin | Viewer
   const [status, setStatus] = useState("All"); // All | Active | Disabled
 
-  // Mock current logged-in user (replace later with /me)
-  const currentUser = useMemo(
-    () => ({
-      username: "reydel",
-      displayName: "Reydel Gutierrez",
-      role: "Engineer",
-    }),
-    []
-  );
-
-  // Mock data (replace with API later)
-  const users = useMemo(
-    () => [
-      {
-        id: "USR-1001",
-        username: "reydel",
-        displayName: "Reydel Gutierrez",
-        email: "reydel@legion.local",
-        role: "Engineer",
-        status: "Active",
-        sites: ["Miami HQ", "New Site"],
-        lastLogin: "2/22/26 14:03",
-        createdAt: "2/01/26 09:12",
-      },
-      {
-        id: "USR-1002",
-        username: "tech.jorge",
-        displayName: "Jorge M.",
-        email: "jorge@legion.local",
-        role: "Operator",
-        status: "Active",
-        sites: ["Miami HQ"],
-        lastLogin: "2/22/26 12:55",
-        createdAt: "2/10/26 15:41",
-      },
-      {
-        id: "USR-1003",
-        username: "admin",
-        displayName: "Site Admin",
-        email: "admin@legion.local",
-        role: "Admin",
-        status: "Active",
-        sites: ["Miami HQ", "New Site"],
-        lastLogin: "2/22/26 08:04",
-        createdAt: "1/18/26 10:00",
-      },
-      {
-        id: "USR-1004",
-        username: "viewer.nina",
-        displayName: "Nina R.",
-        email: "nina@legion.local",
-        role: "Viewer",
-        status: "Active",
-        sites: ["Miami HQ"],
-        lastLogin: "2/21/26 19:16",
-        createdAt: "2/15/26 11:22",
-      },
-      {
-        id: "USR-1005",
-        username: "eng.paul",
-        displayName: "Paul S.",
-        email: "paul@legion.local",
-        role: "Engineer",
-        status: "Disabled",
-        sites: ["New Site"],
-        lastLogin: "2/10/26 09:44",
-        createdAt: "1/28/26 13:09",
-      },
-    ],
-    []
-  );
+  const currentUser = useMemo(() => operatorRepository.getCurrentUser(), []);
+  const users = useMemo(() => operatorRepository.getUsers(site), [site]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();

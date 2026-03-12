@@ -1,8 +1,9 @@
 import React from "react";
 import { Card } from "@themesberg/react-bootstrap";
 import LegionFormSelect from "../../../../components/legion/LegionFormSelect";
-import { MAPPING_STATUSES, BACNET_OBJECT_TYPES } from "../../data/mockPointMappingData";
+import { engineeringRepository } from "../../../../lib/data";
 
+const { MAPPING_STATUSES, BACNET_OBJECT_TYPES } = engineeringRepository;
 const STATUS_CHIP_CLASS = {
   [MAPPING_STATUSES.MAPPED]: "point-mapping-row-chip point-mapping-row-chip--mapped",
   [MAPPING_STATUSES.AUTO_MAPPED]: "point-mapping-row-chip point-mapping-row-chip--auto-mapped",

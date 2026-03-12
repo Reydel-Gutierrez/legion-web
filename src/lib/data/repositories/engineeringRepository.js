@@ -21,6 +21,7 @@ import {
   GRAPHIC_STATUSES,
   GRAPHIC_TYPES,
   MOCK_MAPPED_POINTS,
+  BINDING_DISPLAY_OPTIONS,
   getGraphicForEquipment,
   getMockGraphicsTree,
   getGraphicById,
@@ -36,6 +37,26 @@ import {
   runValidation,
   getEmptyValidationState,
 } from "../../../modules/engineering/validation-center/data/mockValidationData";
+
+import {
+  getTemplatePoints,
+  autoMapPoints,
+  MAPPING_STATUSES,
+  BACNET_OBJECT_TYPES,
+  GRAPHICS_VALUE_STATES,
+  getPointDisplayInfoForEquipment,
+  DISCOVERED_OBJECTS_BY_DEVICE,
+  getDiscoveredObjects,
+} from "../../../modules/engineering/data/mockPointMappingData";
+
+import {
+  SOURCE,
+  EXPECTED_POINT_TYPES,
+  getSiteTemplates,
+  getStarterPointsForEquipmentType,
+  GLOBAL_EQUIPMENT_TEMPLATES,
+  GLOBAL_GRAPHIC_TEMPLATES,
+} from "../../../modules/engineering/data/mockTemplateLibraryData";
 
 export const USE_MOCK_ENGINEERING_DATA = true;
 export { EQUIPMENT_GROUPS, EQUIPMENT_STATUSES };
@@ -82,10 +103,33 @@ export {
   GRAPHIC_STATUSES,
   GRAPHIC_TYPES,
   MOCK_MAPPED_POINTS,
+  BINDING_DISPLAY_OPTIONS,
   getGraphicForEquipment,
   getMockGraphicsTree,
   getGraphicById,
   getGraphicsContextOptions,
+};
+
+// Point mapping (constants and helpers; pages use repo instead of mock file)
+export {
+  getTemplatePoints,
+  autoMapPoints,
+  MAPPING_STATUSES,
+  BACNET_OBJECT_TYPES,
+  GRAPHICS_VALUE_STATES,
+  getPointDisplayInfoForEquipment,
+  DISCOVERED_OBJECTS_BY_DEVICE,
+  getDiscoveredObjects,
+};
+
+// Template library (constants and helpers)
+export {
+  SOURCE,
+  EXPECTED_POINT_TYPES,
+  getSiteTemplates,
+  getStarterPointsForEquipmentType,
+  GLOBAL_EQUIPMENT_TEMPLATES,
+  GLOBAL_GRAPHIC_TEMPLATES,
 };
 
 // Validation

@@ -9,10 +9,7 @@ import {
 } from "@themesberg/react-bootstrap";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faSearch, faFileImport } from "@fortawesome/free-solid-svg-icons";
-import {
-  GLOBAL_EQUIPMENT_TEMPLATES,
-  GLOBAL_GRAPHIC_TEMPLATES,
-} from "../../data/mockTemplateLibraryData";
+import { engineeringRepository } from "../../../../lib/data";
 
 /**
  * Modal (drawer-style) for importing templates from the Legion Global Template Library.
@@ -33,8 +30,8 @@ export default function ImportFromGlobalModal({
 
   const filteredEquipment = useMemo(() => {
     const q = (searchEquipment || "").toLowerCase().trim();
-    if (!q) return GLOBAL_EQUIPMENT_TEMPLATES;
-    return GLOBAL_EQUIPMENT_TEMPLATES.filter(
+    if (!q) return engineeringRepository.GLOBAL_EQUIPMENT_TEMPLATES;
+    return engineeringRepository.GLOBAL_EQUIPMENT_TEMPLATES.filter(
       (t) =>
         (t.name || "").toLowerCase().includes(q) ||
         (t.equipmentType || "").toLowerCase().includes(q)
@@ -43,8 +40,8 @@ export default function ImportFromGlobalModal({
 
   const filteredGraphic = useMemo(() => {
     const q = (searchGraphic || "").toLowerCase().trim();
-    if (!q) return GLOBAL_GRAPHIC_TEMPLATES;
-    return GLOBAL_GRAPHIC_TEMPLATES.filter(
+    if (!q) return engineeringRepository.GLOBAL_GRAPHIC_TEMPLATES;
+    return engineeringRepository.GLOBAL_GRAPHIC_TEMPLATES.filter(
       (t) =>
         (t.name || "").toLowerCase().includes(q) ||
         (t.appliesToEquipmentType || "").toLowerCase().includes(q)
@@ -92,10 +89,10 @@ export default function ImportFromGlobalModal({
   };
 
   const handleImport = () => {
-    const equipmentToImport = GLOBAL_EQUIPMENT_TEMPLATES.filter((t) =>
+    const equipmentToImport = engineeringRepository.GLOBAL_EQUIPMENT_TEMPLATES.filter((t) =>
       selectedEquipmentIds.has(t.id)
     );
-    const graphicToImport = GLOBAL_GRAPHIC_TEMPLATES.filter((t) =>
+    const graphicToImport = engineeringRepository.GLOBAL_GRAPHIC_TEMPLATES.filter((t) =>
       selectedGraphicIds.has(t.id)
     );
     if (typeof onImport === "function") {

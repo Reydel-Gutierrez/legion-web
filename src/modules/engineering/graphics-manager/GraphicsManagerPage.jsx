@@ -7,7 +7,6 @@ import { useSite } from "../../../app/providers/SiteProvider";
 import { useEngineeringDraft, selectSiteTree } from "../../../hooks/useEngineeringDraft";
 import LegionHeroHeader from "../../../components/legion/LegionHeroHeader";
 import { engineeringRepository } from "../../../lib/data";
-import { getPointDisplayInfoForEquipment } from "../data/mockPointMappingData";
 import GraphicsContextCard from "./components/GraphicsContextCard";
 import GraphicsToolbar from "./components/GraphicsToolbar";
 import GraphicsExplorer from "./components/GraphicsExplorer";
@@ -59,7 +58,7 @@ export default function GraphicsManagerPage() {
   );
 
   const availablePoints = useMemo(
-    () => getPointDisplayInfoForEquipment(selectedEquipment),
+    () => engineeringRepository.getPointDisplayInfoForEquipment(selectedEquipment),
     [selectedEquipment]
   );
 

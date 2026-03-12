@@ -5,7 +5,7 @@
  */
 
 import { SEVERITY, CATEGORY, READINESS_STATUS, ACTION_TARGET } from "../../../lib/data/repositories/engineeringRepository";
-import { getTemplatePoints } from "../data/mockPointMappingData";
+import { engineeringRepository } from "../../../lib/data";
 import { getMappingsForEquipment } from "./draftModel";
 
 let issueIdCounter = 0;
@@ -86,7 +86,7 @@ export function validateDraft(draft) {
   // 3. Required points unmapped; optional unmapped (warning)
   equipment.forEach((eq) => {
     if (!eq.controllerRef || !eq.templateName) return;
-    const templatePoints = getTemplatePoints(eq.templateName);
+    const templatePoints = engineeringRepository.getTemplatePoints(eq.templateName);
     const eqMappings = getMappingsForEquipment(mappings, eq.id);
     templatePoints.forEach((tp) => {
       const mapped = !!eqMappings[tp.id];

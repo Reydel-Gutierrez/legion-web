@@ -6,8 +6,6 @@
 
 import { createSite, createEquipment, createEquipmentTemplate, createGraphicTemplate } from "./draftModel";
 import { engineeringRepository } from "../../../lib/data";
-import { DISCOVERED_OBJECTS_BY_DEVICE } from "../data/mockPointMappingData";
-import { getSiteTemplates } from "../data/mockTemplateLibraryData";
 
 /** Build draft site from site tree (from getMockSiteTree) */
 function buildSiteFromTree(siteTree) {
@@ -87,7 +85,7 @@ function buildDiscoveredObjectsFromMock(discoveredObjectsByDevice) {
 
 /** Equipment templates from template library mock */
 function buildEquipmentTemplatesFromMock(siteName) {
-  const { equipment = [] } = getSiteTemplates(siteName || "Miami HQ", true);
+  const { equipment = [] } = engineeringRepository.getSiteTemplates(siteName || "Miami HQ", true);
   return equipment.map((t) =>
     createEquipmentTemplate({
       id: t.id,
@@ -105,7 +103,7 @@ function buildEquipmentTemplatesFromMock(siteName) {
 
 /** Graphic templates from template library mock */
 function buildGraphicTemplatesFromMock(siteName) {
-  const { graphic = [] } = getSiteTemplates(siteName || "Miami HQ", true);
+  const { graphic = [] } = engineeringRepository.getSiteTemplates(siteName || "Miami HQ", true);
   return graphic.map((g) =>
     createGraphicTemplate({
       id: g.id,
@@ -218,10 +216,10 @@ export function createSeedDraft(siteName) {
   const siteId = site?.id || (siteTree?.id ?? null);
   const equipment = buildEquipmentFromMock(mockEquipment, siteId);
   const discoveredDevices = buildDiscoveredDevicesFromMock(mockDiscovery);
-  const discoveredObjects = buildDiscoveredObjectsFromMock(DISCOVERED_OBJECTS_BY_DEVICE);
+  const discoveredObjects = buildDiscoveredObjectsFromMock(engineeringRepository.DISCOVERED_OBJECTS_BY_DEVICE);
   const equipmentTemplates = buildEquipmentTemplatesFromMock(siteName);
   const graphicTemplates = buildGraphicTemplatesFromMock(siteName);
-  const mappings = buildInitialMappings(equipment, DISCOVERED_OBJECTS_BY_DEVICE);
+  const mappings = buildInitialMappings(equipment, engineeringRepository.DISCOVERED_OBJECTS_BY_DEVICE);
   const graphics = buildGraphicsFromMock(siteName);
 
   return {

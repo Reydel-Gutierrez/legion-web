@@ -1,5 +1,6 @@
 import React, { useMemo, useRef, useState } from "react";
 import { useSite } from "../../../app/providers/SiteProvider";
+import { operatorRepository } from "../../../lib/data";
 import {
   Container,
   Row,
@@ -21,7 +22,7 @@ import LegionHeroHeader from "../../../components/legion/LegionHeroHeader";
  */
 
 export default function TrendsPage() {
-  useSite(); // consume context for global site sync
+  const { site } = useSite();
 
   // UI state
   const [equipSearch, setEquipSearch] = useState("");
@@ -37,16 +38,9 @@ export default function TrendsPage() {
   const svgRef = useRef(null);
   const [hoverIdx, setHoverIdx] = useState(null);
 
-  // Mock equipment list
   const equipmentList = useMemo(
-    () => [
-      { id: "VAV-2", type: "VAV", label: "VAV-2 (2nd Floor East)" },
-      { id: "VAV-7", type: "VAV", label: "VAV-7 (3rd Floor North)" },
-      { id: "AHU-1", type: "AHU", label: "AHU-1 (Main Air Handler)" },
-      { id: "FCU-3", type: "FCU", label: "FCU-3 (Amenity)" },
-      { id: "OAU-1", type: "OAU", label: "OAU-1 (Outdoor Air Unit)" },
-    ],
-    []
+    () => operatorRepository.getTrendEquipmentList(site),
+    [site]
   );
 
   const filteredEquipment = useMemo(() => {
@@ -92,57 +86,14 @@ export default function TrendsPage() {
     return arr;
   };
 
-  // --- Mock trend data per range (cap max 14D) ---
   const trendBundle = useMemo(() => {
-    // You said: max 2 weeks, after that data is lost
-    // So we only support up to 14D in UI.
-
-    // Choose sample density per range:
-    // 6H  -> every 20 min (18 points)
-    // 24H -> every 1 hr   (24 points)
-    // 7D  -> every 6 hr   (28 points)
-    // 14D -> every 12 hr  (28 points)
-    const config =
-      range === "6H"
-        ? { points: 18, stepMin: 20 }
-        : range === "7D"
-        ? { points: 28, stepMin: 6 * 60 }
-        : range === "14D"
-        ? { points: 28, stepMin: 12 * 60 }
-        : { points: 24, stepMin: 60 }; // 24H default
-
-    const timestamps = buildTimestamps(config.points, config.stepMin);
-
-    const seed = selectedEquip.length * (range.length + 1);
-    const damper = [];
-    const flow = [];
-    const dat = [];
-
-    for (let i = 0; i < config.points; i++) {
-      const d = Math.max(
-        0,
-        Math.min(100, 35 + 25 * Math.sin((i + seed) / 3) + 10 * Math.sin((i + seed) / 1.7))
-      );
-      const f = Math.max(
-        0,
-        Math.min(1200, 520 + 260 * Math.sin((i + seed) / 4) + 120 * Math.cos((i + seed) / 2.3))
-      );
-      const t = Math.max(
-        45,
-        Math.min(65, 55 + 4 * Math.sin((i + seed) / 5) + 2 * Math.cos((i + seed) / 2.9))
-      );
-
-      damper.push(Number(d.toFixed(1)));
-      flow.push(Number(f.toFixed(0)));
-      dat.push(Number(t.toFixed(1)));
-    }
-
+    const d = operatorRepository.getTrendData(site, selectedEquip, range);
     return {
-      timestamps, // Date[]
-      labels: timestamps.map(fmtExact), // exact timestamp strings
-      series: { damper, flow, dat },
+      timestamps: d.timestamps,
+      labels: d.timestamps.map(fmtExact),
+      series: { damper: d.damper, flow: d.flow, dat: d.dat },
     };
-  }, [range, selectedEquip]);
+  }, [site, range, selectedEquip]);
 
   const { timestamps, labels: timeLabels, series } = trendBundle;
 

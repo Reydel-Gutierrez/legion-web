@@ -194,3 +194,73 @@ export function getWorkspacePointsForEquipmentMock(equipmentId, equipmentName, s
   return rows;
 }
 
+// Schedules (mock list for Schedules page)
+export function getSchedulesMock(/* siteId */) {
+  return [
+    { id: "SCH-10021", name: "AHU-1 Weekday Occupancy", equipment: "AHU-1", equipType: "AHU", point: "Occ Mode", action: "Occupied", startTime: "07:00", endTime: "18:30", days: ["Mon", "Tue", "Wed", "Thu", "Fri"], enabled: true, updatedAt: "2/22/26 13:10", updatedBy: "reydel" },
+    { id: "SCH-10018", name: "VAV-2 Afterhours Setback", equipment: "VAV-2", equipType: "VAV", point: "Space Temp SP", action: "Setback 78°F", startTime: "18:30", endTime: "06:30", days: ["Mon", "Tue", "Wed", "Thu", "Fri"], enabled: true, updatedAt: "2/21/26 09:22", updatedBy: "tech.jorge" },
+    { id: "SCH-09990", name: "OAU-1 Weekend Off", equipment: "OAU-1", equipType: "OAU", point: "Enable", action: "OFF", startTime: "00:00", endTime: "23:59", days: ["Sat", "Sun"], enabled: false, updatedAt: "2/20/26 16:44", updatedBy: "admin" },
+  ];
+}
+
+// Events (full list for Events page; getRecentEvents is dashboard subset)
+export function getEventsMock(/* siteId */) {
+  return [
+    { id: "EVT-20031", type: "Command", equipName: "VAV-2", equipType: "VAV", point: "Damper Cmd", message: "Command issued: Damper Cmd = 65%", actor: "Operator", state: "New", occurredAt: "2/22/26 14:10", severity: "Info" },
+    { id: "EVT-20027", type: "Comm", equipName: "AHU-1", equipType: "AHU", point: "Device Status", message: "Device went OFFLINE (no response)", actor: "Engine", state: "New", occurredAt: "2/22/26 13:42", severity: "Warn" },
+    { id: "EVT-20021", type: "Device", equipName: "OAU-1", equipType: "OAU", point: "Filter DP", message: "Point discovered and added to database", actor: "Engineering", state: "Reviewed", occurredAt: "2/22/26 11:08", severity: "Info" },
+    { id: "EVT-20015", type: "User", equipName: "Site", equipType: "Miami HQ", point: "Login", message: "User logged in", actor: "reydel", state: "Reviewed", occurredAt: "2/22/26 08:01", severity: "Info" },
+    { id: "EVT-20002", type: "System", equipName: "Engine-01", equipType: "System", point: "Restart", message: "Engine restarted successfully", actor: "System", state: "Reviewed", occurredAt: "2/21/26 22:17", severity: "Info" },
+    { id: "EVT-19991", type: "Schedule", equipName: "AHU-1", equipType: "AHU", point: "Occ Mode", message: "Occupied Mode = ON", actor: "Schedule", state: "Reviewed", occurredAt: "2/21/26 06:00", severity: "Info" },
+    { id: "EVT-19972", type: "Comm", equipName: "CHW-P-1", equipType: "Pump", point: "Device Status", message: "Device back ONLINE", actor: "Engine", state: "Reviewed", occurredAt: "2/20/26 19:33", severity: "Info" },
+    { id: "EVT-19965", type: "Alarm", equipName: "OAU-1", equipType: "OAU", point: "Filter DP", message: "Filter dirty - DP high", actor: "Device", state: "Reviewed", occurredAt: "2/20/26 16:10", severity: "Major" },
+    { id: "EVT-19950", type: "Command", equipName: "FCU-3", equipType: "FCU", point: "Space Temp SP", message: "Space Temp SP = 72 deg F", actor: "Operator", state: "Reviewed", occurredAt: "2/20/26 14:00", severity: "Info" },
+  ];
+}
+
+// Users and current user
+export function getCurrentUserMock() {
+  return { username: "reydel", displayName: "Reydel Gutierrez", role: "Engineer" };
+}
+
+export function getUsersMock(/* siteId */) {
+  return [
+    { id: "USR-1001", username: "reydel", displayName: "Reydel Gutierrez", email: "reydel@legion.local", role: "Engineer", status: "Active", sites: ["Miami HQ", "New Site"], lastLogin: "2/22/26 14:03", createdAt: "2/01/26 09:12" },
+    { id: "USR-1002", username: "tech.jorge", displayName: "Jorge M.", email: "jorge@legion.local", role: "Operator", status: "Active", sites: ["Miami HQ"], lastLogin: "2/22/26 12:55", createdAt: "2/10/26 15:41" },
+    { id: "USR-1003", username: "admin", displayName: "Site Admin", email: "admin@legion.local", role: "Admin", status: "Active", sites: ["Miami HQ", "New Site"], lastLogin: "2/22/26 08:04", createdAt: "1/18/26 10:00" },
+    { id: "USR-1004", username: "viewer.nina", displayName: "Nina R.", email: "nina@legion.local", role: "Viewer", status: "Active", sites: ["Miami HQ"], lastLogin: "2/21/26 19:16", createdAt: "2/15/26 11:20" },
+  ];
+}
+
+// Trends: equipment list and trend data (timestamps + series)
+export function getTrendEquipmentListMock(/* siteId */) {
+  return [
+    { id: "VAV-2", type: "VAV", label: "VAV-2 (2nd Floor East)" },
+    { id: "VAV-7", type: "VAV", label: "VAV-7 (3rd Floor North)" },
+    { id: "AHU-1", type: "AHU", label: "AHU-1 (Main Air Handler)" },
+    { id: "FCU-3", type: "FCU", label: "FCU-3 (Amenity)" },
+    { id: "OAU-1", type: "OAU", label: "OAU-1 (Outdoor Air Unit)" },
+  ];
+}
+
+/** Returns { timestamps, damper, flow, dat } for given equipment and range (6H|24H|7D|14D). Mock only. */
+export function getTrendDataMock(siteId, equipmentId, range) {
+  const pad2 = (n) => String(n).padStart(2, "0");
+  const now = new Date();
+  const ms = now.getTime();
+  const config =
+    range === "6H" ? { points: 18, stepMin: 20 } : range === "7D" ? { points: 28, stepMin: 6 * 60 } : range === "14D" ? { points: 28, stepMin: 12 * 60 } : { points: 24, stepMin: 60 };
+  const stepMs = config.stepMin * 60 * 1000;
+  const rounded = Math.floor(ms / (5 * 60 * 1000)) * (5 * 60 * 1000);
+  const end = new Date(rounded);
+  const timestamps = [];
+  for (let i = 0; i < config.points; i++) {
+    timestamps.push(new Date(end.getTime() - stepMs * (config.points - 1 - i)));
+  }
+  const seed = (equipmentId || "").length * (range.length + 1);
+  const damper = timestamps.map((_, i) => 40 + (i % 35) + (seed % 20));
+  const flow = timestamps.map((_, i) => 200 + (i % 250) + ((seed * 2) % 50));
+  const dat = timestamps.map((_, i) => 55 + (i % 12) + ((seed * 3) % 5));
+  return { timestamps, damper, flow, dat };
+}
+

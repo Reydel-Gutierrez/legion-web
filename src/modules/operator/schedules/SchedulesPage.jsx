@@ -5,9 +5,10 @@ import LegionHeroHeader from "../../../components/legion/LegionHeroHeader";
 import LegionTablePagination from "../../../components/legion/LegionTablePagination";
 import StatusDotLabel from "../../../components/legion/StatusDotLabel";
 import { useTablePagination } from "../../../hooks/useTablePagination";
+import { operatorRepository } from "../../../lib/data";
 
 export default function SchedulesPage() {
-  useSite(); // consume context for global site sync
+  const { site } = useSite();
   const [search, setSearch] = useState(""); const [scope, setScope] = useState("All"); const [status, setStatus] = useState("All");
   const [showEditor, setShowEditor] = useState(false); const [editingId, setEditingId] = useState(null);
 
@@ -15,11 +16,7 @@ export default function SchedulesPage() {
   const emptyEditor = { name: "", equipment: "AHU-1", point: "Occ Mode", action: "Occupied", startTime: "07:00", endTime: "18:30", days: { Mon: true, Tue: true, Wed: true, Thu: true, Fri: true, Sat: false, Sun: false }, enabled: true, notes: "" };
   const [editor, setEditor] = useState(emptyEditor);
 
-  const [schedules, setSchedules] = useState([
-    { id: "SCH-10021", name: "AHU-1 Weekday Occupancy", equipment: "AHU-1", equipType: "AHU", point: "Occ Mode", action: "Occupied", startTime: "07:00", endTime: "18:30", days: ["Mon","Tue","Wed","Thu","Fri"], enabled: true, updatedAt: "2/22/26 13:10", updatedBy: "reydel" },
-    { id: "SCH-10018", name: "VAV-2 Afterhours Setback", equipment: "VAV-2", equipType: "VAV", point: "Space Temp SP", action: "Setback 78°F", startTime: "18:30", endTime: "06:30", days: ["Mon","Tue","Wed","Thu","Fri"], enabled: true, updatedAt: "2/21/26 09:22", updatedBy: "tech.jorge" },
-    { id: "SCH-09990", name: "OAU-1 Weekend Off", equipment: "OAU-1", equipType: "OAU", point: "Enable", action: "OFF", startTime: "00:00", endTime: "23:59", days: ["Sat","Sun"], enabled: false, updatedAt: "2/20/26 16:44", updatedBy: "admin" },
-  ]);
+  const [schedules, setSchedules] = useState(() => operatorRepository.getSchedules(site));
 
   const counts = useMemo(() => { const total = schedules.length, enabled = schedules.filter((s) => s.enabled).length; return { total, enabled, disabled: total - enabled }; }, [schedules]);
 

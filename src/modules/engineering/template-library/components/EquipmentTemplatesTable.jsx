@@ -8,7 +8,7 @@ import {
   faTrashAlt,
   faCog,
 } from "@fortawesome/free-solid-svg-icons";
-import { SOURCE } from "../../data/mockTemplateLibraryData";
+import { engineeringRepository } from "../../../../lib/data";
 
 export default function EquipmentTemplatesTable({
   templates,
@@ -49,7 +49,7 @@ export default function EquipmentTemplatesTable({
               <td>
                 <span
                   className={`template-library-source-badge ${
-                    row.source === SOURCE.SITE_CUSTOM
+                    row.source === engineeringRepository.SOURCE.SITE_CUSTOM
                       ? "template-library-source-badge--site"
                       : "template-library-source-badge--global"
                   }`}

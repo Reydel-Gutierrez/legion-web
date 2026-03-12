@@ -3,8 +3,7 @@ import { Card, Form, Button } from "@themesberg/react-bootstrap";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faLink, faUnlink, faTrash } from "@fortawesome/free-solid-svg-icons";
 import SearchablePointSelect from "./SearchablePointSelect";
-import { BINDING_DISPLAY_OPTIONS } from "../../data/mockGraphicsData";
-import { GRAPHICS_VALUE_STATES } from "../../data/mockPointMappingData";
+import { engineeringRepository } from "../../../../lib/data";
 
 /**
  * Right-side inspector panel for selected graphic object.
@@ -44,16 +43,16 @@ export default function GraphicsInspector({
       ? typeof selectedPoint.displayValue === "number"
         ? `${selectedPoint.displayValue}${selectedPoint.units || ""}`
         : String(selectedPoint.displayValue)
-      : (selectedPoint.valueState === GRAPHICS_VALUE_STATES.OFFLINE ? "Offline" : "—")
+      : (selectedPoint.valueState === engineeringRepository.GRAPHICS_VALUE_STATES.OFFLINE ? "Offline" : "—")
     : null;
   const valueStateLabel =
-    selectedPoint?.valueState === GRAPHICS_VALUE_STATES.MAPPED
+    selectedPoint?.valueState === engineeringRepository.GRAPHICS_VALUE_STATES.MAPPED
       ? "Live value"
-      : selectedPoint?.valueState === GRAPHICS_VALUE_STATES.OFFLINE
+      : selectedPoint?.valueState === engineeringRepository.GRAPHICS_VALUE_STATES.OFFLINE
         ? "Controller offline"
-        : selectedPoint?.valueState === GRAPHICS_VALUE_STATES.UNMAPPED
+        : selectedPoint?.valueState === engineeringRepository.GRAPHICS_VALUE_STATES.UNMAPPED
           ? "No mapped BACnet object yet"
-          : selectedPoint?.valueState === GRAPHICS_VALUE_STATES.TEMPLATE_ONLY
+          : selectedPoint?.valueState === engineeringRepository.GRAPHICS_VALUE_STATES.TEMPLATE_ONLY
             ? "Using template point only"
             : null;
 
@@ -342,7 +341,7 @@ export default function GraphicsInspector({
                         value={form.bindingDisplayMode}
                         onChange={(e) => handleChange("bindingDisplayMode", e.target.value)}
                       >
-                        {BINDING_DISPLAY_OPTIONS.map((o) => (
+                        {engineeringRepository.BINDING_DISPLAY_OPTIONS.map((o) => (
                           <option key={o.value} value={o.value}>
                             {o.label}
                           </option>

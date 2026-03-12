@@ -3,7 +3,7 @@ import { Card, Form, Button } from "@themesberg/react-bootstrap";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faTimes, faSave } from "@fortawesome/free-solid-svg-icons";
 import LegionFormSelect from "../../../../components/legion/LegionFormSelect";
-import { BACNET_OBJECT_TYPES } from "../../data/mockPointMappingData";
+import { engineeringRepository } from "../../../../lib/data";
 
 /**
  * Right-side inspector panel for selected point mapping.
@@ -109,7 +109,7 @@ export default function PointDetailsPanel({
               <div className="mb-2">
                 <span className="text-white-50 small">Object Type</span>
                 <div className="text-white">
-                  {BACNET_OBJECT_TYPES[mappedObject.objectType] || mappedObject.objectType}
+                  {engineeringRepository.BACNET_OBJECT_TYPES[mappedObject.objectType] || mappedObject.objectType}
                 </div>
               </div>
               <div className="mb-2">

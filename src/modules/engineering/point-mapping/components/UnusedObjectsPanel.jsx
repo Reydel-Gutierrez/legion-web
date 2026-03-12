@@ -2,7 +2,7 @@ import React from "react";
 import { Card, Collapse } from "@themesberg/react-bootstrap";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faChevronDown, faChevronRight } from "@fortawesome/free-solid-svg-icons";
-import { BACNET_OBJECT_TYPES } from "../../data/mockPointMappingData";
+import { engineeringRepository } from "../../../../lib/data";
 
 function formatValue(obj) {
   if (!obj) return "—";
@@ -58,7 +58,7 @@ export default function UnusedObjectsPanel({ discoveredObjects, usedObjectIds, i
                         <div className="text-white-50 small">{obj.displayName}</div>
                       </td>
                       <td className="point-mapping-table-cell text-white-50 small">
-                        {BACNET_OBJECT_TYPES[obj.objectType] || obj.objectType}
+                        {engineeringRepository.BACNET_OBJECT_TYPES[obj.objectType] || obj.objectType}
                       </td>
                       <td className="point-mapping-table-cell text-white-50">
                         {formatValue(obj)}
