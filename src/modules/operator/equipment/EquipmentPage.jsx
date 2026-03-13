@@ -115,7 +115,9 @@ function WorkspacePanel({
   handleDragStart,
   onRemove,
   showRemove,
+  activeDeployment,
 }) {
+  const pointsOptions = useMemo(() => (activeDeployment ? { activeDeployment } : undefined), [activeDeployment]);
   const tableRef = useRef(null);
   const [lastClickedIndex, setLastClickedIndex] = useState(null);
   const [showCommandModal, setShowCommandModal] = useState(false);
@@ -167,7 +169,8 @@ function WorkspacePanel({
       const points = operatorRepository.getWorkspacePointsForEquipment(
         node.id,
         node.label,
-        node.status
+        node.status,
+        pointsOptions
       );
       const matched = points.filter(
         (p) => matches(p.pointId) || matches(p.pointName) || matches(p.units)
@@ -175,7 +178,7 @@ function WorkspacePanel({
       if (matched.length) results.push({ equipment: node, points: matched });
     }
     return results;
-  }, [workspace.searchMode, workspace.globalQuery, scopeEquipment, treeData]);
+  }, [workspace.searchMode, workspace.globalQuery, scopeEquipment, treeData, pointsOptions]);
 
   useEffect(() => {
     setGlobalSearchResults(globalSearchResultsMemo);
@@ -193,7 +196,8 @@ function WorkspacePanel({
       const points = operatorRepository.getWorkspacePointsForEquipment(
         equipmentId,
         equipmentName,
-        status
+        status,
+        pointsOptions
       );
       setWorkspace((prev) => {
         const prevRows = prev.rows || [];
@@ -204,7 +208,7 @@ function WorkspacePanel({
       });
       return points.filter((p) => !existingRowIds.has(p.id)).length;
     },
-    [setWorkspace, existingRowIds]
+    [setWorkspace, existingRowIds, pointsOptions]
   );
 
   const addSinglePointToWorkspace = useCallback(
@@ -323,7 +327,8 @@ function WorkspacePanel({
           const points = operatorRepository.getWorkspacePointsForEquipment(
             eq.id,
             eq.label,
-            eq.status || "OK"
+            eq.status || "OK",
+            pointsOptions
           );
           newPointCount += points.filter((p) => !existing.has(p.id)).length;
         });
@@ -336,7 +341,7 @@ function WorkspacePanel({
         setShowAddConfirm(true);
       } catch (_) {}
     },
-    [zone, setDropActive, rows]
+    [zone, setDropActive, rows, pointsOptions]
   );
 
   const confirmAddToWorkspace = useCallback(() => {
@@ -716,7 +721,8 @@ function WorkspacePanel({
               const pts = operatorRepository.getWorkspacePointsForEquipment(
                 eq.id,
                 eq.label,
-                eq.status || "OK"
+                eq.status || "OK",
+                pointsOptions
               );
               newPointCount += pts.filter((p) => !existing.has(p.id)).length;
             });
@@ -805,7 +811,8 @@ export default function EquipmentPage() {
   const history = useHistory();
   const { site } = useSite();
   const activeDeployment = useActiveDeployment();
-  const goToEquipment = (id) => history.push(`/legion/equipment/${id}`);
+  const goToEquipment = (node) =>
+    history.push(`/legion/equipment/${node.instanceNumber ? encodeURIComponent(node.instanceNumber) : node.id}`);
 
   const treeData = useMemo(
     () => activeDeploymentToEquipmentTree(activeDeployment),
@@ -871,7 +878,7 @@ export default function EquipmentPage() {
     const onClick = () => {
       if (isExpandable) return toggleOpen(node.id);
       setSelectedEquipId(node.id);
-      goToEquipment(node.id);
+      goToEquipment(node);
     };
 
     const onDragStart = isDraggable ? (e) => handleDragStart(e, node, treeData) : undefined;
@@ -963,6 +970,7 @@ export default function EquipmentPage() {
                   setDropActive={setDropActive}
                   treeData={treeData}
                   handleDragStart={handleDragStart}
+                  activeDeployment={activeDeployment}
                 />
 
                 {showSecondaryWorkspace ? (
@@ -976,6 +984,7 @@ export default function EquipmentPage() {
                       handleDragStart={handleDragStart}
                       onRemove={() => setShowSecondaryWorkspace(false)}
                       showRemove
+                      activeDeployment={activeDeployment}
                     />
                   </div>
                 ) : (

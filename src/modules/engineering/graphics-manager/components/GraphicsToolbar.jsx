@@ -4,6 +4,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faSearch,
   faPlus,
+  faSave,
   faFileImport,
   faImage,
   faCopy,
@@ -14,13 +15,14 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 
 /**
- * Toolbar for Graphics Manager: search, New Graphic, Import, Duplicate, Delete, Preview, Validate.
+ * Toolbar for Graphics Manager: Save, New Graphic, Import, Duplicate, Delete, Preview, Validate.
  */
 export default function GraphicsToolbar({
   searchValue,
   onSearchChange,
   filterValue,
   onFilterChange,
+  onSaveGraphic,
   onNewGraphic,
   onImportSvg,
   onImportImage,
@@ -57,6 +59,16 @@ export default function GraphicsToolbar({
       <Button
         size="sm"
         className="legion-hero-btn legion-hero-btn--primary"
+        onClick={onSaveGraphic}
+        disabled={!hasSelection}
+        title={hasSelection ? "Save graphic and bind to this equipment" : "Select equipment first"}
+      >
+        <FontAwesomeIcon icon={faSave} className="me-1" />
+        Save graphic
+      </Button>
+      <Button
+        size="sm"
+        className="legion-hero-btn legion-hero-btn--secondary"
         onClick={onNewGraphic}
       >
         <FontAwesomeIcon icon={faPlus} className="me-1" />

@@ -313,10 +313,12 @@ export default function SiteBuilderPage() {
   const handleSaveEquipment = useCallback((id, form) => {
     const hasController = !!(form.controllerRef && String(form.controllerRef).trim());
     const status = hasController ? "CONTROLLER_ASSIGNED" : "MISSING_CONTROLLER";
+    const instanceNum = (form.instanceNumber && String(form.instanceNumber).trim()) || null;
     const updates = {
       name: form.name,
       displayLabel: form.displayLabel,
       type: form.equipmentType,
+      instanceNumber: instanceNum,
       locationLabel: form.locationLabel,
       controllerRef: form.controllerRef ?? null,
       templateName: form.templateName ?? null,
@@ -377,6 +379,7 @@ export default function SiteBuilderPage() {
       name: data.name,
       displayLabel: data.displayLabel || data.name,
       type: data.equipmentType || "CUSTOM",
+      instanceNumber: (data.instanceNumber && String(data.instanceNumber).trim()) || null,
       locationLabel: "",
       controllerRef: data.controllerRef || null,
       templateName: data.templateName || null,
@@ -576,6 +579,11 @@ export default function SiteBuilderPage() {
                   onDelete={handleDeleteNode}
                   onDeleteEquipment={handleDeleteEquipment}
                   onDeleteConfirm={handleDeleteConfirm}
+                  equipmentTemplates={draft.templates?.equipmentTemplates ?? []}
+                  existingInstanceNumbers={(draft.equipment || [])
+                    .filter((e) => e.id !== selectedEquipment?.id)
+                    .map((e) => e.instanceNumber)
+                    .filter(Boolean)}
                 />
               </Col>
             </Row>
@@ -596,6 +604,7 @@ export default function SiteBuilderPage() {
         siteStructure={engineeringRepository.getEngineeringSiteStructureFromTree(siteTree)}
         defaultBuildingId={selectedNode?.type === "floor" ? selectedNode?.parentId : siteTree?.children?.[0]?.id}
         defaultFloorId={selectedNode?.type === "floor" ? selectedNode?.id : undefined}
+        equipmentTemplates={draft.templates?.equipmentTemplates ?? []}
       />
 
       <Modal

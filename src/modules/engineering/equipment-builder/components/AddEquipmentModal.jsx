@@ -25,9 +25,15 @@ export default function AddEquipmentModal({
   siteStructure,
   defaultBuildingId,
   defaultFloorId,
+  equipmentTemplates = [],
 }) {
+  const templateOptions = [
+    { value: "", label: equipmentTemplates.length === 0 ? "No templates — add in Template Library" : "Select template (optional)" },
+    ...equipmentTemplates.map((t) => ({ value: t.name || t.id || "", label: t.name || t.id || "Unnamed" })),
+  ];
   const [name, setName] = useState("");
   const [equipmentType, setEquipmentType] = useState("AHU");
+  const [instanceNumber, setInstanceNumber] = useState("");
   const [buildingId, setBuildingId] = useState("");
   const [floorId, setFloorId] = useState("");
   const [templateName, setTemplateName] = useState("");
@@ -78,6 +84,7 @@ export default function AddEquipmentModal({
       name: name.trim(),
       displayLabel: name.trim(),
       equipmentType,
+      instanceNumber: instanceNumber.trim() || undefined,
       buildingId,
       floorId,
       templateName: templateName.trim() || undefined,
@@ -91,6 +98,7 @@ export default function AddEquipmentModal({
   const resetForm = () => {
     setName("");
     setEquipmentType("AHU");
+    setInstanceNumber("");
     setBuildingId(buildings[0]?.id || "");
     setFloorId(buildings[0]?.floors?.[0]?.id || "");
     setTemplateName("");
@@ -137,6 +145,16 @@ export default function AddEquipmentModal({
             />
           </Form.Group>
           <Form.Group className="mb-3">
+            <Form.Label className="text-white small">Instance Number (optional, unique per site)</Form.Label>
+            <Form.Control
+              size="sm"
+              className="bg-dark border border-light border-opacity-10 text-white"
+              placeholder="e.g. 1001 or VAV-1-01"
+              value={instanceNumber}
+              onChange={(e) => setInstanceNumber(e.target.value)}
+            />
+          </Form.Group>
+          <Form.Group className="mb-3">
             <Form.Label className="text-white small">Building</Form.Label>
             <LegionFormSelect
               size="sm"
@@ -161,12 +179,12 @@ export default function AddEquipmentModal({
           </Form.Group>
           <Form.Group className="mb-3">
             <Form.Label className="text-white small">Template (optional)</Form.Label>
-            <Form.Control
+            <LegionFormSelect
               size="sm"
-              className="bg-dark border border-light border-opacity-10 text-white"
-              placeholder="e.g. LC VMA-1832 AHU"
               value={templateName}
               onChange={(e) => setTemplateName(e.target.value)}
+              options={templateOptions}
+              placeholder={equipmentTemplates.length === 0 ? "Add templates in Template Library" : "Select template"}
             />
           </Form.Group>
           <Form.Group className="mb-3">

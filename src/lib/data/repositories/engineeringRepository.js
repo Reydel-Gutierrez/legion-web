@@ -111,6 +111,7 @@ export {
 };
 
 // Point mapping (constants and helpers; pages use repo instead of mock file)
+// getPointDisplayInfoForEquipment(equipment, draftTemplates?) — draftTemplates for template-only sites
 export {
   getTemplatePoints,
   autoMapPoints,

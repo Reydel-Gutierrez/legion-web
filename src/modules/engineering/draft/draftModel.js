@@ -33,7 +33,7 @@ export function createSite(overrides = {}) {
   };
 }
 
-/** Equipment instance: site location, type, template id, assigned device id, graphic ref */
+/** Equipment instance: site location, type, template id, assigned device id, graphic ref. instanceNumber = user-defined unique ref for URL/identification. */
 export function createEquipment(overrides = {}) {
   return {
     id: null,
@@ -43,6 +43,7 @@ export function createEquipment(overrides = {}) {
     name: null,
     displayLabel: null,
     type: null,
+    instanceNumber: null,
     controllerRef: null,
     deviceInstance: null,
     templateName: null,

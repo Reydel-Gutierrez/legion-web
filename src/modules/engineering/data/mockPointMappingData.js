@@ -149,10 +149,13 @@ export function getTemplatePointsForGraphics(equipment) {
 /**
  * Mock point mappings per equipment (template point id -> BACnet object id).
  * In production this would come from Point Mapping store/API.
+ * Optional draftEquipmentTemplates: when provided, used to resolve template points by name.
  */
-function getMappingsForEquipment(equipment) {
-  if (!equipment?.controllerRef || !equipment?.templateName) return {};
-  const templatePoints = getTemplatePoints(equipment.templateName);
+function getMappingsForEquipment(equipment, draftEquipmentTemplates) {
+  if (!equipment?.templateName) return {};
+  const templatePoints = getTemplatePoints(equipment.templateName, draftEquipmentTemplates);
+  if (!templatePoints.length) return {};
+  if (!equipment?.controllerRef) return {};
   const discovered = getDiscoveredObjects(equipment.controllerRef);
   return autoMapPoints(templatePoints, discovered, {});
 }
@@ -174,15 +177,18 @@ function getPlaceholderValue(templatePoint) {
 
 /**
  * Get display info for each template point for Graphics Manager.
- * Binding is always to template point id. Value comes from mapped BACnet when available.
- * Returns: id (template point id), displayName, units, valueState, displayValue, mappedBacnetRef?, mappedBacnetId?
+ * Binding is always to logical/template point id. Value comes from mapped BACnet when available.
+ * Works without discovered devices: uses template points only when no controller/mapping.
+ * @param {object} equipment - Equipment with templateName (and optionally controllerRef)
+ * @param {{ equipmentTemplates?: array }} [draftTemplates] - Optional draft templates for template-only sites
  */
-export function getPointDisplayInfoForEquipment(equipment) {
+export function getPointDisplayInfoForEquipment(equipment, draftTemplates) {
   if (!equipment) return [];
-  const templatePoints = getTemplatePoints(equipment.templateName);
+  const draftEquipmentTemplates = draftTemplates?.equipmentTemplates;
+  const templatePoints = getTemplatePoints(equipment.templateName, draftEquipmentTemplates);
   if (!templatePoints.length) return [];
 
-  const mappings = getMappingsForEquipment(equipment);
+  const mappings = getMappingsForEquipment(equipment, draftEquipmentTemplates);
   const discovered = getDiscoveredObjects(equipment.controllerRef);
   const controllerOffline = equipment.controllerRef && discovered.length === 0; // e.g. device not discovered yet
 
@@ -260,9 +266,33 @@ export const DEFAULT_MAPPING_EQUIPMENT = {
   locationLabel: "Floor 2",
 };
 
-// Get template points for a template name
-export function getTemplatePoints(templateName) {
-  return TEMPLATE_POINTS[templateName] || [];
+// Get template points for a template name (from global TEMPLATE_POINTS or draft equipment templates)
+export function getTemplatePoints(templateName, draftEquipmentTemplates) {
+  const fromGlobal = TEMPLATE_POINTS[templateName];
+  if (fromGlobal && fromGlobal.length > 0) return fromGlobal;
+  if (draftEquipmentTemplates && draftEquipmentTemplates.length > 0 && templateName) {
+    const t = draftEquipmentTemplates.find(
+      (x) => (x.name || "").toLowerCase() === (templateName || "").toLowerCase() || x.id === templateName
+    );
+    if (t && Array.isArray(t.points) && t.points.length > 0) {
+      return t.points.map((p) => {
+        const key = p.pointKey || p.key;
+        const referenceId = (p.referenceId || "").trim() || key;
+        return {
+          id: p.id || p.key,
+          key,
+          referenceId: referenceId || undefined,
+          displayName: p.pointLabel || p.displayName || p.key,
+          expectedObjectType: p.expectedType || "AI",
+          required: p.required !== false,
+          units: p.units || "",
+          pointCategory: p.pointCategory || "sensor",
+          description: p.notes || p.description || "",
+        };
+      });
+    }
+  }
+  return [];
 }
 
 // Get discovered objects for a controller/device

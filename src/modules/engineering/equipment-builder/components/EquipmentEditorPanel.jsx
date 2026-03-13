@@ -10,7 +10,8 @@ import { engineeringRepository } from "../../../../lib/data";
 
 /**
  * Right panel: Edit selected equipment.
- * Matches NodeEditorPanel structure and styling from Site Builder.
+ * Template dropdown uses only the current site's templates (draft.templates.equipmentTemplates).
+ * If no templates have been imported or created for the site, only "Select template" is shown.
  */
 export default function EquipmentEditorPanel({
   equipment,
@@ -18,11 +19,14 @@ export default function EquipmentEditorPanel({
   floors,
   onSave,
   onDelete,
+  equipmentTemplates = [],
+  existingInstanceNumbers = [],
 }) {
   const [form, setForm] = useState({
     name: "",
     displayLabel: "",
     equipmentType: "",
+    instanceNumber: "",
     controllerRef: "",
     templateName: "",
     floorId: "",
@@ -30,12 +34,24 @@ export default function EquipmentEditorPanel({
     notes: "",
   });
 
+  const baseTemplateOptions = equipmentTemplates.map((t) => ({ value: t.name || t.id || "", label: t.name || t.id || "Unnamed" }));
+  const hasCurrentInList = !!(equipment?.templateName && baseTemplateOptions.some((o) => o.value === equipment.templateName));
+  const instanceConflict =
+    !!(form.instanceNumber && existingInstanceNumbers.some((n) => String(n).trim() === String(form.instanceNumber).trim()));
+  const templateOptions = [
+    { value: "", label: equipmentTemplates.length === 0 ? "No templates — add in Template Library" : "Select template" },
+    ...baseTemplateOptions,
+    // Keep current selection in list if it was removed from library (e.g. after template delete)
+    ...(equipment?.templateName && !hasCurrentInList ? [{ value: equipment.templateName, label: `${equipment.templateName} (not in library)` }] : []),
+  ];
+
   useEffect(() => {
     if (equipment) {
       setForm({
         name: equipment.name || "",
         displayLabel: equipment.displayLabel || equipment.name || "",
         equipmentType: equipment.type || "",
+        instanceNumber: equipment.instanceNumber ?? "",
         controllerRef: equipment.controllerRef || "",
         templateName: equipment.templateName || "",
         floorId: equipment.floorId || "",
@@ -116,6 +132,21 @@ export default function EquipmentEditorPanel({
           </Form.Group>
 
           <Form.Group className="mb-3">
+            <Form.Label className="text-white small">Instance Number</Form.Label>
+            <Form.Control
+              size="sm"
+              className="bg-dark bg-opacity-25 border border-light border-opacity-10 text-white"
+              value={form.instanceNumber}
+              onChange={(e) => handleChange("instanceNumber", e.target.value)}
+              placeholder="e.g. 1001 or VAV-2-01 (unique per site)"
+              title="Unique identifier for this equipment; used in operator detail view and URLs."
+            />
+            {instanceConflict && (
+              <Form.Text className="text-warning small">Instance number already in use by another equipment.</Form.Text>
+            )}
+          </Form.Group>
+
+          <Form.Group className="mb-3">
             <Form.Label className="text-white small">Assign Controller</Form.Label>
             <LegionFormSelect
               size="sm"
@@ -139,16 +170,8 @@ export default function EquipmentEditorPanel({
               size="sm"
               value={form.templateName || ""}
               onChange={(e) => handleChange("templateName", e.target.value)}
-              options={[
-                { value: "", label: "Select template" },
-                { value: "LC VMA-1832 AHU", label: "LC VMA-1832 AHU" },
-                { value: "LC VAV-1832", label: "LC VAV-1832" },
-                { value: "LC FCU-2-Pipe", label: "LC FCU-2-Pipe" },
-                { value: "LC Chiller-500Ton", label: "LC Chiller-500Ton" },
-                { value: "LC CHWP-VFD", label: "LC CHWP-VFD" },
-                { value: "LC ExhaustFan", label: "LC ExhaustFan" },
-              ]}
-              placeholder="Select template"
+              options={templateOptions}
+              placeholder={equipmentTemplates.length === 0 ? "Add templates in Template Library" : "Select template"}
             />
           </Form.Group>
 

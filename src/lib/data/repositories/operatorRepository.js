@@ -63,10 +63,10 @@ export function getAlarms(siteId) {
   return getAlarmsMock(siteId);
 }
 
-// Equipment workspace
-export function getWorkspacePointsForEquipment(equipmentId, equipmentName, status) {
-  if (USE_MOCK_DATA) return getWorkspacePointsForEquipmentMock(equipmentId, equipmentName, status);
-  return getWorkspacePointsForEquipmentMock(equipmentId, equipmentName, status);
+// Equipment workspace. options.activeDeployment: when set (operator), points derived from deployed snapshot.
+export function getWorkspacePointsForEquipment(equipmentId, equipmentName, status, options) {
+  if (USE_MOCK_DATA) return getWorkspacePointsForEquipmentMock(equipmentId, equipmentName, status, options);
+  return getWorkspacePointsForEquipmentMock(equipmentId, equipmentName, status, options);
 }
 
 // Schedules

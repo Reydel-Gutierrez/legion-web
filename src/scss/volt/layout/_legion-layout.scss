@@ -1214,6 +1214,17 @@ $legion-search-placeholder: #7B818F;
   }
 }
 
+/* Operator Equipment Detail: no card/chrome around objects, just text/value */
+.deployed-graphic-preview-canvas .graphics-canvas-object {
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+
+  &:hover {
+    border-color: transparent !important;
+  }
+}
 
 /* Searchable equipment selector – dark Legion style */
 .equipment-select-wrapper {
@@ -1382,7 +1393,7 @@ $legion-search-placeholder: #7B818F;
 
   .hierarchy-equipment-header {
     display: grid;
-    grid-template-columns: 1fr 1fr 1fr 1fr 50px 1fr;
+    grid-template-columns: 1fr minmax(4.5rem, 0.9fr) 1fr 1fr 1fr 50px 1fr;
     gap: 0.5rem;
     padding: 0.35rem 0.75rem;
     font-size: 0.65rem;
@@ -1395,7 +1406,7 @@ $legion-search-placeholder: #7B818F;
 
   .hierarchy-equipment-row {
     display: grid;
-    grid-template-columns: 1fr 1fr 1fr 1fr 50px 1fr;
+    grid-template-columns: 1fr minmax(4.5rem, 0.9fr) 1fr 1fr 1fr 50px 1fr;
     gap: 0.5rem;
     padding: 0.5rem 0.75rem;
     font-size: 0.8125rem;
@@ -1655,7 +1666,7 @@ $legion-search-placeholder: #7B818F;
 
   .hierarchy-equipment-header {
     display: grid;
-    grid-template-columns: 1fr 1fr 1fr 1fr 50px 1fr;
+    grid-template-columns: 1fr minmax(4.5rem, 0.9fr) 1fr 1fr 1fr 50px 1fr;
     gap: 0.5rem;
     padding: 0.35rem 0.75rem;
     font-size: 0.65rem;
@@ -1668,7 +1679,7 @@ $legion-search-placeholder: #7B818F;
 
   .hierarchy-equipment-row {
     display: grid;
-    grid-template-columns: 1fr 1fr 1fr 1fr 50px 1fr;
+    grid-template-columns: 1fr minmax(4.5rem, 0.9fr) 1fr 1fr 1fr 50px 1fr;
     gap: 0.5rem;
     padding: 0.5rem 0.75rem;
     font-size: 0.8125rem;

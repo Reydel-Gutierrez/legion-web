@@ -19,6 +19,8 @@ export default function NodeEditorPanel({
   onDelete,
   onDeleteEquipment,
   onDeleteConfirm,
+  equipmentTemplates = [],
+  existingInstanceNumbers = [],
 }) {
   const [form, setForm] = useState({
     name: "",
@@ -90,7 +92,7 @@ export default function NodeEditorPanel({
     );
   }
 
-  // Equipment editor mode
+  // Equipment editor mode — template dropdown uses only this site's templates from Template Library
   if (selectedEquipment) {
     return (
       <EquipmentEditorPanel
@@ -99,6 +101,8 @@ export default function NodeEditorPanel({
         floors={floors || []}
         onSave={onSaveEquipment}
         onDelete={onDeleteEquipment}
+        equipmentTemplates={equipmentTemplates}
+        existingInstanceNumbers={existingInstanceNumbers}
       />
     );
   }

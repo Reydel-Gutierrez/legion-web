@@ -14,14 +14,19 @@ import { useSite } from "../providers/SiteProvider";
 import { useWorkspaceMode } from "../providers/WorkspaceModeProvider";
 import { useDraftContext } from "../providers/EngineeringDraftProvider";
 import { SITE_IDS } from "../../lib/sites";
+import { getPersistedDraftSiteNames } from "../../lib/data/persistence/draftPersistence";
 
 export default function Sidebar() {
   const { site, setSite } = useSite();
   const { currentMode } = useWorkspaceMode();
-  const { draft } = useDraftContext();
+  const { draft, activeDeploymentBySite } = useDraftContext();
   const draftSiteName = draft?.site?.name;
   const isBuiltInSite = site === SITE_IDS.MIAMI_HQ || site === SITE_IDS.NEW_SITE || site === "New Building";
   const displaySiteName = !isBuiltInSite ? site : (site === SITE_IDS.NEW_SITE && draftSiteName ? draftSiteName : site);
+  const persistedDraftSites = getPersistedDraftSiteNames();
+  const deployedSiteNames = Object.keys(activeDeploymentBySite || {}).filter(
+    (k) => activeDeploymentBySite[k] != null
+  );
   const location = useLocation();
   const { pathname } = location;
   const [show, setShow] = useState(false);
@@ -123,35 +128,46 @@ export default function Sidebar() {
                 <Dropdown.Menu className="w-100 legion-dropdown-menu">
                   {currentMode === "engineering" ? (
                     <>
-                      <Dropdown.Item onClick={() => setSite("Miami HQ")}>
-                        Miami HQ
+                      <Dropdown.Item onClick={() => setSite(SITE_IDS.MIAMI_HQ)}>
+                        {SITE_IDS.MIAMI_HQ}
+                        {!(activeDeploymentBySite && activeDeploymentBySite[SITE_IDS.MIAMI_HQ]) && (
+                          <span className="text-white-50 small ms-1">(draft)</span>
+                        )}
                       </Dropdown.Item>
-                      <Dropdown.Item onClick={() => setSite("New Site")}>
-                        New Site
-                      </Dropdown.Item>
-                      {draftSiteName && draftSiteName !== "Miami HQ" && draftSiteName !== "New Site" && (
-                        <>
-                          <Dropdown.Divider className="border-light border-opacity-10" />
-                          <Dropdown.Item onClick={() => setSite(draftSiteName)}>
-                            {draftSiteName} <span className="text-white-50 small">(draft)</span>
+                      {[
+                        ...new Set([
+                          ...persistedDraftSites.filter(
+                            (n) => n !== SITE_IDS.MIAMI_HQ && n !== SITE_IDS.NEW_SITE && n !== "New Building"
+                          ),
+                          ...(draftSiteName && draftSiteName !== SITE_IDS.MIAMI_HQ && draftSiteName !== SITE_IDS.NEW_SITE ? [draftSiteName] : []),
+                        ]),
+                      ]
+                        .sort((a, b) => a.localeCompare(b))
+                        .map((name) => (
+                          <Dropdown.Item key={name} onClick={() => setSite(name)}>
+                            {name}
+                            {!(activeDeploymentBySite && activeDeploymentBySite[name]) && (
+                              <span className="text-white-50 small ms-1">(draft)</span>
+                            )}
                           </Dropdown.Item>
-                        </>
-                      )}
+                        ))}
+                      <Dropdown.Divider className="border-light border-opacity-10" />
+                      <Dropdown.Item onClick={() => setSite(SITE_IDS.NEW_SITE)} className="legion-dropdown-new-site">
+                        <span className="text-white-50">+ New Site</span>
+                      </Dropdown.Item>
                     </>
                   ) : (
                     <>
-                      <Dropdown.Item onClick={() => setSite("Miami HQ")}>
-                        Miami HQ
-                      </Dropdown.Item>
-                      <Dropdown.Item onClick={() => setSite("New Site")}>
-                        New Site
-                      </Dropdown.Item>
-                      {draftSiteName && draftSiteName !== "Miami HQ" && draftSiteName !== "New Site" && (
-                        <>
-                          <Dropdown.Divider className="border-light border-opacity-10" />
-                          <Dropdown.Item onClick={() => setSite(draftSiteName)}>
-                            {draftSiteName}
+                      {deployedSiteNames.length > 0 ? (
+                        deployedSiteNames.map((name) => (
+                          <Dropdown.Item key={name} onClick={() => setSite(name)}>
+                            {name}
                           </Dropdown.Item>
+                        ))
+                      ) : (
+                        <>
+                          <Dropdown.Item onClick={() => setSite("Miami HQ")}>Miami HQ</Dropdown.Item>
+                          <Dropdown.Item onClick={() => setSite("New Site")}>New Site</Dropdown.Item>
                         </>
                       )}
                     </>

@@ -21,7 +21,7 @@ function formatStatus(status) {
 /**
  * Equipment section under a floor in the Site Builder hierarchy.
  * Renders clickable equipment rows. When compact=true (e.g. Graphics Manager), only equipment names are shown.
- * Otherwise shows full metadata (Equipment, Location, Controller, Point Template, Points Defined, Status).
+ * Otherwise shows full metadata (Equipment, Instance Number, Location, Controller, Point Template, Points Defined, Status).
  */
 export default function HierarchyEquipmentSection({
   equipment = [],
@@ -57,6 +57,7 @@ export default function HierarchyEquipmentSection({
     <div className="hierarchy-equipment-section">
       <div className="hierarchy-equipment-header">
         <span>Equipment</span>
+        <span>Instance #</span>
         <span>Location</span>
         <span>Controller</span>
         <span>Point Template</span>
@@ -81,6 +82,7 @@ export default function HierarchyEquipmentSection({
               <FontAwesomeIcon icon={faFolder} className="fa-xs me-1 text-white-50" />
               {eq.name}
             </span>
+            <span className="hierarchy-equipment-col-instance">{eq.instanceNumber ?? "—"}</span>
             <span className="hierarchy-equipment-col-location">{eq.locationLabel || "—"}</span>
             <span className="hierarchy-equipment-col-controller">{controllerDisplay}</span>
             <span className="hierarchy-equipment-col-template">{eq.templateName || "—"}</span>

@@ -4,7 +4,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faObjectGroup } from "@fortawesome/free-solid-svg-icons";
 
 import { useSite } from "../../../app/providers/SiteProvider";
-import { useEngineeringDraft, selectSiteTree } from "../../../hooks/useEngineeringDraft";
+import { useEngineeringDraft, useActiveDeployment, selectSiteTree } from "../../../hooks/useEngineeringDraft";
 import LegionHeroHeader from "../../../components/legion/LegionHeroHeader";
 import { engineeringRepository } from "../../../lib/data";
 import GraphicsContextCard from "./components/GraphicsContextCard";
@@ -29,6 +29,7 @@ function collectIds(node, acc = new Set()) {
 export default function GraphicsManagerPage() {
   const { site } = useSite();
   const { draft, actions } = useEngineeringDraft();
+  const activeDeployment = useActiveDeployment();
   const siteTree = selectSiteTree(draft);
   const draftEquipment = draft?.equipment ?? [];
   const draftGraphics = draft?.graphics ?? {};
@@ -40,6 +41,7 @@ export default function GraphicsManagerPage() {
   const handleFilterChange = useCallback((v) => setFilterValue(v), []);
   const [validationResult, setValidationResult] = useState(null);
   const [showValidationToast, setShowValidationToast] = useState(false);
+  const [showSaveToast, setShowSaveToast] = useState(false);
 
   const isNewBuilding = engineeringRepository.isNewEngineeringBuildingFlow(site);
   const hasNoSite = isNewBuilding && !draft?.site;
@@ -58,14 +60,25 @@ export default function GraphicsManagerPage() {
   );
 
   const availablePoints = useMemo(
-    () => engineeringRepository.getPointDisplayInfoForEquipment(selectedEquipment),
-    [selectedEquipment]
+    () =>
+      engineeringRepository.getPointDisplayInfoForEquipment(selectedEquipment, draft?.templates),
+    [selectedEquipment, draft?.templates]
   );
 
+  // When equipment is selected but no graphic exists yet, use an empty graphic so the canvas is editable (Add Text, Add Value).
   const selectedGraphic = useMemo(() => {
     const base = draftGraphics[selectedEquipmentId] ?? null;
-    if (!base) return null;
-    return { ...base, objects: base.objects ?? [] };
+    if (base) return { ...base, objects: base.objects ?? [] };
+    if (selectedEquipmentId)
+      return {
+        id: `g-new-${selectedEquipmentId}`,
+        equipmentId: selectedEquipmentId,
+        name: "New Graphic",
+        status: "DRAFT",
+        lastEdited: "Now",
+        objects: [],
+      };
+    return null;
   }, [selectedEquipmentId, draftGraphics]);
 
   // Stabilize effect: siteTree is a new object every render, so don't depend on it directly.
@@ -182,6 +195,15 @@ export default function GraphicsManagerPage() {
     [selectedEquipmentId, selectedObject?.id, draftGraphics, actions]
   );
 
+  const handleSaveGraphic = useCallback(() => {
+    if (!selectedEquipmentId || !selectedGraphic) return;
+    actions.setGraphicForEquipment(selectedEquipmentId, selectedGraphic);
+    setShowSaveToast(true);
+    if (typeof window !== "undefined" && window.setTimeout) {
+      window.setTimeout(() => setShowSaveToast(false), 4000);
+    }
+  }, [selectedEquipmentId, selectedGraphic, actions]);
+
   const handleValidate = useCallback(() => {
     const graphic = selectedGraphic;
     const issues = [];
@@ -253,13 +275,28 @@ export default function GraphicsManagerPage() {
       </div>
 
       <div className="px-3 px-md-4 pb-4">
-        <div className="mb-3">
-          <h5 className="text-white fw-bold mb-1">
-            <FontAwesomeIcon icon={faObjectGroup} className="me-2" />
-            Graphics Manager
-          </h5>
-          <div className="text-white-50 small">
-            Create and manage graphical floorplans, equipment diagrams, and system visualizations.
+        <div className="mb-3 d-flex flex-wrap align-items-center justify-content-between gap-2">
+          <div>
+            <h5 className="text-white fw-bold mb-1">
+              <FontAwesomeIcon icon={faObjectGroup} className="me-2" />
+              Graphics Manager
+            </h5>
+            <div className="text-white-50 small">
+              Create and manage graphical floorplans, equipment diagrams, and system visualizations.
+            </div>
+          </div>
+          <div className="d-flex align-items-center gap-2">
+            <span className="text-white-50 small">Site:</span>
+            <span className="text-white fw-semibold">{draft?.site?.name || site || "—"}</span>
+            {activeDeployment ? (
+              <span className="badge bg-success bg-opacity-25 text-success border border-success border-opacity-50">
+                Deployed {activeDeployment.version}
+              </span>
+            ) : (
+              <span className="badge bg-secondary bg-opacity-50 text-white-50 border border-secondary">
+                Draft
+              </span>
+            )}
           </div>
         </div>
 
@@ -303,11 +340,22 @@ export default function GraphicsManagerPage() {
           </div>
         )}
 
+        {showSaveToast && (
+          <div className="mb-3 p-3 rounded border border-success border-opacity-50 bg-success bg-opacity-10">
+            <div className="text-success small fw-semibold">
+              Graphic saved and bound to {selectedEquipment?.displayLabel || selectedEquipment?.name || "this equipment"}.
+            </div>
+            <div className="text-white-50 small mt-1">Deploy to Live to see it on the Equipment Detail page.</div>
+            <Button size="sm" variant="link" className="text-white-50 p-0 mt-2" onClick={() => setShowSaveToast(false)}>Dismiss</Button>
+          </div>
+        )}
+
         <GraphicsToolbar
           searchValue={searchQuery}
           onSearchChange={setSearchQuery}
           filterValue={filterValue}
           onFilterChange={handleFilterChange}
+          onSaveGraphic={handleSaveGraphic}
           onNewGraphic={handleNewGraphic}
           onImportSvg={handleImportSvg}
           onImportImage={handleImportImage}

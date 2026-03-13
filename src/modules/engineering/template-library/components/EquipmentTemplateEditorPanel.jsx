@@ -36,6 +36,7 @@ function toPointRow(p) {
     id: p.id || generatePointId(),
     pointLabel: p.pointLabel || "",
     pointKey: p.pointKey || "",
+    referenceId: p.referenceId !== undefined ? (p.referenceId || "") : (p.pointKey || ""),
     required: p.required !== false,
     expectedType: p.expectedType || "AI",
     notes: p.notes || "",
@@ -141,6 +142,7 @@ export default function EquipmentTemplateEditorPanel({
         id: p.id,
         pointLabel: (p.pointLabel || "").trim(),
         pointKey: (p.pointKey || "").trim().toLowerCase().replace(/\s+/g, "_"),
+        referenceId: (p.referenceId || "").trim() || null,
         required: !!p.required,
         expectedType: (p.expectedType || "AI").trim(),
         notes: (p.notes || "").trim() || null,
@@ -387,6 +389,7 @@ export default function EquipmentTemplateEditorPanel({
                     <tr>
                       <th>Point Label</th>
                       <th>Point Key</th>
+                      <th>Reference ID</th>
                       <th>Required</th>
                       <th>Expected Type</th>
                       <th>Notes</th>
@@ -428,6 +431,20 @@ export default function EquipmentTemplateEditorPanel({
                           )}
                           {errors[`pointKey-${p.id}`] && (
                             <Form.Text className="text-danger small d-block">{errors[`pointKey-${p.id}`]}</Form.Text>
+                          )}
+                        </td>
+                        <td title="Used in point address and commands; defaults to Point Key if blank.">
+                          {readOnly ? (
+                            <code className="text-white-50 small">{(p.referenceId || p.pointKey || "").trim() || "—"}</code>
+                          ) : (
+                            <Form.Control
+                              size="sm"
+                              type="text"
+                              value={p.referenceId}
+                              onChange={(e) => updatePoint(p.id, "referenceId", e.target.value)}
+                              placeholder={p.pointKey || "e.g. DA-T"}
+                              className="bg-dark border border-light border-opacity-10 text-white form-control-sm font-monospace"
+                            />
                           )}
                         </td>
                         <td>
