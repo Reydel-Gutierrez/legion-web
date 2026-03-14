@@ -2,23 +2,33 @@ import React, { useMemo, useRef, useState, useEffect } from "react";
 
 /**
  * Read-only preview of a deployed equipment graphic.
- * Renders the same layout as Graphics Manager: fixed rectangle, transparent background,
- * text and value objects at their positions. Value objects show live point values from workspace rows.
+ * Renders the same layout as Graphics Manager: background image/SVG, text, value, and link objects.
+ * Value objects show live point values; link objects are clickable and call onLinkClick.
  */
-function GraphicObject({ obj, pointsByPointId }) {
-  const { type, label, x, y, width = 60, height = 24, bindings = [] } = obj;
+function GraphicObject({ obj, pointsByPointId, onLinkClick }) {
+  const { type, label, x, y, width = 60, height = 24, bindings = [], linkTarget } = obj;
   const boundPoint = bindings[0];
   const pointRow = boundPoint ? pointsByPointId[boundPoint.pointId] : null;
 
   const displayText =
-    type === "value"
-      ? boundPoint && pointRow
-        ? pointRow.value ?? "—"
-        : "Point"
-      : label || "Text";
+    type === "link"
+      ? label || "Link"
+      : type === "value"
+        ? boundPoint && pointRow
+          ? pointRow.value ?? "—"
+          : "Point"
+        : label || "Text";
 
   const isOffline = type === "value" && pointRow && (pointRow.status === "Unbound" || pointRow.status === "OFFLINE");
   const valueStateClass = type === "value" && isOffline ? " graphics-canvas-object--offline" : "";
+  const isLink = type === "link";
+  const hasValidLink = isLink && linkTarget?.type && linkTarget?.id;
+
+  const handleLinkClick = (e) => {
+    if (!hasValidLink || !onLinkClick) return;
+    e.stopPropagation();
+    onLinkClick(linkTarget);
+  };
 
   return (
     <div
@@ -29,13 +39,17 @@ function GraphicObject({ obj, pointsByPointId }) {
         width,
         minHeight: height,
         fontSize: 14,
-        cursor: "default",
-        pointerEvents: "none",
+        cursor: isLink && hasValidLink ? "pointer" : "default",
+        pointerEvents: isLink && hasValidLink ? "auto" : "none",
         border: "none",
         borderRadius: 0,
         boxShadow: "none",
         padding: 0,
       }}
+      onClick={handleLinkClick}
+      onKeyDown={isLink && hasValidLink ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onLinkClick(linkTarget); } } : undefined}
+      role={isLink && hasValidLink ? "button" : undefined}
+      tabIndex={isLink && hasValidLink ? 0 : undefined}
     >
       {displayText}
     </div>
@@ -45,8 +59,9 @@ function GraphicObject({ obj, pointsByPointId }) {
 const CANVAS_WIDTH = 800;
 const CANVAS_HEIGHT = 500;
 
-export default function DeployedGraphicPreview({ graphic, points = [] }) {
+export default function DeployedGraphicPreview({ graphic, points = [], onLinkClick }) {
   const objects = graphic?.objects ?? [];
+  const backgroundImage = graphic?.backgroundImage;
   const pointsByPointId = useMemo(() => {
     const map = {};
     points.forEach((p) => {
@@ -86,7 +101,7 @@ export default function DeployedGraphicPreview({ graphic, points = [] }) {
   };
 
   const contentCenter = useMemo(() => {
-    if (objects.length === 0) return { x: CANVAS_WIDTH / 2, y: CANVAS_HEIGHT / 2 };
+    if (objects.length === 0 && !backgroundImage) return { x: CANVAS_WIDTH / 2, y: CANVAS_HEIGHT / 2 };
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
     objects.forEach((obj) => {
       const w = obj.width ?? 60;
@@ -98,16 +113,19 @@ export default function DeployedGraphicPreview({ graphic, points = [] }) {
       maxX = Math.max(maxX, x + w);
       maxY = Math.max(maxY, y + h);
     });
+    if (objects.length === 0 && backgroundImage) {
+      return { x: CANVAS_WIDTH / 2, y: CANVAS_HEIGHT / 2 };
+    }
     return {
       x: (minX + maxX) / 2,
       y: (minY + maxY) / 2,
     };
-  }, [objects]);
+  }, [objects, backgroundImage]);
 
-  if (objects.length === 0) {
+  if (objects.length === 0 && !backgroundImage) {
     return (
       <div
-        className="rounded border border-light border-opacity-10 d-flex align-items-center justify-content-center text-white-50 small"
+        className="d-flex align-items-center justify-content-center text-white-50 small"
         style={containerStyle}
       >
         No graphic defined. Create one in Engineering → Graphics Manager and deploy.
@@ -123,7 +141,6 @@ export default function DeployedGraphicPreview({ graphic, points = [] }) {
   return (
     <div
       ref={containerRef}
-      className="rounded border border-light border-opacity-10"
       style={{ ...containerStyle, overflow: "visible" }}
     >
       <div
@@ -137,9 +154,41 @@ export default function DeployedGraphicPreview({ graphic, points = [] }) {
           background: "transparent",
         }}
       >
-        {objects.map((obj) => (
-          <GraphicObject key={obj.id} obj={obj} pointsByPointId={pointsByPointId} />
-        ))}
+        {backgroundImage?.dataUrl && (
+          <div
+            style={{
+              position: "absolute",
+              left: backgroundImage.x ?? 0,
+              top: backgroundImage.y ?? 0,
+              width: CANVAS_WIDTH,
+              height: CANVAS_HEIGHT,
+              zIndex: 0,
+              pointerEvents: "none",
+            }}
+          >
+            <img
+              src={backgroundImage.dataUrl}
+              alt=""
+              style={{
+                width: "100%",
+                height: "100%",
+                objectFit: "contain",
+                objectPosition: "center",
+                display: "block",
+              }}
+            />
+          </div>
+        )}
+        <div style={{ position: "absolute", inset: 0, zIndex: 1 }}>
+          {objects.map((obj) => (
+            <GraphicObject
+              key={obj.id}
+              obj={obj}
+              pointsByPointId={pointsByPointId}
+              onLinkClick={onLinkClick}
+            />
+          ))}
+        </div>
       </div>
     </div>
   );

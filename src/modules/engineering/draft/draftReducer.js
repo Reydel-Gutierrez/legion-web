@@ -18,6 +18,7 @@ export const DRAFT_ACTIONS = {
   SET_MAPPINGS_FOR_EQUIPMENT: "SET_MAPPINGS_FOR_EQUIPMENT",
   SET_GRAPHICS: "SET_GRAPHICS",
   SET_GRAPHIC_FOR_EQUIPMENT: "SET_GRAPHIC_FOR_EQUIPMENT",
+  SET_GRAPHIC_FOR_SITE_LAYOUT: "SET_GRAPHIC_FOR_SITE_LAYOUT",
   SET_VALIDATION: "SET_VALIDATION",
   SET_DEPLOYMENT_HISTORY: "SET_DEPLOYMENT_HISTORY",
   SET_ACTIVE_DEPLOYMENT_SNAPSHOT: "SET_ACTIVE_DEPLOYMENT_SNAPSHOT",
@@ -69,6 +70,18 @@ function draftReducer(state, action) {
       const { equipmentId, graphic } = action.payload;
       const next = { ...state.graphics, [equipmentId]: graphic };
       return { ...state, graphics: next };
+    }
+
+    case DRAFT_ACTIONS.SET_GRAPHIC_FOR_SITE_LAYOUT: {
+      const { nodeId, graphic } = action.payload;
+      const current = state.siteLayoutGraphics || {};
+      const next = graphic
+        ? { ...current, [nodeId]: graphic }
+        : (() => {
+          const { [nodeId]: _, ...rest } = current;
+          return rest;
+        })();
+      return { ...state, siteLayoutGraphics: next };
     }
 
     case DRAFT_ACTIONS.SET_VALIDATION:

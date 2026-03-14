@@ -14,6 +14,7 @@ export default function GraphicsInspector({
   selectedObject,
   availablePoints = [],
   equipmentName,
+  linkTargets = { layoutNodes: [], equipment: [] },
   onUpdateObject,
   onDeleteObject,
 }) {
@@ -32,6 +33,8 @@ export default function GraphicsInspector({
     labelText: "",
     bindingPointId: "",
     bindingDisplayMode: "value",
+    linkTargetType: "",
+    linkTargetId: "",
   });
 
   const bindPointSectionRef = useRef(null);
@@ -59,7 +62,9 @@ export default function GraphicsInspector({
   useEffect(() => {
     if (!selectedObject) return;
     const isText = selectedObject.type === "text";
+    const isLink = selectedObject.type === "link";
     const bind = isText ? null : selectedObject.bindings?.[0];
+    const linkTarget = isLink ? selectedObject.linkTarget || {} : {};
     if (isText && selectedObject.bindings?.length && onUpdateObject) {
       onUpdateObject(selectedObject.id, { ...selectedObject, bindings: [] });
     }
@@ -78,6 +83,8 @@ export default function GraphicsInspector({
       labelText: selectedObject.label || "",
       bindingPointId: bind?.pointId || "",
       bindingDisplayMode: bind?.displayMode || "value",
+      linkTargetType: linkTarget.type || "",
+      linkTargetId: linkTarget.id || "",
     });
   }, [selectedObject]);
 
@@ -97,11 +104,17 @@ export default function GraphicsInspector({
       if (field === "labelText") {
         updates.label = value;
       }
-      // Point binding only for non-text objects
-      if (selectedObject.type !== "text" && (field === "bindingPointId" || field === "bindingDisplayMode")) {
+      // Point binding only for non-text objects (not link)
+      if (selectedObject.type !== "text" && selectedObject.type !== "link" && (field === "bindingPointId" || field === "bindingDisplayMode")) {
         const pointId = field === "bindingPointId" ? value : form.bindingPointId;
         const displayMode = field === "bindingDisplayMode" ? value : form.bindingDisplayMode;
         updates.bindings = pointId ? [{ pointId, displayMode }] : [];
+      }
+      // Link target for link objects
+      if (selectedObject.type === "link" && (field === "linkTargetType" || field === "linkTargetId")) {
+        const linkType = field === "linkTargetType" ? value : form.linkTargetType;
+        const linkId = field === "linkTargetId" ? value : form.linkTargetId;
+        updates.linkTarget = linkType && linkId ? { type: linkType, id: linkId } : {};
       }
       onUpdateObject(selectedObject.id, updates);
     }
@@ -287,6 +300,68 @@ export default function GraphicsInspector({
             </Form.Group>
           </div>
         </div>
+
+        {/* Link Target - only for link objects */}
+        {selectedObject.type === "link" && (
+          <div className="mb-4">
+            <div className="text-white small fw-semibold mb-2">Link Target</div>
+            <div className="bg-dark bg-opacity-25 rounded p-3 border border-light border-opacity-10">
+              <Form.Group className="mb-2">
+                <Form.Label className="text-white-50 small">Link to</Form.Label>
+                <select
+                  className="form-select form-select-sm bg-dark bg-opacity-25 border border-light border-opacity-10 text-white"
+                  value={form.linkTargetType}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    handleChange("linkTargetType", v);
+                    handleChange("linkTargetId", "");
+                  }}
+                >
+                  <option value="">— Select type —</option>
+                  <option value="layout">Layout area (site/building/floor)</option>
+                  <option value="equipment">Equipment graphic</option>
+                </select>
+              </Form.Group>
+              {form.linkTargetType === "layout" && (
+                <Form.Group className="mb-0">
+                  <Form.Label className="text-white-50 small">Layout level</Form.Label>
+                  <select
+                    className="form-select form-select-sm bg-dark bg-opacity-25 border border-light border-opacity-10 text-white"
+                    value={form.linkTargetId}
+                    onChange={(e) => handleChange("linkTargetId", e.target.value)}
+                  >
+                    <option value="">— Select —</option>
+                    {(linkTargets.layoutNodes || []).map((n) => (
+                      <option key={n.id} value={n.id}>
+                        {n.name} ({n.type})
+                      </option>
+                    ))}
+                  </select>
+                </Form.Group>
+              )}
+              {form.linkTargetType === "equipment" && (
+                <Form.Group className="mb-0">
+                  <Form.Label className="text-white-50 small">Equipment</Form.Label>
+                  <select
+                    className="form-select form-select-sm bg-dark bg-opacity-25 border border-light border-opacity-10 text-white"
+                    value={form.linkTargetId}
+                    onChange={(e) => handleChange("linkTargetId", e.target.value)}
+                  >
+                    <option value="">— Select —</option>
+                    {(linkTargets.equipment || []).map((e) => (
+                      <option key={e.id} value={e.id}>
+                        {e.name}
+                      </option>
+                    ))}
+                  </select>
+                </Form.Group>
+              )}
+              <div className="text-white-50 small mt-2">
+                In Operator, clicking this button will navigate to the selected layout level or equipment detail.
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Point Binding - only for value (point) objects, not text */}
         {canBindPoint && (

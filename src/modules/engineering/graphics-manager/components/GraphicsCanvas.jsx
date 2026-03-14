@@ -10,6 +10,7 @@ import {
   faLink,
   faHashtag,
   faTrash,
+  faExternalLinkAlt,
 } from "@fortawesome/free-solid-svg-icons";
 
 /**
@@ -23,6 +24,7 @@ function CanvasToolbar({
   onZoomOut,
   onAddText,
   onAddValue,
+  onAddLink,
   onDeleteObject,
   hasSelection,
   canBindPoint,
@@ -78,6 +80,15 @@ function CanvasToolbar({
       >
         <FontAwesomeIcon icon={faHashtag} className="me-1" />
         Add Value
+      </button>
+      <button
+        type="button"
+        className="btn btn-sm legion-hero-btn legion-hero-btn--secondary"
+        title="Add Link - button that links to another graphic or layout area"
+        onClick={onAddLink}
+      >
+        <FontAwesomeIcon icon={faExternalLinkAlt} className="me-1" />
+        Add Link
       </button>
       <button
         type="button"
@@ -173,17 +184,20 @@ function CanvasObject({
 
   // Value type: "Point" when unbound; when bound show live/placeholder/offline
   const displayText =
-    type === "value"
-      ? boundPoint && pointInfo
-        ? displayValue != null
-          ? typeof displayValue === "number"
-            ? `${displayValue}${pointInfo?.units || ""}`
-            : String(displayValue)
-          : (valueState === "offline" ? "Offline" : "—")
-        : "Point"
-      : label || "Text";
+    type === "link"
+      ? label || "Link"
+      : type === "value"
+        ? boundPoint && pointInfo
+          ? displayValue != null
+            ? typeof displayValue === "number"
+              ? `${displayValue}${pointInfo?.units || ""}`
+              : String(displayValue)
+            : (valueState === "offline" ? "Offline" : "—")
+          : "Point"
+        : label || "Text";
 
   const showInlineEdit = type === "text" && isEditingLabel;
+  const isLink = type === "link";
 
   const valueStateClass =
     type === "value" && valueState
@@ -192,7 +206,7 @@ function CanvasObject({
 
   return (
     <div
-      className={`graphics-canvas-object graphics-canvas-object--${type}${valueStateClass} ${isSelected ? "graphics-canvas-object--selected" : ""}`}
+      className={`graphics-canvas-object graphics-canvas-object--${type}${valueStateClass} ${isSelected ? "graphics-canvas-object--selected" : ""} ${isLink ? "graphics-canvas-object--link" : ""}`}
       style={{
         left: scaled.x,
         top: scaled.y,
@@ -203,7 +217,7 @@ function CanvasObject({
         borderColor: stroke || undefined,
       }}
       onClick={handleClick}
-      onDoubleClick={handleDoubleClick}
+      onDoubleClick={isLink ? undefined : handleDoubleClick}
       onMouseDown={handleMouseDown}
     >
       {showInlineEdit ? (
@@ -245,6 +259,8 @@ export default function GraphicsCanvas({
   onUpdateObject,
   onAddText,
   onAddValue,
+  onAddLink,
+  onBackgroundPositionChange,
   onDeleteObject,
   availablePoints = [],
   previewMode = false,
@@ -254,10 +270,12 @@ export default function GraphicsCanvas({
   const [zoom, setZoom] = useState(1);
   const [editingLabelObjectId, setEditingLabelObjectId] = useState(null);
   const [dragState, setDragState] = useState(null);
+  const [backgroundDragState, setBackgroundDragState] = useState(false);
+  const backgroundDragRef = React.useRef(null);
   const canvasRef = React.useRef(null);
   const objects = graphic?.objects || [];
   const selectedObject = objects.find((o) => o.id === selectedObjectId) || null;
-  const canBindPoint = selectedObject ? selectedObject.type !== "text" : false;
+  const canBindPoint = selectedObject ? selectedObject.type !== "text" && selectedObject.type !== "link" : false;
 
   const handleZoomIn = useCallback(() => {
     setZoom((z) => Math.min(z + 0.25, 2));
@@ -321,6 +339,28 @@ export default function GraphicsCanvas({
     };
   }, [dragState, zoom, onUpdateObject]);
 
+  useEffect(() => {
+    if (!backgroundDragState || !onBackgroundPositionChange) return;
+    const onMouseMove = (e) => {
+      const prev = backgroundDragRef.current;
+      if (!prev) return;
+      const deltaX = (e.clientX - prev.lastClientX) / zoom;
+      const deltaY = (e.clientY - prev.lastClientY) / zoom;
+      onBackgroundPositionChange(deltaX, deltaY);
+      backgroundDragRef.current = { lastClientX: e.clientX, lastClientY: e.clientY };
+    };
+    const onMouseUp = () => {
+      setBackgroundDragState(false);
+      backgroundDragRef.current = null;
+    };
+    window.addEventListener("mousemove", onMouseMove);
+    window.addEventListener("mouseup", onMouseUp);
+    return () => {
+      window.removeEventListener("mousemove", onMouseMove);
+      window.removeEventListener("mouseup", onMouseUp);
+    };
+  }, [backgroundDragState, zoom, onBackgroundPositionChange]);
+
   const handleKeyDown = useCallback(
     (e) => {
       const active = document.activeElement;
@@ -352,7 +392,7 @@ export default function GraphicsCanvas({
 
   return (
     <div
-      className={`graphics-canvas-container border border-light border-opacity-10 rounded overflow-hidden bg-primary ${dragState ? "graphics-canvas-container--dragging" : ""}`}
+      className={`graphics-canvas-container border border-light border-opacity-10 rounded overflow-hidden bg-primary ${dragState || backgroundDragState ? "graphics-canvas-container--dragging" : ""}`}
     >
       <CanvasToolbar
         tool={tool}
@@ -362,6 +402,7 @@ export default function GraphicsCanvas({
         onZoomOut={handleZoomOut}
         onAddText={onAddText}
         onAddValue={onAddValue}
+        onAddLink={onAddLink}
         onDeleteObject={selectedObjectId ? () => onDeleteObject(selectedObjectId) : undefined}
         hasSelection={!!selectedObjectId}
         canBindPoint={canBindPoint}
@@ -381,6 +422,43 @@ export default function GraphicsCanvas({
             transformOrigin: "0 0",
           }}
         >
+          {graphic?.backgroundImage?.dataUrl && (
+            <div
+              className="graphics-canvas-background"
+              style={{
+                position: "absolute",
+                left: graphic.backgroundImage.x ?? 0,
+                top: graphic.backgroundImage.y ?? 0,
+                width: 800,
+                height: 500,
+                zIndex: 0,
+                pointerEvents: previewMode ? "none" : "auto",
+                cursor: backgroundDragState ? "grabbing" : "grab",
+              }}
+              onMouseDown={(e) => {
+                if (previewMode || !onBackgroundPositionChange || e.button !== 0) return;
+                e.stopPropagation();
+                backgroundDragRef.current = { lastClientX: e.clientX, lastClientY: e.clientY };
+                setBackgroundDragState(true);
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <img
+                src={graphic.backgroundImage.dataUrl}
+                alt=""
+                draggable={false}
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  objectFit: "contain",
+                  objectPosition: "center",
+                  display: "block",
+                  pointerEvents: "none",
+                }}
+              />
+            </div>
+          )}
+          <div style={{ position: "relative", zIndex: 1 }}>
           {objects.map((obj) => (
             <CanvasObject
               key={obj.id}
@@ -396,6 +474,7 @@ export default function GraphicsCanvas({
               onFinishEditLabel={handleFinishEditLabel}
             />
           ))}
+          </div>
         </div>
       </div>
     </div>

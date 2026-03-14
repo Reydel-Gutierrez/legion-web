@@ -29,5 +29,6 @@ export function buildFullDeploymentSnapshot(draft, overrides = {}) {
       : { equipmentTemplates: [], graphicTemplates: [] },
     mappings: draft?.mappings && typeof draft.mappings === "object" ? { ...draft.mappings } : {},
     graphics: draft?.graphics && typeof draft.graphics === "object" ? { ...draft.graphics } : {},
+    siteLayoutGraphics: draft?.siteLayoutGraphics && typeof draft.siteLayoutGraphics === "object" ? { ...draft.siteLayoutGraphics } : {},
   };
 }

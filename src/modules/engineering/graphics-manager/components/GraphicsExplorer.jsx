@@ -2,9 +2,9 @@ import React from "react";
 import SiteTree from "../../site-builder/components/SiteTree";
 
 /**
- * Graphics Explorer - reuses Site Builder's site equipment tree.
- * Site → Building → Floor → Equipment. Click equipment to load its graphics in the canvas.
- * No Add/Edit/Delete actions - browse-only for graphics context.
+ * Graphics Explorer - browse-only site & equipment tree for Graphics Manager.
+ * Site → Building → Floor → Equipment. Click site/building/floor to edit layout graphics; click equipment for equipment graphics.
+ * No Add Building / Add Floor here — structure is managed in Site Builder. This page stays minimal for building graphics only.
  */
 export default function GraphicsExplorer({
   siteTree,

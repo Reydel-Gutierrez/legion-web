@@ -57,6 +57,16 @@ export default function EquipmentDetailPage() {
     return activeDeployment.graphics[equipment.id] || null;
   }, [activeDeployment?.graphics, equipment]);
 
+  const handleGraphicLinkClick = (linkTarget) => {
+    if (!linkTarget?.type || !linkTarget?.id) return;
+    if (linkTarget.type === "equipment") {
+      const path = Routes.LegionEquipmentDetail.path.replace(":equipmentId", encodeURIComponent(linkTarget.id));
+      history.push(path);
+    } else if (linkTarget.type === "layout") {
+      history.push(Routes.LegionSite.path, { selectLayoutLevelId: linkTarget.id });
+    }
+  };
+
   if (!equipment) {
     return (
       <Container fluid className="px-0 app-scale">
@@ -112,10 +122,14 @@ export default function EquipmentDetailPage() {
                       >
                         <div style={{ width: 800, flexShrink: 0 }}>
                           {graphic?.objects?.length > 0 ? (
-                            <DeployedGraphicPreview graphic={graphic} points={points} />
+                            <DeployedGraphicPreview
+                              graphic={graphic}
+                              points={points}
+                              onLinkClick={handleGraphicLinkClick}
+                            />
                           ) : (
                             <div
-                              className="rounded border border-light border-opacity-10 d-flex align-items-center justify-content-center bg-transparent"
+                              className="d-flex align-items-center justify-content-center bg-transparent"
                               style={{ width: 800, height: 500 }}
                             >
                               <img src={VavGraphicImg} alt={displayName} className="w-40 mb-0" />

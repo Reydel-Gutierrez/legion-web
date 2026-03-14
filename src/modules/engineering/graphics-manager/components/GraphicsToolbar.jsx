@@ -78,6 +78,8 @@ export default function GraphicsToolbar({
         size="sm"
         className="legion-hero-btn legion-hero-btn--secondary"
         onClick={onImportSvg}
+        disabled={!hasSelection}
+        title={hasSelection ? "Set SVG as workspace background" : "Select a graphic first"}
       >
         <FontAwesomeIcon icon={faFileImport} className="me-1" />
         Import SVG
@@ -86,6 +88,8 @@ export default function GraphicsToolbar({
         size="sm"
         className="legion-hero-btn legion-hero-btn--secondary"
         onClick={onImportImage}
+        disabled={!hasSelection}
+        title={hasSelection ? "Set image as workspace background" : "Select a graphic first"}
       >
         <FontAwesomeIcon icon={faImage} className="me-1" />
         Import Image

@@ -31,6 +31,8 @@ export function useEngineeringDraft() {
       setGraphics: (payload) => dispatch({ type: DRAFT_ACTIONS.SET_GRAPHICS, payload }),
       setGraphicForEquipment: (equipmentId, graphic) =>
         dispatch({ type: DRAFT_ACTIONS.SET_GRAPHIC_FOR_EQUIPMENT, payload: { equipmentId, graphic } }),
+      setGraphicForSiteLayout: (nodeId, graphic) =>
+        dispatch({ type: DRAFT_ACTIONS.SET_GRAPHIC_FOR_SITE_LAYOUT, payload: { nodeId, graphic } }),
       setValidation: (payload) => dispatch({ type: DRAFT_ACTIONS.SET_VALIDATION, payload }),
       setDeploymentHistory: (payload) => dispatch({ type: DRAFT_ACTIONS.SET_DEPLOYMENT_HISTORY, payload }),
       setActiveDeploymentSnapshot: (payload) =>
@@ -82,6 +84,14 @@ export function selectGraphics(draft) {
 
 export function selectGraphicForEquipment(draft, equipmentId) {
   return (draft?.graphics ?? {})[equipmentId] ?? null;
+}
+
+export function selectSiteLayoutGraphics(draft) {
+  return draft?.siteLayoutGraphics ?? {};
+}
+
+export function selectSiteLayoutGraphic(draft, nodeId) {
+  return (draft?.siteLayoutGraphics ?? {})[nodeId] ?? null;
 }
 
 export function selectValidation(draft) {

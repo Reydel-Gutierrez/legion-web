@@ -1,10 +1,15 @@
-import React, { useState, useCallback, useMemo, useEffect } from "react";
+import React, { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { Container, Row, Col, Card, Button } from "@themesberg/react-bootstrap";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faObjectGroup } from "@fortawesome/free-solid-svg-icons";
 
 import { useSite } from "../../../app/providers/SiteProvider";
-import { useEngineeringDraft, useActiveDeployment, selectSiteTree } from "../../../hooks/useEngineeringDraft";
+import {
+  useEngineeringDraft,
+  useActiveDeployment,
+  selectSiteTree,
+} from "../../../hooks/useEngineeringDraft";
+import { findNodeById } from "../site-builder/utils/siteTreeUtils";
 import LegionHeroHeader from "../../../components/legion/LegionHeroHeader";
 import { engineeringRepository } from "../../../lib/data";
 import GraphicsContextCard from "./components/GraphicsContextCard";
@@ -14,12 +19,34 @@ import GraphicsCanvas from "./components/GraphicsCanvas";
 import GraphicsInspector from "./components/GraphicsInspector";
 
 // ---------------------------------------------------------------------------
+// File import helpers
+// ---------------------------------------------------------------------------
+function readFileAsDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
+}
+
+// ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 function collectIds(node, acc = new Set()) {
   if (!node) return acc;
   if (node.id) acc.add(node.id);
   (node.children || []).forEach((c) => collectIds(c, acc));
+  return acc;
+}
+
+/** Flatten site tree to list of nodes (site, building, floor) for link targets */
+function flattenLayoutNodes(node, acc = []) {
+  if (!node) return acc;
+  if (node.type === "site" || node.type === "building" || node.type === "floor") {
+    acc.push({ id: node.id, name: node.name || node.id, type: node.type });
+  }
+  (node.children || []).forEach((c) => flattenLayoutNodes(c, acc));
   return acc;
 }
 
@@ -33,8 +60,10 @@ export default function GraphicsManagerPage() {
   const siteTree = selectSiteTree(draft);
   const draftEquipment = draft?.equipment ?? [];
   const draftGraphics = draft?.graphics ?? {};
+  const draftSiteLayoutGraphics = draft?.siteLayoutGraphics ?? {};
   const [expandedIds, setExpandedIds] = useState(new Set());
   const [selectedEquipmentId, setSelectedEquipmentId] = useState(null);
+  const [selectedLayoutNodeId, setSelectedLayoutNodeId] = useState(null);
   const [selectedObject, setSelectedObject] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterValue, setFilterValue] = useState("all");
@@ -42,6 +71,8 @@ export default function GraphicsManagerPage() {
   const [validationResult, setValidationResult] = useState(null);
   const [showValidationToast, setShowValidationToast] = useState(false);
   const [showSaveToast, setShowSaveToast] = useState(false);
+  const importImageInputRef = useRef(null);
+  const importSvgInputRef = useRef(null);
 
   const isNewBuilding = engineeringRepository.isNewEngineeringBuildingFlow(site);
   const hasNoSite = isNewBuilding && !draft?.site;
@@ -59,16 +90,33 @@ export default function GraphicsManagerPage() {
     [equipmentList, selectedEquipmentId]
   );
 
+  const selectedLayoutNode = useMemo(
+    () => (siteTree && selectedLayoutNodeId ? findNodeById(siteTree, selectedLayoutNodeId) : null),
+    [siteTree, selectedLayoutNodeId]
+  );
+
   const availablePoints = useMemo(
     () =>
       engineeringRepository.getPointDisplayInfoForEquipment(selectedEquipment, draft?.templates),
     [selectedEquipment, draft?.templates]
   );
 
-  // When equipment is selected but no graphic exists yet, use an empty graphic so the canvas is editable (Add Text, Add Value).
+  // When a layout node (site/building/floor) is selected, use its layout graphic; otherwise equipment graphic.
   const selectedGraphic = useMemo(() => {
+    if (selectedLayoutNodeId) {
+      const base = draftSiteLayoutGraphics[selectedLayoutNodeId] ?? null;
+      if (base) return { ...base, objects: base.objects ?? [], backgroundImage: base.backgroundImage };
+      return {
+        id: `layout-${selectedLayoutNodeId}`,
+        nodeId: selectedLayoutNodeId,
+        name: "Site Layout Graphic",
+        status: "DRAFT",
+        lastEdited: "Now",
+        objects: [],
+      };
+    }
     const base = draftGraphics[selectedEquipmentId] ?? null;
-    if (base) return { ...base, objects: base.objects ?? [] };
+    if (base) return { ...base, objects: base.objects ?? [], backgroundImage: base.backgroundImage };
     if (selectedEquipmentId)
       return {
         id: `g-new-${selectedEquipmentId}`,
@@ -79,7 +127,17 @@ export default function GraphicsManagerPage() {
         objects: [],
       };
     return null;
-  }, [selectedEquipmentId, draftGraphics]);
+  }, [selectedEquipmentId, selectedLayoutNodeId, draftGraphics, draftSiteLayoutGraphics]);
+
+  const linkTargets = useMemo(() => {
+    const layoutNodes = siteTree ? flattenLayoutNodes(siteTree) : [];
+    const equipment = (equipmentList || []).map((e) => ({
+      id: e.id,
+      name: e.displayLabel || e.name || e.id,
+      type: "equipment",
+    }));
+    return { layoutNodes, equipment };
+  }, [siteTree, equipmentList]);
 
   // Stabilize effect: siteTree is a new object every render, so don't depend on it directly.
   // Only run when site or presence of tree changes (draft?.site?.id).
@@ -88,6 +146,7 @@ export default function GraphicsManagerPage() {
     if (hasNoSite) {
       setExpandedIds(new Set());
       setSelectedEquipmentId(null);
+      setSelectedLayoutNodeId(null);
       setSelectedObject(null);
       return;
     }
@@ -95,6 +154,7 @@ export default function GraphicsManagerPage() {
       const ids = collectIds(siteTree);
       setExpandedIds(ids);
       setSelectedEquipmentId(null);
+      setSelectedLayoutNodeId(null);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [site, hasNoSite, siteTreeKey]);
@@ -110,12 +170,22 @@ export default function GraphicsManagerPage() {
 
   const handleSelectEquipment = useCallback((equipment) => {
     setSelectedEquipmentId(equipment?.id ?? null);
+    setSelectedLayoutNodeId(null);
     setSelectedObject(null);
   }, []);
 
   const handleSelectEquipmentById = useCallback((id) => {
     setSelectedEquipmentId(id || null);
+    setSelectedLayoutNodeId(null);
     setSelectedObject(null);
+  }, []);
+
+  const handleSelectLayoutNode = useCallback((node) => {
+    if (!node || node.type === "site" || node.type === "building" || node.type === "floor") {
+      setSelectedLayoutNodeId(node?.id ?? null);
+      setSelectedEquipmentId(null);
+      setSelectedObject(null);
+    }
   }, []);
 
   const handleSelectObject = useCallback((obj) => {
@@ -124,6 +194,15 @@ export default function GraphicsManagerPage() {
 
   const handleUpdateObject = useCallback(
     (objectId, updates) => {
+      if (selectedLayoutNodeId) {
+        const current = draftSiteLayoutGraphics[selectedLayoutNodeId] || { objects: [] };
+        const objects = (current.objects || []).map((o) =>
+          o.id === objectId ? { ...o, ...updates } : o
+        );
+        actions.setGraphicForSiteLayout(selectedLayoutNodeId, { ...current, objects });
+        setSelectedObject((prev) => (prev?.id === objectId ? { ...prev, ...updates } : prev));
+        return;
+      }
       if (!selectedEquipmentId) return;
       const current = draftGraphics[selectedEquipmentId] || { objects: [] };
       const objects = (current.objects || []).map((o) =>
@@ -132,7 +211,7 @@ export default function GraphicsManagerPage() {
       actions.setGraphicForEquipment(selectedEquipmentId, { ...current, objects });
       setSelectedObject((prev) => (prev?.id === objectId ? { ...prev, ...updates } : prev));
     },
-    [selectedEquipmentId, draftGraphics, actions]
+    [selectedEquipmentId, selectedLayoutNodeId, draftGraphics, draftSiteLayoutGraphics, actions]
   );
 
   const generateObjectId = useCallback(() => {
@@ -140,6 +219,26 @@ export default function GraphicsManagerPage() {
   }, []);
 
   const handleAddText = useCallback(() => {
+    if (selectedLayoutNodeId) {
+      const current = draftSiteLayoutGraphics[selectedLayoutNodeId] || { objects: [] };
+      const existingObjects = current.objects || [];
+      const maxY = existingObjects.reduce((m, o) => Math.max(m, (o.y || 0) + (o.height || 24)), 0);
+      const newObj = {
+        id: generateObjectId(),
+        type: "text",
+        label: "Text",
+        x: 100,
+        y: Math.max(80, maxY + 20),
+        width: 60,
+        height: 24,
+      };
+      actions.setGraphicForSiteLayout(selectedLayoutNodeId, {
+        ...current,
+        objects: [...existingObjects, newObj],
+      });
+      setSelectedObject(newObj);
+      return;
+    }
     if (!selectedEquipmentId) return;
     const current = draftGraphics[selectedEquipmentId] || { objects: [] };
     const existingObjects = current.objects || [];
@@ -158,9 +257,30 @@ export default function GraphicsManagerPage() {
       objects: [...existingObjects, newObj],
     });
     setSelectedObject(newObj);
-  }, [selectedEquipmentId, draftGraphics, actions, generateObjectId]);
+  }, [selectedEquipmentId, selectedLayoutNodeId, draftGraphics, draftSiteLayoutGraphics, actions, generateObjectId]);
 
   const handleAddValue = useCallback(() => {
+    if (selectedLayoutNodeId) {
+      const current = draftSiteLayoutGraphics[selectedLayoutNodeId] || { objects: [] };
+      const existingObjects = current.objects || [];
+      const maxY = existingObjects.reduce((m, o) => Math.max(m, (o.y || 0) + (o.height || 24)), 0);
+      const newObj = {
+        id: generateObjectId(),
+        type: "value",
+        label: "Point",
+        x: 100,
+        y: Math.max(80, maxY + 20),
+        width: 80,
+        height: 24,
+        bindings: [],
+      };
+      actions.setGraphicForSiteLayout(selectedLayoutNodeId, {
+        ...current,
+        objects: [...existingObjects, newObj],
+      });
+      setSelectedObject(newObj);
+      return;
+    }
     if (!selectedEquipmentId) return;
     const current = draftGraphics[selectedEquipmentId] || { objects: [] };
     const existingObjects = current.objects || [];
@@ -180,29 +300,73 @@ export default function GraphicsManagerPage() {
       objects: [...existingObjects, newObj],
     });
     setSelectedObject(newObj);
-  }, [selectedEquipmentId, draftGraphics, actions, generateObjectId]);
+  }, [selectedEquipmentId, selectedLayoutNodeId, draftGraphics, draftSiteLayoutGraphics, actions, generateObjectId]);
+
+  const handleAddLink = useCallback(() => {
+    const newObj = {
+      id: generateObjectId(),
+      type: "link",
+      label: "Link",
+      x: 100,
+      y: 100,
+      width: 80,
+      height: 28,
+      linkTarget: { type: "", id: "" },
+    };
+    if (selectedLayoutNodeId) {
+      const current = draftSiteLayoutGraphics[selectedLayoutNodeId] || { objects: [] };
+      const existingObjects = current.objects || [];
+      const maxY = existingObjects.reduce((m, o) => Math.max(m, (o.y || 0) + (o.height || 24)), 0);
+      newObj.y = Math.max(80, maxY + 20);
+      actions.setGraphicForSiteLayout(selectedLayoutNodeId, {
+        ...current,
+        objects: [...existingObjects, newObj],
+      });
+      setSelectedObject(newObj);
+      return;
+    }
+    if (!selectedEquipmentId) return;
+    const current = draftGraphics[selectedEquipmentId] || { objects: [] };
+    const existingObjects = current.objects || [];
+    const maxY = existingObjects.reduce((m, o) => Math.max(m, (o.y || 0) + (o.height || 24)), 0);
+    newObj.y = Math.max(80, maxY + 20);
+    actions.setGraphicForEquipment(selectedEquipmentId, {
+      ...current,
+      objects: [...existingObjects, newObj],
+    });
+    setSelectedObject(newObj);
+  }, [selectedEquipmentId, selectedLayoutNodeId, draftGraphics, draftSiteLayoutGraphics, actions, generateObjectId]);
 
   const handleDeleteObject = useCallback(
     (objectId) => {
+      if (selectedLayoutNodeId) {
+        const current = draftSiteLayoutGraphics[selectedLayoutNodeId] || { objects: [] };
+        const objects = (current.objects || []).filter((o) => o.id !== objectId);
+        actions.setGraphicForSiteLayout(selectedLayoutNodeId, { ...current, objects });
+        if (selectedObject?.id === objectId) setSelectedObject(null);
+        return;
+      }
       if (!selectedEquipmentId || !objectId) return;
       const current = draftGraphics[selectedEquipmentId] || { objects: [] };
       const objects = (current.objects || []).filter((o) => o.id !== objectId);
       actions.setGraphicForEquipment(selectedEquipmentId, { ...current, objects });
-      if (selectedObject?.id === objectId) {
-        setSelectedObject(null);
-      }
+      if (selectedObject?.id === objectId) setSelectedObject(null);
     },
-    [selectedEquipmentId, selectedObject?.id, draftGraphics, actions]
+    [selectedEquipmentId, selectedLayoutNodeId, selectedObject?.id, draftGraphics, draftSiteLayoutGraphics, actions]
   );
 
   const handleSaveGraphic = useCallback(() => {
-    if (!selectedEquipmentId || !selectedGraphic) return;
-    actions.setGraphicForEquipment(selectedEquipmentId, selectedGraphic);
+    if (!selectedGraphic) return;
+    if (selectedLayoutNodeId) {
+      actions.setGraphicForSiteLayout(selectedLayoutNodeId, selectedGraphic);
+    } else if (selectedEquipmentId) {
+      actions.setGraphicForEquipment(selectedEquipmentId, selectedGraphic);
+    } else return;
     setShowSaveToast(true);
     if (typeof window !== "undefined" && window.setTimeout) {
       window.setTimeout(() => setShowSaveToast(false), 4000);
     }
-  }, [selectedEquipmentId, selectedGraphic, actions]);
+  }, [selectedEquipmentId, selectedLayoutNodeId, selectedGraphic, actions]);
 
   const handleValidate = useCallback(() => {
     const graphic = selectedGraphic;
@@ -221,14 +385,74 @@ export default function GraphicsManagerPage() {
     setShowValidationToast(true);
   }, [selectedGraphic]);
 
+  const setGraphicBackgroundImage = useCallback(
+    (backgroundImage) => {
+      if (!selectedGraphic) return;
+      const updated = { ...selectedGraphic, backgroundImage };
+      if (selectedLayoutNodeId) {
+        actions.setGraphicForSiteLayout(selectedLayoutNodeId, updated);
+      } else if (selectedEquipmentId) {
+        actions.setGraphicForEquipment(selectedEquipmentId, updated);
+      }
+    },
+    [selectedGraphic, selectedLayoutNodeId, selectedEquipmentId, actions]
+  );
+
+  const handleBackgroundPositionChange = useCallback(
+    (dx, dy) => {
+      const bg = selectedGraphic?.backgroundImage;
+      if (!bg?.dataUrl) return;
+      const x = (bg.x ?? 0) + dx;
+      const y = (bg.y ?? 0) + dy;
+      setGraphicBackgroundImage({ ...bg, x, y });
+    },
+    [selectedGraphic?.backgroundImage, setGraphicBackgroundImage]
+  );
+
+  const handleImportSvg = useCallback(() => {
+    if (!selectedGraphic) return;
+    const el = importSvgInputRef.current;
+    if (el) {
+      el.accept = ".svg,image/svg+xml";
+      el.value = "";
+      el.onchange = async (e) => {
+        const file = e.target?.files?.[0];
+        if (!file) return;
+        try {
+          const dataUrl = await readFileAsDataUrl(file);
+          setGraphicBackgroundImage({ type: "svg", dataUrl });
+        } catch (err) {
+          console.error("Failed to read SVG", err);
+        }
+        el.onchange = null;
+      };
+      el.click();
+    }
+  }, [selectedGraphic, setGraphicBackgroundImage]);
+
+  const handleImportImage = useCallback(() => {
+    if (!selectedGraphic) return;
+    const el = importImageInputRef.current;
+    if (el) {
+      el.accept = "image/*";
+      el.value = "";
+      el.onchange = async (e) => {
+        const file = e.target?.files?.[0];
+        if (!file) return;
+        try {
+          const dataUrl = await readFileAsDataUrl(file);
+          setGraphicBackgroundImage({ type: "image", dataUrl });
+        } catch (err) {
+          console.error("Failed to read image", err);
+        }
+        el.onchange = null;
+      };
+      el.click();
+    }
+  }, [selectedGraphic, setGraphicBackgroundImage]);
+
   const handleNewGraphic = useCallback(() => {
     console.log("New Graphic");
-  }, []);
-  const handleImportSvg = useCallback(() => {
-    console.log("Import SVG");
-  }, []);
-  const handleImportImage = useCallback(() => {
-    console.log("Import Image");
   }, []);
   const handleDuplicate = useCallback(() => {
     console.log("Duplicate");
@@ -269,6 +493,20 @@ export default function GraphicsManagerPage() {
 
   return (
     <Container fluid className="px-0">
+      <input
+        ref={importSvgInputRef}
+        type="file"
+        accept=".svg,image/svg+xml"
+        className="d-none"
+        aria-hidden
+      />
+      <input
+        ref={importImageInputRef}
+        type="file"
+        accept="image/*"
+        className="d-none"
+        aria-hidden
+      />
       <div className="px-3 px-md-4 pt-3">
         <LegionHeroHeader />
         <hr className="border-light border-opacity-25 my-3" />
@@ -343,9 +581,13 @@ export default function GraphicsManagerPage() {
         {showSaveToast && (
           <div className="mb-3 p-3 rounded border border-success border-opacity-50 bg-success bg-opacity-10">
             <div className="text-success small fw-semibold">
-              Graphic saved and bound to {selectedEquipment?.displayLabel || selectedEquipment?.name || "this equipment"}.
+              {selectedLayoutNodeId
+                ? `Site layout graphic saved for ${selectedLayoutNode?.name ?? "this level"}.`
+                : `Graphic saved and bound to ${selectedEquipment?.displayLabel || selectedEquipment?.name || "this equipment"}.`}
             </div>
-            <div className="text-white-50 small mt-1">Deploy to Live to see it on the Equipment Detail page.</div>
+            <div className="text-white-50 small mt-1">
+              {selectedLayoutNodeId ? "Deploy to Live to see it in Operator → Site Layout." : "Deploy to Live to see it on the Equipment Detail page."}
+            </div>
             <Button size="sm" variant="link" className="text-white-50 p-0 mt-2" onClick={() => setShowSaveToast(false)}>Dismiss</Button>
           </div>
         )}
@@ -363,7 +605,7 @@ export default function GraphicsManagerPage() {
           onDelete={handleDelete}
           onPreview={handlePreview}
           onValidate={handleValidate}
-          hasSelection={!!selectedEquipmentId}
+          hasSelection={!!selectedEquipmentId || !!selectedLayoutNodeId}
         />
 
         <Row className="g-3 align-items-start">
@@ -379,10 +621,10 @@ export default function GraphicsManagerPage() {
                 <GraphicsExplorer
                   siteTree={siteTree}
                   expandedIds={expandedIds}
-                  selectedId={null}
+                  selectedId={selectedLayoutNodeId}
                   selectedEquipmentId={selectedEquipmentId}
                   onToggleExpand={toggleExpand}
-                  onSelect={() => {}}
+                  onSelect={handleSelectLayoutNode}
                   onSelectEquipment={handleSelectEquipment}
                 />
               </Card.Body>
@@ -397,10 +639,16 @@ export default function GraphicsManagerPage() {
               onUpdateObject={handleUpdateObject}
               onAddText={handleAddText}
               onAddValue={handleAddValue}
+              onAddLink={handleAddLink}
+              onBackgroundPositionChange={handleBackgroundPositionChange}
               onDeleteObject={handleDeleteObject}
-              availablePoints={availablePoints}
+              availablePoints={selectedLayoutNodeId ? [] : availablePoints}
               previewMode={false}
-              emptyMessage="Select equipment from the tree or dropdown to create or edit graphics."
+              emptyMessage={
+                selectedLayoutNodeId
+                  ? `Create a site layout graphic for ${selectedLayoutNode?.name ?? "this level"}. Deploy to see it in Operator → Site Layout.`
+                  : "Select a site, building, or floor from the tree to create layout graphics, or select equipment to create equipment graphics."
+              }
             />
           </Col>
 
@@ -409,6 +657,7 @@ export default function GraphicsManagerPage() {
               selectedObject={selectedObject}
               availablePoints={availablePoints}
               equipmentName={selectedEquipment?.name}
+              linkTargets={linkTargets}
               onUpdateObject={handleUpdateObject}
               onDeleteObject={handleDeleteObject}
             />

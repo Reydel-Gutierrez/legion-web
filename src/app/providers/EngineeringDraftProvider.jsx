@@ -79,6 +79,7 @@ export function EngineeringDraftProvider({ children }) {
           discoveredObjects: {},
           mappings: {},
           graphics: {},
+          siteLayoutGraphics: {},
           validation: null,
           deploymentHistory: [],
           activeDeploymentSnapshot: null,

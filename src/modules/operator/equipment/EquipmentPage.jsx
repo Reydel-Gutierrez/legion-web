@@ -11,7 +11,7 @@ import StatusDotLabel from "../../../components/legion/StatusDotLabel";
 import { operatorRepository } from "../../../lib/data";
 
 // ---------------------------------------
-// Reusable tree row component (Site Builder hierarchy style)
+// Operator equipment tree row — simple, clear hierarchy + offline pill
 // ---------------------------------------
 const NODE_ICONS = {
   group: faSnowflake,
@@ -19,10 +19,22 @@ const NODE_ICONS = {
   equip: faFolder,
 };
 
+/** Short status label for the offline/warn pill in the tree */
+function getStatusPillLabel(status) {
+  const s = (status || "").toString().trim().toLowerCase();
+  if (["offline", "down", "disabled"].includes(s)) return "Offline";
+  if (s === "unbound") return "Unbound";
+  if (["warn", "warning"].includes(s)) return "Warn";
+  if (["alarm", "fault", "critical"].includes(s)) return "Fault";
+  return "Offline";
+}
+
 function EquipmentTreeRow({ level = 0, active, onClick, isGroup, isOpen, node, isLeaf, isDraggable, onDragStart }) {
   const pad = 8 + level * 20;
   const showCaret = isGroup;
   const Icon = NODE_ICONS[node.type] || faFolder;
+  const status = (node.status || "Normal").toString().trim().toLowerCase();
+  const isOfflineOrWarn = ["offline", "unbound", "down", "disabled", "warn", "warning", "alarm", "fault"].includes(status);
 
   const content = (
     <>
@@ -42,9 +54,14 @@ function EquipmentTreeRow({ level = 0, active, onClick, isGroup, isOpen, node, i
       </span>
       <span className="site-tree-name-wrap">
         <span className="site-tree-name">{node.label}</span>
-        {node.sub ? (
-          <span className="site-tree-subtext text-white-50"> • {node.sub}</span>
+        {!isLeaf && node.sub ? (
+          <span className="site-tree-subtext text-white-50"> · {node.sub}</span>
         ) : null}
+        {isLeaf && isOfflineOrWarn && (
+          <span className="operator-equipment-status-pill" data-status={status}>
+            {getStatusPillLabel(node.status)}
+          </span>
+        )}
         <span className="site-tree-type-badge">
           {node.type === "group" ? "GROUP" : node.type === "floor" ? "FLOOR" : "EQUIPMENT"}
         </span>
@@ -55,8 +72,10 @@ function EquipmentTreeRow({ level = 0, active, onClick, isGroup, isOpen, node, i
   const commonProps = {
     className: [
       "site-tree-row",
+      "operator-equipment-tree-row",
       active ? "site-tree-row--active" : "",
       isDraggable ? "site-tree-row--draggable" : "",
+      isLeaf && isOfflineOrWarn ? "site-tree-row--offline" : "",
     ].filter(Boolean).join(" "),
     style: { paddingLeft: `${pad}px` },
     onClick,
@@ -645,7 +664,7 @@ function WorkspacePanel({
         onClick={(e) => e.currentTarget.focus()}
         style={{ outline: "none" }}
       >
-        <Table responsive hover className="bg-primary border-0">
+        <Table responsive hover className="bg-primary border-0 legion-workspace-table">
           <thead className="small">
             <tr>
               <th style={{ width: 40 }} />
@@ -669,7 +688,7 @@ function WorkspacePanel({
               filteredRows.map((row) => (
                 <tr
                   key={row.id}
-                  className={selectedRowIds.includes(row.id) ? "table-active" : ""}
+                  className={`legion-workspace-row ${selectedRowIds.includes(row.id) ? "table-active" : ""}`}
                   onClick={(e) => handleRowClick(e, row)}
                 >
                   <td>
@@ -930,7 +949,7 @@ export default function EquipmentPage() {
                   />
                 </div>
                 <div className="border-top border-light border-opacity-10" style={{ height: 1 }} />
-                <div className="legion-equipment-tree site-builder-tree pb-2">
+                <div className="legion-equipment-tree site-builder-tree operator-equipment-tree pb-2">
                   {filteredTree.map((n) => (
                     <TreeNode key={n.id} node={n} level={0} />
                   ))}

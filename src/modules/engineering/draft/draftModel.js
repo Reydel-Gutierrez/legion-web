@@ -16,6 +16,8 @@ export const EMPTY_DRAFT = {
   discoveredObjects: {},
   mappings: {},
   graphics: {},
+  /** Site layout graphics: nodeId (site/building/floor id) -> graphic. Shown in Operator Site Layout. */
+  siteLayoutGraphics: {},
   validation: null,
   deploymentHistory: [],
   activeDeploymentSnapshot: null,
