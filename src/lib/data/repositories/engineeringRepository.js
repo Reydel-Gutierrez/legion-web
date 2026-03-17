@@ -56,6 +56,8 @@ import {
   getStarterPointsForEquipmentType,
   GLOBAL_EQUIPMENT_TEMPLATES,
   GLOBAL_GRAPHIC_TEMPLATES,
+  addEquipmentTemplateToGlobal,
+  addGraphicTemplateToGlobal,
 } from "../../../modules/engineering/data/mockTemplateLibraryData";
 
 export const USE_MOCK_ENGINEERING_DATA = true;
@@ -131,6 +133,8 @@ export {
   getStarterPointsForEquipmentType,
   GLOBAL_EQUIPMENT_TEMPLATES,
   GLOBAL_GRAPHIC_TEMPLATES,
+  addEquipmentTemplateToGlobal,
+  addGraphicTemplateToGlobal,
 };
 
 // Validation

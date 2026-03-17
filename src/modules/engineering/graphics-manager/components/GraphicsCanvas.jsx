@@ -25,6 +25,7 @@ function CanvasToolbar({
   onAddText,
   onAddValue,
   onAddLink,
+  onAddShape,
   onDeleteObject,
   hasSelection,
   canBindPoint,
@@ -59,7 +60,12 @@ function CanvasToolbar({
         <FontAwesomeIcon icon={faSearchPlus} />
       </button>
       <div className="site-builder-toolbar-divider" />
-      <button type="button" className="btn btn-sm legion-hero-btn legion-hero-btn--secondary" title="Add Shape">
+      <button
+        type="button"
+        className="btn btn-sm legion-hero-btn legion-hero-btn--secondary"
+        title="Add a square/rectangle shape (semi-transparent)"
+        onClick={onAddShape}
+      >
         <FontAwesomeIcon icon={faSquare} className="me-1" />
         Add Shape
       </button>
@@ -114,11 +120,17 @@ function CanvasToolbar({
   );
 }
 
+const RESIZE_HANDLE_SIZE = 8;
+const MIN_SHAPE_SIZE = 20;
+
+/** Resize handle positions for shape: corners + edges */
+const RESIZE_HANDLES = ["nw", "n", "ne", "e", "se", "s", "sw", "w"];
+
 /**
  * Canvas object: text, value (point display), or shape
  * - text: user-entered label; double-click to edit inline
  * - value: shows "Point" until bound, then shows actual point value
- * - Draggable via mousedown
+ * - shape: draggable and resizable by corners/sides
  */
 function CanvasObject({
   obj,
@@ -127,12 +139,13 @@ function CanvasObject({
   onSelect,
   onUpdateObject,
   onObjectMouseDown,
+  onResizeHandleMouseDown,
   availablePoints = [],
   isEditingLabel,
   onStartEditLabel,
   onFinishEditLabel,
 }) {
-  const { type, label, x, y, width = 60, height = 24, bindings = [], color, stroke } = obj;
+  const { type, label, x, y, width = 60, height = 24, bindings = [], color, stroke, fill, opacity } = obj;
   const boundPoint = bindings[0];
   const pointInfo = boundPoint ? availablePoints.find((p) => p.id === boundPoint.pointId) : null;
   // Resolved from template point: displayValue (live, placeholder, or null for offline)
@@ -203,24 +216,69 @@ function CanvasObject({
     type === "value" && valueState
       ? ` graphics-canvas-object--${valueState}`
       : "";
+  const isShape = type === "shape";
+
+  const baseStyle = {
+    left: scaled.x,
+    top: scaled.y,
+    width: scaled.w,
+    minHeight: scaled.h,
+    fontSize,
+    color: color || undefined,
+    borderColor: stroke || undefined,
+  };
+  if (isShape) {
+    baseStyle.backgroundColor = fill || "rgba(255, 255, 255, 0.2)";
+    baseStyle.border = "1px solid";
+    baseStyle.borderColor = stroke || "rgba(255, 255, 255, 0.6)";
+    baseStyle.opacity = opacity != null ? opacity : 1;
+    baseStyle.pointerEvents = "auto";
+  }
+
+  const showResizeHandles = isShape && isSelected && onResizeHandleMouseDown;
 
   return (
     <div
-      className={`graphics-canvas-object graphics-canvas-object--${type}${valueStateClass} ${isSelected ? "graphics-canvas-object--selected" : ""} ${isLink ? "graphics-canvas-object--link" : ""}`}
-      style={{
-        left: scaled.x,
-        top: scaled.y,
-        width: scaled.w,
-        minHeight: scaled.h,
-        fontSize,
-        color: color || undefined,
-        borderColor: stroke || undefined,
-      }}
+      className={`graphics-canvas-object graphics-canvas-object--${type}${valueStateClass} ${isSelected ? "graphics-canvas-object--selected" : ""} ${isLink ? "graphics-canvas-object--link" : ""} ${isShape ? "graphics-canvas-object--shape" : ""}`}
+      style={baseStyle}
       onClick={handleClick}
       onDoubleClick={isLink ? undefined : handleDoubleClick}
       onMouseDown={handleMouseDown}
     >
-      {showInlineEdit ? (
+      {showResizeHandles &&
+        RESIZE_HANDLES.map((handle) => {
+          const cursor =
+            handle === "n" || handle === "s" ? "ns-resize" : handle === "e" || handle === "w" ? "ew-resize" : handle === "nw" || handle === "se" ? "nwse-resize" : "nesw-resize";
+          return (
+            <div
+              key={handle}
+              className="graphics-canvas-resize-handle"
+              data-handle={handle}
+              style={{
+                position: "absolute",
+                width: RESIZE_HANDLE_SIZE,
+                height: RESIZE_HANDLE_SIZE,
+                marginLeft: -RESIZE_HANDLE_SIZE / 2,
+                marginTop: -RESIZE_HANDLE_SIZE / 2,
+                cursor,
+                ...(handle === "nw" && { left: 0, top: 0 }),
+                ...(handle === "n" && { left: "50%", top: 0 }),
+                ...(handle === "ne" && { left: "100%", top: 0 }),
+                ...(handle === "e" && { left: "100%", top: "50%" }),
+                ...(handle === "se" && { left: "100%", top: "100%" }),
+                ...(handle === "s" && { left: "50%", top: "100%" }),
+                ...(handle === "sw" && { left: 0, top: "100%" }),
+                ...(handle === "w" && { left: 0, top: "50%" }),
+              }}
+              onMouseDown={(e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                onResizeHandleMouseDown(obj, handle, e);
+              }}
+            />
+          );
+        })}
+      {isShape ? null : showInlineEdit ? (
         <input
           ref={inputRef}
           type="text"
@@ -260,16 +318,20 @@ export default function GraphicsCanvas({
   onAddText,
   onAddValue,
   onAddLink,
+  onAddShape,
   onBackgroundPositionChange,
   onDeleteObject,
   availablePoints = [],
   previewMode = false,
   emptyMessage = "Select a graphic from the library to edit",
+  canvasWidth = 800,
+  canvasHeight = 500,
 }) {
   const [tool, setTool] = useState("select");
   const [zoom, setZoom] = useState(1);
   const [editingLabelObjectId, setEditingLabelObjectId] = useState(null);
   const [dragState, setDragState] = useState(null);
+  const [resizeState, setResizeState] = useState(null);
   const [backgroundDragState, setBackgroundDragState] = useState(false);
   const backgroundDragRef = React.useRef(null);
   const canvasRef = React.useRef(null);
@@ -308,6 +370,24 @@ export default function GraphicsCanvas({
     [zoom, onUpdateObject]
   );
 
+  const handleResizeHandleMouseDown = useCallback(
+    (obj, handle, e) => {
+      if (!canvasRef.current || !onUpdateObject || obj.type !== "shape") return;
+      const rect = canvasRef.current.getBoundingClientRect();
+      setResizeState({
+        objectId: obj.id,
+        object: obj,
+        handle,
+        startX: obj.x ?? 0,
+        startY: obj.y ?? 0,
+        startWidth: obj.width ?? 80,
+        startHeight: obj.height ?? 80,
+        canvasRect: rect,
+      });
+    },
+    [onUpdateObject]
+  );
+
   const handleFinishEditLabel = useCallback(
     (objectId, newLabel) => {
       setEditingLabelObjectId(null);
@@ -338,6 +418,68 @@ export default function GraphicsCanvas({
       window.removeEventListener("mouseup", onMouseUp);
     };
   }, [dragState, zoom, onUpdateObject]);
+
+  useEffect(() => {
+    if (!resizeState || !onUpdateObject) return;
+    const { object, handle, startX, startY, startWidth, startHeight, canvasRect } = resizeState;
+    const onMouseMove = (e) => {
+      const curX = (e.clientX - canvasRect.left) / zoom;
+      const curY = (e.clientY - canvasRect.top) / zoom;
+      let newX = startX;
+      let newY = startY;
+      let newW = startWidth;
+      let newH = startHeight;
+      const right = startX + startWidth;
+      const bottom = startY + startHeight;
+      switch (handle) {
+        case "se":
+          newW = Math.max(MIN_SHAPE_SIZE, curX - startX);
+          newH = Math.max(MIN_SHAPE_SIZE, curY - startY);
+          break;
+        case "s":
+          newH = Math.max(MIN_SHAPE_SIZE, curY - startY);
+          break;
+        case "e":
+          newW = Math.max(MIN_SHAPE_SIZE, curX - startX);
+          break;
+        case "sw":
+          newX = Math.min(curX, right - MIN_SHAPE_SIZE);
+          newY = startY;
+          newW = right - newX;
+          newH = Math.max(MIN_SHAPE_SIZE, curY - startY);
+          break;
+        case "w":
+          newX = Math.min(curX, right - MIN_SHAPE_SIZE);
+          newW = right - newX;
+          break;
+        case "n":
+          newY = Math.min(curY, bottom - MIN_SHAPE_SIZE);
+          newH = bottom - newY;
+          break;
+        case "nw":
+          newX = Math.min(curX, right - MIN_SHAPE_SIZE);
+          newY = Math.min(curY, bottom - MIN_SHAPE_SIZE);
+          newW = right - newX;
+          newH = bottom - newY;
+          break;
+        case "ne":
+          newY = Math.min(curY, bottom - MIN_SHAPE_SIZE);
+          newW = Math.max(MIN_SHAPE_SIZE, curX - startX);
+          newH = bottom - newY;
+          break;
+        default:
+          break;
+      }
+      onUpdateObject(object.id, { ...object, x: Math.round(newX), y: Math.round(newY), width: Math.round(newW), height: Math.round(newH) });
+    };
+    const onMouseUp = () => setResizeState(null);
+    window.addEventListener("mousemove", onMouseMove);
+    window.addEventListener("mouseup", onMouseUp);
+    return () => {
+      window.removeEventListener("mousemove", onMouseMove);
+      window.removeEventListener("mouseup", onMouseUp);
+    };
+  }, [resizeState, zoom, onUpdateObject]);
 
   useEffect(() => {
     if (!backgroundDragState || !onBackgroundPositionChange) return;
@@ -403,6 +545,7 @@ export default function GraphicsCanvas({
         onAddText={onAddText}
         onAddValue={onAddValue}
         onAddLink={onAddLink}
+        onAddShape={onAddShape}
         onDeleteObject={selectedObjectId ? () => onDeleteObject(selectedObjectId) : undefined}
         hasSelection={!!selectedObjectId}
         canBindPoint={canBindPoint}
@@ -416,8 +559,8 @@ export default function GraphicsCanvas({
           ref={canvasRef}
           className="graphics-canvas"
           style={{
-            width: 800,
-            height: 500,
+            width: canvasWidth,
+            height: canvasHeight,
             transform: `scale(${zoom})`,
             transformOrigin: "0 0",
           }}
@@ -429,8 +572,8 @@ export default function GraphicsCanvas({
                 position: "absolute",
                 left: graphic.backgroundImage.x ?? 0,
                 top: graphic.backgroundImage.y ?? 0,
-                width: 800,
-                height: 500,
+                width: canvasWidth,
+                height: canvasHeight,
                 zIndex: 0,
                 pointerEvents: previewMode ? "none" : "auto",
                 cursor: backgroundDragState ? "grabbing" : "grab",
@@ -468,6 +611,7 @@ export default function GraphicsCanvas({
               onSelect={() => onSelectObject?.(obj)}
               onUpdateObject={onUpdateObject}
               onObjectMouseDown={handleObjectMouseDown}
+              onResizeHandleMouseDown={handleResizeHandleMouseDown}
               availablePoints={availablePoints}
               isEditingLabel={editingLabelObjectId === obj.id}
               onStartEditLabel={setEditingLabelObjectId}

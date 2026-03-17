@@ -2,12 +2,13 @@ import React, { useMemo, useState, useEffect } from "react";
 import { useHistory, useLocation } from "react-router-dom";
 import { useSite } from "../../../app/providers/SiteProvider";
 import { useActiveDeployment } from "../../../hooks/useEngineeringDraft";
-import { Container, Row, Col, Card, Button } from "@themesberg/react-bootstrap";
+import { Container, Card, Button, Dropdown } from "@themesberg/react-bootstrap";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faChevronRight, faBoxOpen, faCity, faBuilding, faLayerGroup } from "@fortawesome/free-solid-svg-icons";
+import { faChevronRight, faBoxOpen, faCity, faBuilding, faLayerGroup, faSitemap, faChevronDown, faExclamationTriangle } from "@fortawesome/free-solid-svg-icons";
 import LegionHeroHeader from "../../../components/legion/LegionHeroHeader";
 import DeployedGraphicPreview from "../equipment/DeployedGraphicPreview";
 import { Routes } from "../../../routes";
+import { getSummaryFromActiveDeployment } from "../../../lib/activeDeploymentUtils";
 
 import BuildingImage from "../../../assets/img/bi.jpg";
 import floor1Img from "../../../assets/img/floor1.png";
@@ -158,6 +159,12 @@ export default function SitePage() {
     [activeDeployment, selectedLevel]
   );
 
+  const summary = useMemo(
+    () => (activeDeployment ? getSummaryFromActiveDeployment(activeDeployment) : { activeAlarms: 0, unackedAlarms: 0 }),
+    [activeDeployment]
+  );
+  const [navTreeOpen, setNavTreeOpen] = useState(false);
+
   const goToLevelByPathId = (pathId) => {
     const idx = layoutLevels.findIndex((lev) => lev.id === pathId);
     if (idx >= 0) setLevelIndex(idx);
@@ -169,9 +176,11 @@ export default function SitePage() {
   };
 
   const handleGraphicLinkClick = (linkTarget) => {
-    if (!linkTarget?.type || !linkTarget?.id) return;
-    if (linkTarget.type === "layout") goToLevelByPathId(linkTarget.id);
-    else if (linkTarget.type === "equipment") goToEquipmentDetail(linkTarget.id);
+    if (!linkTarget?.type) return;
+    if (linkTarget.type === "layout" && linkTarget.id) goToLevelByPathId(linkTarget.id);
+    else if (linkTarget.type === "equipment" && linkTarget.id) goToEquipmentDetail(linkTarget.id);
+    else if (linkTarget.type === "url" && linkTarget.url) window.open(linkTarget.url, "_blank", "noopener,noreferrer");
+    else if (linkTarget.type === "route" && linkTarget.path) history.push(linkTarget.path);
   };
 
   return (
@@ -203,97 +212,131 @@ export default function SitePage() {
           ))}
         </nav>
 
-        <Row className="g-3 align-items-start">
-          {/* Left: Navigate tree — compact sidebar so Site Layout is the main focus */}
-          <Col xs={12} md={3} lg={2}>
-            {siteNavTree ? (
-              <Card className="bg-primary border border-light border-opacity-10 shadow-sm site-layout-nav-sidebar h-100">
-                <Card.Header className="bg-transparent border-light border-opacity-10 py-2">
-                  <span className="text-white fw-semibold small">Navigate</span>
-                </Card.Header>
-                <Card.Body className="py-2 overflow-auto">
-                  <SiteNavTreeRow
-                    node={siteNavTree}
-                    level={0}
-                    selectedId={selectedNodeId}
-                    onSelect={goToLevelByPathId}
+        {/* Full-width site layout card: main graphic + navigation tree toggle */}
+        <div className="site-layout-full-card-wrap">
+          <Card className="site-layout-full-card bg-primary border border-light border-opacity-10 shadow-sm overflow-hidden">
+            <Card.Body className="p-0 position-relative">
+              <div className="legion-map-wrapper site-layout-map-area">
+                {hasLayoutGraphic ? (
+                  <DeployedGraphicPreview
+                    graphic={layoutGraphic}
+                    points={[]}
+                    onLinkClick={handleGraphicLinkClick}
                   />
-                </Card.Body>
-              </Card>
-            ) : (
-              <Card className="bg-primary border border-light border-opacity-10 shadow-sm">
-                <Card.Body className="py-2">
-                  <Button
-                    size="sm"
-                    variant="outline-light"
-                    className="border border-light border-opacity-25 text-white-50"
-                    onClick={() => setLevelIndex(0)}
-                  >
-                    Building
-                  </Button>
-                </Card.Body>
-              </Card>
-            )}
-          </Col>
+                ) : (
+                  <img src={fallbackImage} alt={levelLabel} className="legion-map-image" />
+                )}
+                <div className="legion-map-badge">
+                  {site} • {levelLabel}
+                </div>
 
-          {/* Right: Main content — graphic + equipment (majority of width) */}
-          <Col xs={12} md={9} lg={10}>
-            <h5 className="text-white fw-bold mb-2">Site Layout</h5>
-            <Card className="bg-primary border border-light border-opacity-10 shadow-sm overflow-hidden">
-              <Card.Body className="p-0">
-                <div className="legion-map-wrapper">
-                  {hasLayoutGraphic ? (
-                    <DeployedGraphicPreview
-                      graphic={layoutGraphic}
-                      points={[]}
-                      onLinkClick={handleGraphicLinkClick}
-                    />
-                  ) : (
-                    <img src={fallbackImage} alt={levelLabel} className="legion-map-image" />
-                  )}
-                  <div className="legion-map-badge">
-                    {site} • {levelLabel}
+                {/* Red zones / status strip — alarm count and legend */}
+                {(summary.activeAlarms > 0 || summary.unackedAlarms > 0) && (
+                  <div className="site-layout-red-zones-strip">
+                    <FontAwesomeIcon icon={faExclamationTriangle} className="me-1" />
+                    <span>
+                      {summary.unackedAlarms > 0
+                        ? `${summary.unackedAlarms} unacked alarm${summary.unackedAlarms !== 1 ? "s" : ""}`
+                        : `${summary.activeAlarms} active alarm${summary.activeAlarms !== 1 ? "s" : ""}`}
+                    </span>
+                    <Button
+                      size="sm"
+                      variant="outline-danger"
+                      className="ms-2 border-danger border-opacity-50 text-danger"
+                      onClick={() => history.push(Routes.LegionAlarms.path)}
+                    >
+                      View Alarms
+                    </Button>
                   </div>
+                )}
+
+                {/* Navigation tree — small dropdown from button */}
+                <div className="site-layout-nav-toggle-wrap">
+                  <Dropdown
+                    show={navTreeOpen}
+                    onToggle={(next) => setNavTreeOpen(next)}
+                    align="end"
+                    drop="down"
+                    className="site-layout-nav-dropdown"
+                  >
+                    <Dropdown.Toggle
+                      variant="outline-light"
+                      size="sm"
+                      id="site-layout-nav-dropdown-toggle"
+                      className="site-layout-nav-toggle-btn border border-light border-opacity-25 text-white"
+                      aria-label={navTreeOpen ? "Close navigation tree" : "Open navigation tree"}
+                    >
+                      <FontAwesomeIcon icon={faSitemap} className="me-1" />
+                      Navigation tree
+                      <FontAwesomeIcon icon={faChevronDown} className="ms-1 fa-xs" />
+                    </Dropdown.Toggle>
+                    <Dropdown.Menu
+                      className="site-layout-nav-dropdown-menu bg-primary border border-light border-opacity-10 shadow-lg py-2"
+                      popperConfig={{ strategy: "fixed" }}
+                    >
+                      <div className="site-layout-nav-dropdown-tree">
+                        {siteNavTree ? (
+                          <SiteNavTreeRow
+                            node={siteNavTree}
+                            level={0}
+                            selectedId={selectedNodeId}
+                            onSelect={(id) => {
+                              goToLevelByPathId(id);
+                              setNavTreeOpen(false);
+                            }}
+                          />
+                        ) : (
+                          <button
+                            type="button"
+                            className="dropdown-item text-white-50"
+                            onClick={() => { setLevelIndex(0); setNavTreeOpen(false); }}
+                          >
+                            Building
+                          </button>
+                        )}
+                      </div>
+                    </Dropdown.Menu>
+                  </Dropdown>
+                </div>
+              </div>
+            </Card.Body>
+          </Card>
+
+          {selectedLevel?.type === "floor" && equipmentOnFloor.length > 0 && (
+            <Card className="bg-primary border border-light border-opacity-10 shadow-sm mt-3">
+              <Card.Header className="bg-transparent border-light border-opacity-10 py-2">
+                <span className="text-white fw-semibold small">
+                  <FontAwesomeIcon icon={faBoxOpen} className="me-2" />
+                  Equipment on this floor
+                </span>
+              </Card.Header>
+              <Card.Body className="py-2">
+                <div className="d-flex flex-wrap gap-2">
+                  {equipmentOnFloor.map((eq) => (
+                    <Button
+                      key={eq.id}
+                      size="sm"
+                      variant="outline-secondary"
+                      className="text-white-50 border-secondary border-opacity-50"
+                      onClick={() => goToEquipmentDetail(eq.id)}
+                    >
+                      {eq.displayLabel || eq.name || eq.id}
+                    </Button>
+                  ))}
+                </div>
+                <div className="text-white-50 small mt-2">
+                  Click an equipment to open its detail page.
                 </div>
               </Card.Body>
             </Card>
+          )}
 
-            {selectedLevel?.type === "floor" && equipmentOnFloor.length > 0 && (
-              <Card className="bg-primary border border-light border-opacity-10 shadow-sm mt-3">
-                <Card.Header className="bg-transparent border-light border-opacity-10 py-2">
-                  <span className="text-white fw-semibold small">
-                    <FontAwesomeIcon icon={faBoxOpen} className="me-2" />
-                    Equipment on this floor
-                  </span>
-                </Card.Header>
-                <Card.Body className="py-2">
-                  <div className="d-flex flex-wrap gap-2">
-                    {equipmentOnFloor.map((eq) => (
-                      <Button
-                        key={eq.id}
-                        size="sm"
-                        variant="outline-secondary"
-                        className="text-white-50 border-secondary border-opacity-50"
-                        onClick={() => goToEquipmentDetail(eq.id)}
-                      >
-                        {eq.displayLabel || eq.name || eq.id}
-                      </Button>
-                    ))}
-                  </div>
-                  <div className="text-white-50 small mt-2">
-                    Click an equipment to open its detail page.
-                  </div>
-                </Card.Body>
-              </Card>
-            )}
-
-            {hasLevels && !hasLayoutGraphic && (
-              <div className="text-white-50 small mt-2">
-                Create and deploy site layout graphics in Engineering → Graphics Manager to show custom layouts here.
-              </div>
-            )}
-          </Col>
-        </Row>
+          {hasLevels && !hasLayoutGraphic && (
+            <div className="text-white-50 small mt-2">
+              Create and deploy site layout graphics in Engineering → Graphics Manager to show custom layouts here.
+            </div>
+          )}
+        </div>
       </div>
     </Container>
   );

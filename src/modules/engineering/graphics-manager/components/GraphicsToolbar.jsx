@@ -108,6 +108,7 @@ export default function GraphicsToolbar({
         className="legion-hero-btn legion-hero-btn--secondary"
         onClick={onDelete}
         disabled={!hasSelection}
+        title={hasSelection ? "Delete this graphic (imported image and all objects)" : "Select a site, building, floor, or equipment in the tree to delete its graphic"}
       >
         <FontAwesomeIcon icon={faTrashAlt} className="me-1" />
         Delete

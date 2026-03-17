@@ -13,6 +13,45 @@ import { engineeringRepository } from "../../../../lib/data";
  * Template dropdown uses only the current site's templates (draft.templates.equipmentTemplates).
  * If no templates have been imported or created for the site, only "Select template" is shown.
  */
+/**
+ * Current graphic selection value for the dropdown: "template:id" | "graphic:equipmentId" | "".
+ */
+function getGraphicSelectionValue(equipment, graphics = {}, graphicTemplates = []) {
+  if (!equipment?.id) return "";
+  const graphic = graphics[equipment.id];
+  const templateId = equipment.graphicTemplateId || graphic?.graphicTemplateId;
+  if (templateId && graphicTemplates?.length) {
+    const template = graphicTemplates.find((t) => t.id === templateId);
+    if (template) return `template:${templateId}`;
+  }
+  if (graphic?.name) return `graphic:${equipment.id}`;
+  return "";
+}
+
+/**
+ * Build dropdown options: "No graphic", then graphic templates, then project graphics (named graphics from other equipments).
+ */
+function buildGraphicOptions(equipmentId, graphics = {}, graphicTemplates = [], equipmentList = []) {
+  const options = [{ value: "", label: "No graphic" }];
+  const templateOpts = (graphicTemplates || []).map((t) => ({
+    value: `template:${t.id}`,
+    label: t.name || t.id || "Unnamed template",
+  }));
+  if (templateOpts.length) options.push(...templateOpts);
+  const equipmentById = (equipmentList || []).reduce((acc, e) => {
+    acc[e.id] = e;
+    return acc;
+  }, {});
+  const projectGraphicOpts = Object.entries(graphics || {})
+    .filter(([eqId, g]) => g && (g.name || "").trim())
+    .map(([eqId, g]) => ({
+      value: `graphic:${eqId}`,
+      label: `${g.name.trim()} (${equipmentById[eqId]?.displayLabel || equipmentById[eqId]?.name || eqId})`,
+    }));
+  if (projectGraphicOpts.length) options.push(...projectGraphicOpts);
+  return options;
+}
+
 export default function EquipmentEditorPanel({
   equipment,
   breadcrumb,
@@ -21,6 +60,10 @@ export default function EquipmentEditorPanel({
   onDelete,
   equipmentTemplates = [],
   existingInstanceNumbers = [],
+  graphics = {},
+  graphicTemplates = [],
+  equipmentList = [],
+  onGraphicChange,
 }) {
   const [form, setForm] = useState({
     name: "",
@@ -44,6 +87,9 @@ export default function EquipmentEditorPanel({
     // Keep current selection in list if it was removed from library (e.g. after template delete)
     ...(equipment?.templateName && !hasCurrentInList ? [{ value: equipment.templateName, label: `${equipment.templateName} (not in library)` }] : []),
   ];
+
+  const graphicOptions = buildGraphicOptions(equipment?.id, graphics, graphicTemplates, equipmentList);
+  const graphicSelectionValue = getGraphicSelectionValue(equipment, graphics, graphicTemplates);
 
   useEffect(() => {
     if (equipment) {
@@ -173,6 +219,21 @@ export default function EquipmentEditorPanel({
               options={templateOptions}
               placeholder={equipmentTemplates.length === 0 ? "Add templates in Template Library" : "Select template"}
             />
+          </Form.Group>
+
+          <Form.Group className="mb-3">
+            <Form.Label className="text-white small">Graphic</Form.Label>
+            <LegionFormSelect
+              size="sm"
+              value={graphicSelectionValue}
+              onChange={(e) => onGraphicChange?.(equipment.id, e.target.value)}
+              options={graphicOptions}
+              placeholder="Select graphic template or project graphic"
+              title="Graphic templates from Template Library or graphics built and named in Graphics Manager"
+            />
+            <Form.Text className="text-white-50 small">
+              Choose a graphic template (from Template Library) or a graphic created for another equipment in this project.
+            </Form.Text>
           </Form.Group>
 
           <Form.Group className="mb-3">

@@ -330,6 +330,43 @@ export default function SiteBuilderPage() {
     actions.setEquipment(next);
   }, [draft.equipment, actions]);
 
+  const handleGraphicChange = useCallback(
+    (equipmentId, value) => {
+      const graphics = draft.graphics || {};
+      const equipment = (draft.equipment || []).map((e) => (e.id === equipmentId ? { ...e } : e));
+      const currentEq = equipment.find((e) => e.id === equipmentId);
+      if (!currentEq) return;
+      if (value === "") {
+        currentEq.graphicTemplateId = null;
+        actions.setEquipment(equipment);
+        actions.setGraphicForEquipment(equipmentId, null);
+        return;
+      }
+      if (value.startsWith("template:")) {
+        const templateId = value.slice("template:".length);
+        currentEq.graphicTemplateId = templateId || null;
+        actions.setEquipment(equipment);
+        actions.setGraphicForEquipment(equipmentId, null);
+        return;
+      }
+      if (value.startsWith("graphic:")) {
+        const sourceEquipmentId = value.slice("graphic:".length);
+        const sourceGraphic = graphics[sourceEquipmentId];
+        if (sourceGraphic) {
+          const copy = {
+            ...sourceGraphic,
+            id: sourceGraphic.id ? `g-${equipmentId}-${Date.now()}` : undefined,
+            equipmentId,
+          };
+          currentEq.graphicTemplateId = null;
+          actions.setEquipment(equipment);
+          actions.setGraphicForEquipment(equipmentId, copy);
+        }
+      }
+    },
+    [draft.equipment, draft.graphics, actions]
+  );
+
   const handleDeleteEquipment = useCallback((id) => {
     const next = (draft.equipment || []).filter((e) => e.id !== id);
     actions.setEquipment(next);
@@ -584,6 +621,10 @@ export default function SiteBuilderPage() {
                     .filter((e) => e.id !== selectedEquipment?.id)
                     .map((e) => e.instanceNumber)
                     .filter(Boolean)}
+                  graphics={draft.graphics ?? {}}
+                  graphicTemplates={draft.templates?.graphicTemplates ?? []}
+                  equipmentList={draft.equipment ?? []}
+                  onGraphicChange={handleGraphicChange}
                 />
               </Col>
             </Row>

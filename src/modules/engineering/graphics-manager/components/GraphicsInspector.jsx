@@ -4,6 +4,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faLink, faUnlink, faTrash } from "@fortawesome/free-solid-svg-icons";
 import SearchablePointSelect from "./SearchablePointSelect";
 import { engineeringRepository } from "../../../../lib/data";
+import { SHAPE_COLOR_OPTIONS, DEFAULT_SHAPE_COLOR } from "../shapeColorConstants";
 
 /**
  * Right-side inspector panel for selected graphic object.
@@ -17,6 +18,7 @@ export default function GraphicsInspector({
   linkTargets = { layoutNodes: [], equipment: [] },
   onUpdateObject,
   onDeleteObject,
+  onOpenLink,
 }) {
   const [form, setForm] = useState({
     objectType: "",
@@ -35,6 +37,8 @@ export default function GraphicsInspector({
     bindingDisplayMode: "value",
     linkTargetType: "",
     linkTargetId: "",
+    linkTargetKey: "",
+    shapeColor: DEFAULT_SHAPE_COLOR,
   });
 
   const bindPointSectionRef = useRef(null);
@@ -80,11 +84,18 @@ export default function GraphicsInspector({
       color: selectedObject.color || "#e8c547",
       stroke: selectedObject.stroke || "#ffffff",
       fill: selectedObject.fill || "#2b303d",
+      shapeColor: selectedObject.shapeColor || DEFAULT_SHAPE_COLOR,
       labelText: selectedObject.label || "",
       bindingPointId: bind?.pointId || "",
       bindingDisplayMode: bind?.displayMode || "value",
       linkTargetType: linkTarget.type || "",
       linkTargetId: linkTarget.id || "",
+      linkTargetKey:
+        linkTarget.type === "layout" && linkTarget.id
+          ? `layout:${linkTarget.id}`
+          : linkTarget.type === "equipment" && linkTarget.id
+            ? `equipment:${linkTarget.id}`
+            : "",
     });
   }, [selectedObject]);
 
@@ -98,7 +109,11 @@ export default function GraphicsInspector({
     setForm((prev) => ({ ...prev, [field]: value }));
     if (onUpdateObject && selectedObject) {
       const updates = { ...selectedObject };
-      if (["x", "y", "width", "height", "rotation", "opacity", "color", "stroke", "fill", "layer"].includes(field)) {
+      if (field === "shapeColor" && SHAPE_COLOR_OPTIONS[value]) {
+        updates.shapeColor = value;
+        updates.fill = SHAPE_COLOR_OPTIONS[value].fill;
+        updates.stroke = SHAPE_COLOR_OPTIONS[value].stroke;
+      } else if (["x", "y", "width", "height", "rotation", "opacity", "color", "stroke", "fill", "layer", "shapeColor"].includes(field)) {
         updates[field] = value;
       }
       if (field === "labelText") {
@@ -110,11 +125,18 @@ export default function GraphicsInspector({
         const displayMode = field === "bindingDisplayMode" ? value : form.bindingDisplayMode;
         updates.bindings = pointId ? [{ pointId, displayMode }] : [];
       }
-      // Link target for link objects
-      if (selectedObject.type === "link" && (field === "linkTargetType" || field === "linkTargetId")) {
-        const linkType = field === "linkTargetType" ? value : form.linkTargetType;
-        const linkId = field === "linkTargetId" ? value : form.linkTargetId;
-        updates.linkTarget = linkType && linkId ? { type: linkType, id: linkId } : {};
+      // Link target for link objects — choose within this project's site/building/floor/equipment
+      if (selectedObject.type === "link" && field === "linkTargetKey") {
+        const key = value || "";
+        if (!key) {
+          updates.linkTarget = {};
+        } else if (key.startsWith("layout:")) {
+          updates.linkTarget = { type: "layout", id: key.slice("layout:".length) };
+        } else if (key.startsWith("equipment:")) {
+          updates.linkTarget = { type: "equipment", id: key.slice("equipment:".length) };
+        } else {
+          updates.linkTarget = {};
+        }
       }
       onUpdateObject(selectedObject.id, updates);
     }
@@ -255,49 +277,82 @@ export default function GraphicsInspector({
         <div className="mb-4">
           <div className="text-white small fw-semibold mb-2">Appearance</div>
           <div className="bg-dark bg-opacity-25 rounded p-3 border border-light border-opacity-10">
-            <Form.Group className="mb-2">
-              <Form.Label className="text-white-50 small">Color</Form.Label>
-              <Form.Control
-                type="color"
-                size="sm"
-                className="bg-dark border border-light border-opacity-10 p-1"
-                value={form.color}
-                onChange={(e) => handleChange("color", e.target.value)}
-              />
-            </Form.Group>
-            <Form.Group className="mb-2">
-              <Form.Label className="text-white-50 small">Stroke</Form.Label>
-              <Form.Control
-                type="color"
-                size="sm"
-                className="bg-dark border border-light border-opacity-10 p-1"
-                value={form.stroke}
-                onChange={(e) => handleChange("stroke", e.target.value)}
-              />
-            </Form.Group>
-            <Form.Group className="mb-2">
-              <Form.Label className="text-white-50 small">Fill</Form.Label>
-              <Form.Control
-                type="color"
-                size="sm"
-                className="bg-dark border border-light border-opacity-10 p-1"
-                value={form.fill}
-                onChange={(e) => handleChange("fill", e.target.value)}
-              />
-            </Form.Group>
-            <Form.Group className="mb-0 mt-2">
-              <Form.Label className="text-white-50 small">
-                {selectedObject.type === "value" ? "Display (Point when unbound)" : "Label Text"}
-              </Form.Label>
-              <Form.Control
-                size="sm"
-                className="bg-dark bg-opacity-25 border border-light border-opacity-10 text-white"
-                value={form.labelText}
-                onChange={(e) => handleChange("labelText", e.target.value)}
-                placeholder={selectedObject.type === "value" ? "Point (or value when bound)" : "Enter text"}
-                readOnly={selectedObject.type === "value"}
-              />
-            </Form.Group>
+            {selectedObject.type === "shape" ? (
+              <Form.Group className="mb-0">
+                <Form.Label className="text-white-50 small">Shape color</Form.Label>
+                <div className="d-flex flex-wrap gap-2 mt-1">
+                  {Object.entries(SHAPE_COLOR_OPTIONS).map(([key, opt]) => (
+                    <Button
+                      key={key}
+                      size="sm"
+                      variant={form.shapeColor === key ? "primary" : "outline-secondary"}
+                      className={form.shapeColor === key ? "" : "border border-light border-opacity-25 text-white"}
+                      style={
+                        form.shapeColor !== key
+                          ? {
+                              backgroundColor: opt.fill,
+                              borderColor: opt.stroke,
+                              color: "var(--bs-dark)",
+                            }
+                          : undefined
+                      }
+                      onClick={() => handleChange("shapeColor", key)}
+                    >
+                      {opt.label}
+                    </Button>
+                  ))}
+                </div>
+                <div className="text-white-50 small mt-2">Transparent fill with light border. (Area temp can drive this later.)</div>
+              </Form.Group>
+            ) : (
+              <>
+                <Form.Group className="mb-2">
+                  <Form.Label className="text-white-50 small">Color</Form.Label>
+                  <Form.Control
+                    type="color"
+                    size="sm"
+                    className="bg-dark border border-light border-opacity-10 p-1"
+                    value={form.color}
+                    onChange={(e) => handleChange("color", e.target.value)}
+                  />
+                </Form.Group>
+                <Form.Group className="mb-2">
+                  <Form.Label className="text-white-50 small">Stroke</Form.Label>
+                  <Form.Control
+                    type="color"
+                    size="sm"
+                    className="bg-dark border border-light border-opacity-10 p-1"
+                    value={form.stroke}
+                    onChange={(e) => handleChange("stroke", e.target.value)}
+                  />
+                </Form.Group>
+                <Form.Group className="mb-2">
+                  <Form.Label className="text-white-50 small">Fill</Form.Label>
+                  <Form.Control
+                    type="color"
+                    size="sm"
+                    className="bg-dark border border-light border-opacity-10 p-1"
+                    value={form.fill}
+                    onChange={(e) => handleChange("fill", e.target.value)}
+                  />
+                </Form.Group>
+              </>
+            )}
+            {selectedObject.type !== "shape" && (
+              <Form.Group className="mb-0 mt-2">
+                <Form.Label className="text-white-50 small">
+                  {selectedObject.type === "value" ? "Display (Point when unbound)" : "Label Text"}
+                </Form.Label>
+                <Form.Control
+                  size="sm"
+                  className="bg-dark bg-opacity-25 border border-light border-opacity-10 text-white"
+                  value={form.labelText}
+                  onChange={(e) => handleChange("labelText", e.target.value)}
+                  placeholder={selectedObject.type === "value" ? "Point (or value when bound)" : "Enter text"}
+                  readOnly={selectedObject.type === "value"}
+                />
+              </Form.Group>
+            )}
           </div>
         </div>
 
@@ -310,55 +365,52 @@ export default function GraphicsInspector({
                 <Form.Label className="text-white-50 small">Link to</Form.Label>
                 <select
                   className="form-select form-select-sm bg-dark bg-opacity-25 border border-light border-opacity-10 text-white"
-                  value={form.linkTargetType}
-                  onChange={(e) => {
-                    const v = e.target.value;
-                    handleChange("linkTargetType", v);
-                    handleChange("linkTargetId", "");
-                  }}
+                  value={form.linkTargetKey}
+                  onChange={(e) => handleChange("linkTargetKey", e.target.value)}
                 >
-                  <option value="">— Select type —</option>
-                  <option value="layout">Layout area (site/building/floor)</option>
-                  <option value="equipment">Equipment graphic</option>
+                  <option value="">— Select site, building, floor, or equipment —</option>
+                  {(linkTargets.layoutNodes || []).length > 0 && (
+                    <optgroup label="Site & Layout">
+                      {(linkTargets.layoutNodes || []).map((n) => (
+                        <option key={n.id} value={`layout:${n.id}`}>
+                          {n.name} ({n.type})
+                        </option>
+                      ))}
+                    </optgroup>
+                  )}
+                  {(linkTargets.equipment || []).length > 0 && (
+                    <optgroup label="Equipment">
+                      {(linkTargets.equipment || []).map((eq) => (
+                        <option key={eq.id} value={`equipment:${eq.id}`}>
+                          {eq.name}
+                        </option>
+                      ))}
+                    </optgroup>
+                  )}
                 </select>
               </Form.Group>
-              {form.linkTargetType === "layout" && (
-                <Form.Group className="mb-0">
-                  <Form.Label className="text-white-50 small">Layout level</Form.Label>
-                  <select
-                    className="form-select form-select-sm bg-dark bg-opacity-25 border border-light border-opacity-10 text-white"
-                    value={form.linkTargetId}
-                    onChange={(e) => handleChange("linkTargetId", e.target.value)}
-                  >
-                    <option value="">— Select —</option>
-                    {(linkTargets.layoutNodes || []).map((n) => (
-                      <option key={n.id} value={n.id}>
-                        {n.name} ({n.type})
-                      </option>
-                    ))}
-                  </select>
-                </Form.Group>
-              )}
-              {form.linkTargetType === "equipment" && (
-                <Form.Group className="mb-0">
-                  <Form.Label className="text-white-50 small">Equipment</Form.Label>
-                  <select
-                    className="form-select form-select-sm bg-dark bg-opacity-25 border border-light border-opacity-10 text-white"
-                    value={form.linkTargetId}
-                    onChange={(e) => handleChange("linkTargetId", e.target.value)}
-                  >
-                    <option value="">— Select —</option>
-                    {(linkTargets.equipment || []).map((e) => (
-                      <option key={e.id} value={e.id}>
-                        {e.name}
-                      </option>
-                    ))}
-                  </select>
-                </Form.Group>
-              )}
               <div className="text-white-50 small mt-2">
-                In Operator, clicking this button will navigate to the selected layout level or equipment detail.
+                In Operator, clicking this link will navigate to the selected layout level graphic or equipment detail.
               </div>
+              {onOpenLink &&
+                selectedObject.linkTarget?.type &&
+                (selectedObject.linkTarget.type === "layout" || selectedObject.linkTarget.type === "equipment"
+                  ? selectedObject.linkTarget.id
+                  : selectedObject.linkTarget.type === "url"
+                    ? selectedObject.linkTarget.url
+                    : selectedObject.linkTarget.type === "route"
+                      ? selectedObject.linkTarget.path
+                      : null) && (
+                  <Button
+                    size="sm"
+                    variant="outline-secondary"
+                    className="mt-2 border border-light border-opacity-25 text-white"
+                    onClick={() => onOpenLink(selectedObject.linkTarget)}
+                  >
+                    <FontAwesomeIcon icon={faLink} className="me-1" />
+                    Open link
+                  </Button>
+                )}
             </div>
           </div>
         )}

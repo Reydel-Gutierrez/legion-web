@@ -68,7 +68,13 @@ function draftReducer(state, action) {
 
     case DRAFT_ACTIONS.SET_GRAPHIC_FOR_EQUIPMENT: {
       const { equipmentId, graphic } = action.payload;
-      const next = { ...state.graphics, [equipmentId]: graphic };
+      const next =
+        graphic != null
+          ? { ...state.graphics, [equipmentId]: graphic }
+          : (() => {
+              const { [equipmentId]: _, ...rest } = state.graphics || {};
+              return rest;
+            })();
       return { ...state, graphics: next };
     }
 

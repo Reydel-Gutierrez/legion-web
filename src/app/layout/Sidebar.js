@@ -3,11 +3,13 @@ import SimpleBar from 'simplebar-react';
 import { useLocation } from "react-router-dom";
 import { CSSTransition } from 'react-transition-group';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faUsers, faBoxOpen, faChartPie, faCog, faSignOutAlt, faTimes, faCalendarAlt, faMapPin, faInbox, faSitemap, faNetworkWired, faMapMarkerAlt, faObjectGroup, faCheckCircle, faRocket, faBook } from "@fortawesome/free-solid-svg-icons";
+import { faUsers, faBoxOpen, faChartPie, faCog, faSignOutAlt, faTimes, faCalendarAlt, faMapPin, faInbox, faSitemap, faNetworkWired, faMapMarkerAlt, faObjectGroup, faCheckCircle, faRocket, faBook, faUserCog } from "@fortawesome/free-solid-svg-icons";
 import { Nav, Badge, Image, Button, Dropdown, Accordion, Navbar } from '@themesberg/react-bootstrap';
 import { Link } from 'react-router-dom';
 
 import { Routes } from "../../routes";
+import { accessRepository } from "../../lib/data";
+import { canViewUserManager } from "../../lib/access/currentUserAccess";
 import ReactHero from "../../assets/img/technologies/react-hero-logo.svg";
 import LegionLogo from "../../assets/img/legionlogo.png";
 import { useSite } from "../providers/SiteProvider";
@@ -206,6 +208,9 @@ export default function Sidebar() {
                   <NavItem title="Template Library" link={Routes.EngineeringTemplateLibrary.path} icon={faBook} />
                   <NavItem title="Validation Center" link={Routes.EngineeringValidationCenter.path} icon={faCheckCircle} />
                   <NavItem title="Deployment" link={Routes.EngineeringDeployment.path} icon={faRocket} />
+                  {canViewUserManager(accessRepository.getCurrentUserForAccess()) && (
+                    <NavItem title="User Manager" link={Routes.EngineeringUserManager.path} icon={faUserCog} />
+                  )}
                 </>
               )}
             </Nav>

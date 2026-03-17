@@ -6,7 +6,20 @@ import React, { useMemo, useRef, useState, useEffect } from "react";
  * Value objects show live point values; link objects are clickable and call onLinkClick.
  */
 function GraphicObject({ obj, pointsByPointId, onLinkClick }) {
-  const { type, label, x, y, width = 60, height = 24, bindings = [], linkTarget } = obj;
+  const {
+    type,
+    label,
+    x,
+    y,
+    width = 60,
+    height = 24,
+    bindings = [],
+    linkTarget,
+    color,
+    fill,
+    stroke,
+    opacity,
+  } = obj;
   const boundPoint = bindings[0];
   const pointRow = boundPoint ? pointsByPointId[boundPoint.pointId] : null;
 
@@ -22,7 +35,11 @@ function GraphicObject({ obj, pointsByPointId, onLinkClick }) {
   const isOffline = type === "value" && pointRow && (pointRow.status === "Unbound" || pointRow.status === "OFFLINE");
   const valueStateClass = type === "value" && isOffline ? " graphics-canvas-object--offline" : "";
   const isLink = type === "link";
-  const hasValidLink = isLink && linkTarget?.type && linkTarget?.id;
+  const isShape = type === "shape";
+  const hasValidLink =
+    isLink &&
+    linkTarget?.type &&
+    (linkTarget.type === "layout" || linkTarget.type === "equipment" ? linkTarget.id : linkTarget.type === "url" ? linkTarget.url : linkTarget.type === "route" ? linkTarget.path : false);
 
   const handleLinkClick = (e) => {
     if (!hasValidLink || !onLinkClick) return;
@@ -41,27 +58,33 @@ function GraphicObject({ obj, pointsByPointId, onLinkClick }) {
         fontSize: 14,
         cursor: isLink && hasValidLink ? "pointer" : "default",
         pointerEvents: isLink && hasValidLink ? "auto" : "none",
-        border: "none",
-        borderRadius: 0,
+        border: isShape ? "1px solid" : "none",
+        borderRadius: isShape ? 0 : 0,
         boxShadow: "none",
-        padding: 0,
+        padding: isShape ? 0 : 0,
+        backgroundColor: isShape ? (fill || "rgba(255,255,255,0.2)") : "transparent",
+        borderColor: isShape ? (stroke || "rgba(255,255,255,0.6)") : "transparent",
+        color: !isShape && type !== "value" ? color || undefined : undefined,
+        opacity: isShape && opacity != null ? opacity : 1,
       }}
       onClick={handleLinkClick}
       onKeyDown={isLink && hasValidLink ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onLinkClick(linkTarget); } } : undefined}
       role={isLink && hasValidLink ? "button" : undefined}
       tabIndex={isLink && hasValidLink ? 0 : undefined}
     >
-      {displayText}
+      {isShape ? null : displayText}
     </div>
   );
 }
 
-const CANVAS_WIDTH = 800;
-const CANVAS_HEIGHT = 500;
+const DEFAULT_CANVAS_WIDTH = 800;
+const DEFAULT_CANVAS_HEIGHT = 500;
 
 export default function DeployedGraphicPreview({ graphic, points = [], onLinkClick }) {
   const objects = graphic?.objects ?? [];
   const backgroundImage = graphic?.backgroundImage;
+  const canvasWidth = graphic?.canvasSize?.width ?? DEFAULT_CANVAS_WIDTH;
+  const canvasHeight = graphic?.canvasSize?.height ?? DEFAULT_CANVAS_HEIGHT;
   const pointsByPointId = useMemo(() => {
     const map = {};
     points.forEach((p) => {
@@ -80,7 +103,7 @@ export default function DeployedGraphicPreview({ graphic, points = [], onLinkCli
       const w = el.clientWidth;
       const h = el.clientHeight;
       if (w && h) {
-        const s = Math.min(w / CANVAS_WIDTH, h / CANVAS_HEIGHT, 1);
+        const s = Math.min(w / canvasWidth, h / canvasHeight, 1);
         setScale(s);
       }
     };
@@ -91,17 +114,17 @@ export default function DeployedGraphicPreview({ graphic, points = [], onLinkCli
   }, []);
 
   const containerStyle = {
-    width: CANVAS_WIDTH,
-    height: CANVAS_HEIGHT,
-    minWidth: CANVAS_WIDTH,
-    minHeight: CANVAS_HEIGHT,
+    width: canvasWidth,
+    height: canvasHeight,
+    minWidth: canvasWidth,
+    minHeight: canvasHeight,
     flexShrink: 0,
     background: "transparent",
     boxSizing: "border-box",
   };
 
   const contentCenter = useMemo(() => {
-    if (objects.length === 0 && !backgroundImage) return { x: CANVAS_WIDTH / 2, y: CANVAS_HEIGHT / 2 };
+    if (objects.length === 0 && !backgroundImage) return { x: canvasWidth / 2, y: canvasHeight / 2 };
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
     objects.forEach((obj) => {
       const w = obj.width ?? 60;
@@ -114,13 +137,13 @@ export default function DeployedGraphicPreview({ graphic, points = [], onLinkCli
       maxY = Math.max(maxY, y + h);
     });
     if (objects.length === 0 && backgroundImage) {
-      return { x: CANVAS_WIDTH / 2, y: CANVAS_HEIGHT / 2 };
+      return { x: canvasWidth / 2, y: canvasHeight / 2 };
     }
     return {
       x: (minX + maxX) / 2,
       y: (minY + maxY) / 2,
     };
-  }, [objects, backgroundImage]);
+  }, [objects, backgroundImage, canvasWidth, canvasHeight]);
 
   if (objects.length === 0 && !backgroundImage) {
     return (
@@ -133,8 +156,8 @@ export default function DeployedGraphicPreview({ graphic, points = [], onLinkCli
     );
   }
 
-  const canvasCenterX = CANVAS_WIDTH / 2;
-  const canvasCenterY = CANVAS_HEIGHT / 2;
+  const canvasCenterX = canvasWidth / 2;
+  const canvasCenterY = canvasHeight / 2;
   const translateX = canvasCenterX / scale - contentCenter.x;
   const translateY = canvasCenterY / scale - contentCenter.y;
 
@@ -147,8 +170,8 @@ export default function DeployedGraphicPreview({ graphic, points = [], onLinkCli
         className="graphics-canvas deployed-graphic-preview-canvas"
         style={{
           position: "relative",
-          width: CANVAS_WIDTH,
-          height: CANVAS_HEIGHT,
+          width: canvasWidth,
+          height: canvasHeight,
           transform: `scale(${scale}) translate(${translateX}px, ${translateY}px)`,
           transformOrigin: "0 0",
           background: "transparent",
@@ -160,8 +183,8 @@ export default function DeployedGraphicPreview({ graphic, points = [], onLinkCli
               position: "absolute",
               left: backgroundImage.x ?? 0,
               top: backgroundImage.y ?? 0,
-              width: CANVAS_WIDTH,
-              height: CANVAS_HEIGHT,
+              width: canvasWidth,
+              height: canvasHeight,
               zIndex: 0,
               pointerEvents: "none",
             }}

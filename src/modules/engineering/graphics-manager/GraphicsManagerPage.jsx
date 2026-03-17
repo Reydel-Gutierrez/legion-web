@@ -1,8 +1,10 @@
 import React, { useState, useCallback, useMemo, useEffect, useRef } from "react";
+import { useLocation, useHistory } from "react-router-dom";
 import { Container, Row, Col, Card, Button } from "@themesberg/react-bootstrap";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faObjectGroup } from "@fortawesome/free-solid-svg-icons";
 
+import { Routes } from "../../../routes";
 import { useSite } from "../../../app/providers/SiteProvider";
 import {
   useEngineeringDraft,
@@ -14,6 +16,7 @@ import LegionHeroHeader from "../../../components/legion/LegionHeroHeader";
 import { engineeringRepository } from "../../../lib/data";
 import GraphicsContextCard from "./components/GraphicsContextCard";
 import GraphicsToolbar from "./components/GraphicsToolbar";
+import { SHAPE_COLOR_OPTIONS, DEFAULT_SHAPE_COLOR } from "./shapeColorConstants";
 import GraphicsExplorer from "./components/GraphicsExplorer";
 import GraphicsCanvas from "./components/GraphicsCanvas";
 import GraphicsInspector from "./components/GraphicsInspector";
@@ -54,6 +57,8 @@ function flattenLayoutNodes(node, acc = []) {
 // GraphicsManagerPage
 // ---------------------------------------------------------------------------
 export default function GraphicsManagerPage() {
+  const location = useLocation();
+  const history = useHistory();
   const { site } = useSite();
   const { draft, actions } = useEngineeringDraft();
   const activeDeployment = useActiveDeployment();
@@ -105,7 +110,13 @@ export default function GraphicsManagerPage() {
   const selectedGraphic = useMemo(() => {
     if (selectedLayoutNodeId) {
       const base = draftSiteLayoutGraphics[selectedLayoutNodeId] ?? null;
-      if (base) return { ...base, objects: base.objects ?? [], backgroundImage: base.backgroundImage };
+      if (base)
+        return {
+          ...base,
+          objects: base.objects ?? [],
+          backgroundImage: base.backgroundImage,
+          canvasSize: base.canvasSize || { width: 800, height: 500 },
+        };
       return {
         id: `layout-${selectedLayoutNodeId}`,
         nodeId: selectedLayoutNodeId,
@@ -113,10 +124,17 @@ export default function GraphicsManagerPage() {
         status: "DRAFT",
         lastEdited: "Now",
         objects: [],
+        canvasSize: { width: 800, height: 500 },
       };
     }
     const base = draftGraphics[selectedEquipmentId] ?? null;
-    if (base) return { ...base, objects: base.objects ?? [], backgroundImage: base.backgroundImage };
+    if (base)
+      return {
+        ...base,
+        objects: base.objects ?? [],
+        backgroundImage: base.backgroundImage,
+        canvasSize: base.canvasSize || { width: 800, height: 500 },
+      };
     if (selectedEquipmentId)
       return {
         id: `g-new-${selectedEquipmentId}`,
@@ -125,9 +143,13 @@ export default function GraphicsManagerPage() {
         status: "DRAFT",
         lastEdited: "Now",
         objects: [],
+        canvasSize: { width: 800, height: 500 },
       };
     return null;
   }, [selectedEquipmentId, selectedLayoutNodeId, draftGraphics, draftSiteLayoutGraphics]);
+
+  const canvasWidth = selectedGraphic?.canvasSize?.width ?? 800;
+  const canvasHeight = selectedGraphic?.canvasSize?.height ?? 500;
 
   const linkTargets = useMemo(() => {
     const layoutNodes = siteTree ? flattenLayoutNodes(siteTree) : [];
@@ -158,6 +180,17 @@ export default function GraphicsManagerPage() {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [site, hasNoSite, siteTreeKey]);
+
+  // When opening from Template Library "Edit" (e.g. ?equipmentId=xxx), select that equipment and show its graphic
+  useEffect(() => {
+    const params = new URLSearchParams(location.search || "");
+    const equipmentIdFromUrl = params.get("equipmentId");
+    if (equipmentIdFromUrl && draftEquipment.some((e) => e.id === equipmentIdFromUrl)) {
+      setSelectedEquipmentId(equipmentIdFromUrl);
+      setSelectedLayoutNodeId(null);
+      setSelectedObject(null);
+    }
+  }, [location.search, draftEquipment]);
 
   const toggleExpand = useCallback((id) => {
     setExpandedIds((prev) => {
@@ -337,6 +370,45 @@ export default function GraphicsManagerPage() {
     setSelectedObject(newObj);
   }, [selectedEquipmentId, selectedLayoutNodeId, draftGraphics, draftSiteLayoutGraphics, actions, generateObjectId]);
 
+  const handleAddShape = useCallback(() => {
+    const defaultOpt = SHAPE_COLOR_OPTIONS[DEFAULT_SHAPE_COLOR];
+    const newObj = {
+      id: generateObjectId(),
+      type: "shape",
+      label: "Shape",
+      x: 100,
+      y: 100,
+      width: 80,
+      height: 80,
+      shapeColor: DEFAULT_SHAPE_COLOR,
+      fill: defaultOpt.fill,
+      stroke: defaultOpt.stroke,
+      opacity: 1,
+    };
+    if (selectedLayoutNodeId) {
+      const current = draftSiteLayoutGraphics[selectedLayoutNodeId] || { objects: [] };
+      const existingObjects = current.objects || [];
+      const maxY = existingObjects.reduce((m, o) => Math.max(m, (o.y || 0) + (o.height || 24)), 0);
+      newObj.y = Math.max(80, maxY + 20);
+      actions.setGraphicForSiteLayout(selectedLayoutNodeId, {
+        ...current,
+        objects: [...existingObjects, newObj],
+      });
+      setSelectedObject(newObj);
+      return;
+    }
+    if (!selectedEquipmentId) return;
+    const current = draftGraphics[selectedEquipmentId] || { objects: [] };
+    const existingObjects = current.objects || [];
+    const maxY = existingObjects.reduce((m, o) => Math.max(m, (o.y || 0) + (o.height || 24)), 0);
+    newObj.y = Math.max(80, maxY + 20);
+    actions.setGraphicForEquipment(selectedEquipmentId, {
+      ...current,
+      objects: [...existingObjects, newObj],
+    });
+    setSelectedObject(newObj);
+  }, [selectedEquipmentId, selectedLayoutNodeId, draftGraphics, draftSiteLayoutGraphics, actions, generateObjectId]);
+
   const handleDeleteObject = useCallback(
     (objectId) => {
       if (selectedLayoutNodeId) {
@@ -355,6 +427,22 @@ export default function GraphicsManagerPage() {
     [selectedEquipmentId, selectedLayoutNodeId, selectedObject?.id, draftGraphics, draftSiteLayoutGraphics, actions]
   );
 
+  const handleOpenLink = useCallback(
+    (linkTarget) => {
+      if (!linkTarget?.type) return;
+      if (linkTarget.type === "equipment" && linkTarget.id) {
+        history.push(Routes.LegionEquipmentDetail.path.replace(":equipmentId", encodeURIComponent(linkTarget.id)));
+      } else if (linkTarget.type === "layout" && linkTarget.id) {
+        history.push(Routes.LegionSite.path, { selectLayoutLevelId: linkTarget.id });
+      } else if (linkTarget.type === "url" && linkTarget.url) {
+        window.open(linkTarget.url, "_blank", "noopener,noreferrer");
+      } else if (linkTarget.type === "route" && linkTarget.path) {
+        history.push(linkTarget.path);
+      }
+    },
+    [history]
+  );
+
   const handleSaveGraphic = useCallback(() => {
     if (!selectedGraphic) return;
     if (selectedLayoutNodeId) {
@@ -367,6 +455,15 @@ export default function GraphicsManagerPage() {
       window.setTimeout(() => setShowSaveToast(false), 4000);
     }
   }, [selectedEquipmentId, selectedLayoutNodeId, selectedGraphic, actions]);
+
+  const handleGraphicNameChange = useCallback(
+    (name) => {
+      if (!selectedEquipmentId || !selectedGraphic) return;
+      const updated = { ...selectedGraphic, name: name || "" };
+      actions.setGraphicForEquipment(selectedEquipmentId, updated);
+    },
+    [selectedEquipmentId, selectedGraphic, actions]
+  );
 
   const handleValidate = useCallback(() => {
     const graphic = selectedGraphic;
@@ -451,6 +548,24 @@ export default function GraphicsManagerPage() {
     }
   }, [selectedGraphic, setGraphicBackgroundImage]);
 
+  const handleCanvasSizeChange = useCallback(
+    (sizeKey) => {
+      if (!selectedGraphic) return;
+      const presets = {
+        standard: { width: 800, height: 500 },
+        large: { width: 1200, height: 800 },
+      };
+      const preset = presets[sizeKey] || presets.standard;
+      const updated = { ...selectedGraphic, canvasSize: preset };
+      if (selectedLayoutNodeId) {
+        actions.setGraphicForSiteLayout(selectedLayoutNodeId, updated);
+      } else if (selectedEquipmentId) {
+        actions.setGraphicForEquipment(selectedEquipmentId, updated);
+      }
+    },
+    [selectedGraphic, selectedLayoutNodeId, selectedEquipmentId, actions]
+  );
+
   const handleNewGraphic = useCallback(() => {
     console.log("New Graphic");
   }, []);
@@ -458,8 +573,14 @@ export default function GraphicsManagerPage() {
     console.log("Duplicate");
   }, []);
   const handleDelete = useCallback(() => {
-    console.log("Delete");
-  }, []);
+    if (selectedLayoutNodeId) {
+      actions.setGraphicForSiteLayout(selectedLayoutNodeId, null);
+      setSelectedObject(null);
+    } else if (selectedEquipmentId) {
+      actions.setGraphicForEquipment(selectedEquipmentId, null);
+      setSelectedObject(null);
+    }
+  }, [selectedLayoutNodeId, selectedEquipmentId, actions]);
   const handlePreview = useCallback(() => {
     console.log("Preview");
   }, []);
@@ -542,6 +663,8 @@ export default function GraphicsManagerPage() {
           equipment={selectedEquipment}
           equipmentList={equipmentList}
           onSelectEquipment={handleSelectEquipmentById}
+          graphicName={selectedEquipmentId ? (selectedGraphic?.name ?? "") : ""}
+          onGraphicNameChange={selectedEquipmentId ? handleGraphicNameChange : undefined}
         />
 
         {showValidationToast && validationResult && (
@@ -632,6 +755,22 @@ export default function GraphicsManagerPage() {
           </Col>
 
           <Col xs={12} lg={6} xl={7}>
+            <div className="d-flex justify-content-end mb-2">
+              <label className="text-white-50 small me-2">Workspace size:</label>
+              <select
+                className="form-select form-select-sm bg-dark bg-opacity-50 border border-light border-opacity-10 text-white"
+                style={{ width: 190 }}
+                value={
+                  canvasWidth === 1200 && canvasHeight === 800
+                    ? "large"
+                    : "standard"
+                }
+                onChange={(e) => handleCanvasSizeChange(e.target.value)}
+              >
+                <option value="standard">Standard (800 × 500)</option>
+                <option value="large">Large (1200 × 800)</option>
+              </select>
+            </div>
             <GraphicsCanvas
               graphic={selectedGraphic}
               selectedObjectId={selectedObject?.id}
@@ -640,10 +779,13 @@ export default function GraphicsManagerPage() {
               onAddText={handleAddText}
               onAddValue={handleAddValue}
               onAddLink={handleAddLink}
+              onAddShape={handleAddShape}
               onBackgroundPositionChange={handleBackgroundPositionChange}
               onDeleteObject={handleDeleteObject}
               availablePoints={selectedLayoutNodeId ? [] : availablePoints}
               previewMode={false}
+               canvasWidth={canvasWidth}
+               canvasHeight={canvasHeight}
               emptyMessage={
                 selectedLayoutNodeId
                   ? `Create a site layout graphic for ${selectedLayoutNode?.name ?? "this level"}. Deploy to see it in Operator → Site Layout.`
@@ -660,6 +802,7 @@ export default function GraphicsManagerPage() {
               linkTargets={linkTargets}
               onUpdateObject={handleUpdateObject}
               onDeleteObject={handleDeleteObject}
+              onOpenLink={handleOpenLink}
             />
           </Col>
         </Row>

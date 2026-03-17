@@ -1,5 +1,5 @@
 import React from "react";
-import { Card } from "@themesberg/react-bootstrap";
+import { Card, Form } from "@themesberg/react-bootstrap";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faObjectGroup } from "@fortawesome/free-solid-svg-icons";
 import SearchableEquipmentSelect from "../../point-mapping/components/SearchableEquipmentSelect";
@@ -23,11 +23,14 @@ function formatStatus(status) {
 /**
  * Context card for Graphics Manager - searchable equipment dropdown like Point Mapping.
  * Miami HQ / Tower A / Floor 1 / AHU-1 | Controller | Template | Status
+ * When editing an equipment graphic, shows "Graphic name" so the name appears in Site Builder → Edit Equipment.
  */
 export default function GraphicsContextCard({
   equipment,
   equipmentList = [],
   onSelectEquipment,
+  graphicName = "",
+  onGraphicNameChange,
 }) {
   const showSelector = equipmentList.length > 0 && onSelectEquipment;
 
@@ -100,6 +103,21 @@ export default function GraphicsContextCard({
             </span>
           </div>
         </div>
+        {onGraphicNameChange && (
+          <Form.Group className="mt-3 pt-3 border-top border-light border-opacity-10">
+            <Form.Label className="text-white small">Graphic name</Form.Label>
+            <Form.Control
+              size="sm"
+              className="bg-dark bg-opacity-25 border border-light border-opacity-10 text-white"
+              value={graphicName}
+              onChange={(e) => onGraphicNameChange(e.target.value)}
+              placeholder="Name this graphic (shown in Site Builder)"
+            />
+            <Form.Text className="text-white-50 small">
+              This name appears in Site Builder under Edit Equipment → Graphic.
+            </Form.Text>
+          </Form.Group>
+        )}
       </Card.Body>
     </Card>
   );

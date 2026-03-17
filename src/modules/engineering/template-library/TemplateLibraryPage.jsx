@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useMemo } from "react";
 import {
   Container,
   Nav,
@@ -14,16 +14,20 @@ import {
   faEllipsisV,
   faBoxOpen,
   faObjectGroup,
+  faCloudUploadAlt,
 } from "@fortawesome/free-solid-svg-icons";
 
+import { useHistory } from "react-router-dom";
 import { useSite } from "../../../app/providers/SiteProvider";
 import { useEngineeringDraft } from "../../../hooks/useEngineeringDraft";
 import LegionHeroHeader from "../../../components/legion/LegionHeroHeader";
 import { engineeringRepository } from "../../../lib/data";
+import { Routes } from "../../../routes";
 import EmptyTemplateState from "./components/EmptyTemplateState";
 import EquipmentTemplatesTable from "./components/EquipmentTemplatesTable";
 import GraphicTemplatesTable from "./components/GraphicTemplatesTable";
 import ImportFromGlobalModal from "./components/ImportFromGlobalModal";
+import SaveToGlobalModal from "./components/SaveToGlobalModal";
 import CreateTemplateModal from "./components/CreateTemplateModal";
 import EquipmentTemplateEditorDrawer from "./components/EquipmentTemplateEditorDrawer";
 import CreateGraphicTemplateModal from "./components/CreateGraphicTemplateModal";
@@ -67,6 +71,7 @@ function globalGraphicToSite(globalRow, equipmentTemplates) {
 // TemplateLibraryPage
 // ---------------------------------------------------------------------------
 export default function TemplateLibraryPage() {
+  const history = useHistory();
   const { site } = useSite();
   const { draft, actions } = useEngineeringDraft();
   const [activeTab, setActiveTab] = useState("equipment");
@@ -75,14 +80,45 @@ export default function TemplateLibraryPage() {
   const [showEquipmentEditorDrawer, setShowEquipmentEditorDrawer] = useState(false);
   const [equipmentEditorContext, setEquipmentEditorContext] = useState({ template: null, mode: "create" });
   const [showCreateGraphicModal, setShowCreateGraphicModal] = useState(false);
+  const [showSaveToGlobalModal, setShowSaveToGlobalModal] = useState(false);
+  const [saveToGlobalToast, setSaveToGlobalToast] = useState(null);
 
   const siteTemplates = {
     equipment: draft.templates?.equipmentTemplates ?? [],
     graphic: draft.templates?.graphicTemplates ?? [],
   };
 
+  // Combined graphic list: template library + user-created equipment graphics (from Graphics Manager)
+  const siteGraphicTemplatesWithEquipmentGraphics = useMemo(() => {
+    const fromTemplates = (siteTemplates.graphic || []).map((g) => ({
+      ...g,
+      _origin: "template",
+    }));
+    const equipmentList = draft?.equipment ?? [];
+    const graphics = draft?.graphics ?? {};
+    const fromEquipment = Object.entries(graphics)
+      .filter(([, g]) => g && (g.name || "").trim())
+      .map(([equipmentId, g]) => {
+        const equipment = equipmentList.find((e) => e.id === equipmentId);
+        const appliesTo = equipment ? (equipment.displayLabel || equipment.name || equipmentId) : equipmentId;
+        return {
+          id: `equipment-graphic-${equipmentId}`,
+          name: (g.name || "").trim(),
+          appliesTo,
+          boundPointCount: Array.isArray(g.objects) ? g.objects.length : 0,
+          source: engineeringRepository.SOURCE.SITE_CREATED,
+          lastUpdated: g.lastEdited || "—",
+          _origin: "equipment",
+          equipmentId,
+        };
+      });
+    return [...fromTemplates, ...fromEquipment];
+  }, [siteTemplates.graphic, draft?.equipment, draft?.graphics]);
+
   const hasEquipment = (siteTemplates.equipment || []).length > 0;
-  const hasGraphic = (siteTemplates.graphic || []).length > 0;
+  const hasGraphic =
+    (siteTemplates.graphic || []).length > 0 ||
+    Object.values(draft?.graphics ?? {}).some((g) => g && (g.name || "").trim());
   const isEmpty = !hasEquipment && !hasGraphic;
 
   const existingEquipmentNames = (siteTemplates.equipment || []).map((e) => e.name);
@@ -112,10 +148,17 @@ export default function TemplateLibraryPage() {
     actions.setTemplates({ equipmentTemplates: nextEq, graphicTemplates: draft.templates?.graphicTemplates ?? [] });
   }, [draft.templates, actions]);
 
-  const handleRemoveGraphic = useCallback((row) => {
-    const nextGfx = (draft.templates?.graphicTemplates ?? []).filter((g) => g.id !== row.id);
-    actions.setTemplates({ equipmentTemplates: draft.templates?.equipmentTemplates ?? [], graphicTemplates: nextGfx });
-  }, [draft.templates, actions]);
+  const handleRemoveGraphic = useCallback(
+    (row) => {
+      if (row._origin === "equipment" && row.equipmentId) {
+        actions.setGraphicForEquipment(row.equipmentId, null);
+        return;
+      }
+      const nextGfx = (draft.templates?.graphicTemplates ?? []).filter((g) => g.id !== row.id);
+      actions.setTemplates({ equipmentTemplates: draft.templates?.equipmentTemplates ?? [], graphicTemplates: nextGfx });
+    },
+    [draft.templates, actions]
+  );
 
   const handleViewEquipment = useCallback((row) => {
     setEquipmentEditorContext({ template: row, mode: "view" });
@@ -200,15 +243,49 @@ export default function TemplateLibraryPage() {
     actions.setTemplates({ equipmentTemplates: [...prevEq, newTemplate], graphicTemplates: draft.templates?.graphicTemplates ?? [] });
   }, [draft.templates, actions]);
 
-  const handleViewGraphic = useCallback((row) => {
-    console.log("View graphic template", row);
-  }, []);
-  const handleEditGraphic = useCallback((row) => {
-    console.log("Edit graphic template", row);
-  }, []);
+  const handleViewGraphic = useCallback(
+    (row) => {
+      const equipmentId =
+        row._origin === "equipment"
+          ? row.equipmentId
+          : (draft?.equipment ?? []).find(
+              (e) => e.graphicTemplateId === row.id || (draft?.graphics?.[e.id]?.graphicTemplateId === row.id)
+            )?.id;
+      if (equipmentId) {
+        history.push(`${Routes.EngineeringGraphicsManager.path}?equipmentId=${encodeURIComponent(equipmentId)}`);
+      } else if (row._origin === "equipment") {
+        history.push(`${Routes.EngineeringGraphicsManager.path}?equipmentId=${encodeURIComponent(row.equipmentId)}`);
+      } else {
+        history.push(Routes.EngineeringGraphicsManager.path);
+      }
+    },
+    [draft?.equipment, draft?.graphics, history]
+  );
+
+  const handleEditGraphic = useCallback(
+    (row) => {
+      const equipmentId =
+        row._origin === "equipment"
+          ? row.equipmentId
+          : (draft?.equipment ?? []).find(
+              (e) => e.graphicTemplateId === row.id || (draft?.graphics?.[e.id]?.graphicTemplateId === row.id)
+            )?.id;
+      if (equipmentId) {
+        history.push(`${Routes.EngineeringGraphicsManager.path}?equipmentId=${encodeURIComponent(equipmentId)}`);
+      } else if (row._origin === "equipment") {
+        history.push(`${Routes.EngineeringGraphicsManager.path}?equipmentId=${encodeURIComponent(row.equipmentId)}`);
+      } else {
+        history.push(Routes.EngineeringGraphicsManager.path);
+      }
+    },
+    [draft?.equipment, draft?.graphics, history]
+  );
+
   const handleDuplicateGraphic = useCallback((row) => {
+    if (row._origin === "equipment") return;
+    const { _origin, equipmentId: _eqId, ...rest } = row;
     const newGfx = {
-      ...row,
+      ...rest,
       id: generateId("site-gfx"),
       name: `${row.name} (Copy)`,
       source: engineeringRepository.SOURCE.SITE_CUSTOM,
@@ -260,8 +337,12 @@ export default function TemplateLibraryPage() {
                 Actions <FontAwesomeIcon icon={faEllipsisV} className="ms-1" />
               </Dropdown.Toggle>
               <Dropdown.Menu align="end" className="legion-dropdown-menu">
-                <Dropdown.Item className="text-white-50" disabled>
-                  Save to Global Library (coming soon)
+                <Dropdown.Item
+                  className="text-white"
+                  onClick={() => setShowSaveToGlobalModal(true)}
+                >
+                  <FontAwesomeIcon icon={faCloudUploadAlt} className="me-2" />
+                  Save to Global Library
                 </Dropdown.Item>
                 <Dropdown.Item className="text-white-50" disabled>
                   Export templates (coming soon)
@@ -335,7 +416,7 @@ export default function TemplateLibraryPage() {
               )}
               {activeTab === "graphic" && (
                 <GraphicTemplatesTable
-                  templates={siteTemplates.graphic}
+                  templates={siteGraphicTemplatesWithEquipmentGraphics}
                   onView={handleViewGraphic}
                   onEdit={handleEditGraphic}
                   onDuplicate={handleDuplicateGraphic}
@@ -354,6 +435,35 @@ export default function TemplateLibraryPage() {
         existingEquipmentNames={existingEquipmentNames}
         existingGraphicNames={existingGraphicNames}
       />
+
+      <SaveToGlobalModal
+        show={showSaveToGlobalModal}
+        onHide={() => setShowSaveToGlobalModal(false)}
+        equipmentTemplates={siteTemplates.equipment}
+        graphicTemplates={siteTemplates.graphic}
+        onSaved={(counts) => {
+          setSaveToGlobalToast(counts);
+          setTimeout(() => setSaveToGlobalToast(null), 4000);
+        }}
+      />
+
+      {saveToGlobalToast && (
+        <div className="position-fixed bottom-0 end-0 m-3 p-3 rounded border border-success border-opacity-50 bg-success bg-opacity-10 shadow">
+          <div className="text-success small fw-semibold">
+            {saveToGlobalToast.total} template(s) saved to Global Library.
+            {saveToGlobalToast.equipment > 0 && ` ${saveToGlobalToast.equipment} equipment.`}
+            {saveToGlobalToast.graphic > 0 && ` ${saveToGlobalToast.graphic} graphic.`}
+          </div>
+          <Button
+            size="sm"
+            variant="link"
+            className="text-success p-0 mt-1"
+            onClick={() => setSaveToGlobalToast(null)}
+          >
+            Dismiss
+          </Button>
+        </div>
+      )}
 
       <CreateTemplateModal
         show={showCreateModal}

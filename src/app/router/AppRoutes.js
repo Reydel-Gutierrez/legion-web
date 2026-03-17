@@ -23,6 +23,7 @@ import GraphicsManagerPage from "../../modules/engineering/graphics-manager/Grap
 import TemplateLibraryPage from "../../modules/engineering/template-library/TemplateLibraryPage";
 import ValidationCenterPage from "../../modules/engineering/validation-center/ValidationCenterPage";
 import DeploymentPage from "../../modules/engineering/deployment/DeploymentPage";
+import UserManagerPage from "../../modules/engineering/user-manager/UserManagerPage";
 
 // shared layout
 import Sidebar from "../layout/Sidebar";
@@ -91,6 +92,7 @@ export default function AppRoutes() {
       <RouteWithSidebar exact path={Routes.EngineeringTemplateLibrary.path} component={TemplateLibraryPage} />
       <RouteWithSidebar exact path={Routes.EngineeringValidationCenter.path} component={ValidationCenterPage} />
       <RouteWithSidebar exact path={Routes.EngineeringDeployment.path} component={DeploymentPage} />
+      <RouteWithSidebar exact path={Routes.EngineeringUserManager.path} component={UserManagerPage} />
 
       <Redirect to={Routes.LegionDashboard.path} />
     </Switch>

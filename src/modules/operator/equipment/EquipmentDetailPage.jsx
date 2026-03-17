@@ -58,12 +58,16 @@ export default function EquipmentDetailPage() {
   }, [activeDeployment?.graphics, equipment]);
 
   const handleGraphicLinkClick = (linkTarget) => {
-    if (!linkTarget?.type || !linkTarget?.id) return;
-    if (linkTarget.type === "equipment") {
+    if (!linkTarget?.type) return;
+    if (linkTarget.type === "equipment" && linkTarget.id) {
       const path = Routes.LegionEquipmentDetail.path.replace(":equipmentId", encodeURIComponent(linkTarget.id));
       history.push(path);
-    } else if (linkTarget.type === "layout") {
+    } else if (linkTarget.type === "layout" && linkTarget.id) {
       history.push(Routes.LegionSite.path, { selectLayoutLevelId: linkTarget.id });
+    } else if (linkTarget.type === "url" && linkTarget.url) {
+      window.open(linkTarget.url, "_blank", "noopener,noreferrer");
+    } else if (linkTarget.type === "route" && linkTarget.path) {
+      history.push(linkTarget.path);
     }
   };
 

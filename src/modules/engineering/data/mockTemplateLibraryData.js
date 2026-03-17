@@ -7,6 +7,8 @@
 export const SOURCE = {
   GLOBAL_IMPORTED: "Global Imported",
   SITE_CUSTOM: "Site Custom",
+  /** User-created equipment graphics (from Graphics Manager) shown in Graphic Templates tab */
+  SITE_CREATED: "Site created",
 };
 
 // Expected BACnet/logical point types for template points
@@ -195,3 +197,52 @@ export const GLOBAL_GRAPHIC_TEMPLATES = [
   { id: "global-gfx-4", name: "Standard RTU Graphic", appliesToEquipmentType: "RTU", boundPointCount: 32 },
   { id: "global-gfx-5", name: "Minimal VAV Graphic", appliesToEquipmentType: "VAV", boundPointCount: 12 },
 ];
+
+// ---------------------------------------------------------------------------
+// Save to Global Library (mutates the arrays above; used by SaveToGlobalModal)
+// ---------------------------------------------------------------------------
+
+function generateGlobalId(prefix) {
+  return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+}
+
+/**
+ * Add a site equipment template to the global library. Call when user chooses "Save to Global Library".
+ * @param {object} siteTemplate - Site template from draft.templates.equipmentTemplates
+ * @returns {object} The added global row (id, name, equipmentType, pointCount, defaultGraphicName)
+ */
+export function addEquipmentTemplateToGlobal(siteTemplate) {
+  if (!siteTemplate) return null;
+  const row = {
+    id: generateGlobalId("global-eq"),
+    name: siteTemplate.name || "Unnamed",
+    equipmentType: siteTemplate.equipmentType || siteTemplate.equipmentType || "CUSTOM",
+    pointCount: siteTemplate.pointCount ?? (Array.isArray(siteTemplate.points) ? siteTemplate.points.length : 0),
+    defaultGraphicName: siteTemplate.defaultGraphic || null,
+  };
+  GLOBAL_EQUIPMENT_TEMPLATES.push(row);
+  return row;
+}
+
+/**
+ * Add a site graphic template to the global library.
+ * @param {object} siteTemplate - Site template from draft.templates.graphicTemplates
+ * @param {array} equipmentTemplates - Site equipment templates (to resolve appliesTo name -> equipmentType)
+ * @returns {object} The added global row (id, name, appliesToEquipmentType, boundPointCount)
+ */
+export function addGraphicTemplateToGlobal(siteTemplate, equipmentTemplates = []) {
+  if (!siteTemplate) return null;
+  const appliesToName = siteTemplate.appliesTo || "";
+  const equipmentTemplate = (equipmentTemplates || []).find(
+    (e) => (e.name || "").toLowerCase() === appliesToName.toLowerCase()
+  );
+  const appliesToEquipmentType = equipmentTemplate?.equipmentType || "CUSTOM";
+  const row = {
+    id: generateGlobalId("global-gfx"),
+    name: siteTemplate.name || "Unnamed",
+    appliesToEquipmentType,
+    boundPointCount: siteTemplate.boundPointCount ?? 0,
+  };
+  GLOBAL_GRAPHIC_TEMPLATES.push(row);
+  return row;
+}

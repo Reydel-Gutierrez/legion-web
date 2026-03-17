@@ -47,7 +47,8 @@ export default function GraphicTemplatesTable({
               <td>
                 <span
                   className={`template-library-source-badge ${
-                    row.source === engineeringRepository.SOURCE.SITE_CUSTOM
+                    row.source === engineeringRepository.SOURCE.SITE_CUSTOM ||
+                    row.source === engineeringRepository.SOURCE.SITE_CREATED
                       ? "template-library-source-badge--site"
                       : "template-library-source-badge--global"
                   }`}

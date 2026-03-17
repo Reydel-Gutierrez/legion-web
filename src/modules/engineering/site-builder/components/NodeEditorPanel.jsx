@@ -21,6 +21,10 @@ export default function NodeEditorPanel({
   onDeleteConfirm,
   equipmentTemplates = [],
   existingInstanceNumbers = [],
+  graphics = {},
+  graphicTemplates = [],
+  equipmentList = [],
+  onGraphicChange,
 }) {
   const [form, setForm] = useState({
     name: "",
@@ -103,6 +107,10 @@ export default function NodeEditorPanel({
         onDelete={onDeleteEquipment}
         equipmentTemplates={equipmentTemplates}
         existingInstanceNumbers={existingInstanceNumbers}
+        graphics={graphics}
+        graphicTemplates={graphicTemplates}
+        equipmentList={equipmentList}
+        onGraphicChange={onGraphicChange}
       />
     );
   }

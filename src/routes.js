@@ -27,6 +27,6 @@ export const Routes = {
   EngineeringGraphicsManager: { path: "/legion/engineering/graphics-manager" },
   EngineeringTemplateLibrary: { path: "/legion/engineering/templates" },
   EngineeringValidationCenter: { path: "/legion/engineering/validation-center" },
-  EngineeringDeployment: { path: "/legion/engineering/deployment" }
-
+  EngineeringDeployment: { path: "/legion/engineering/deployment" },
+  EngineeringUserManager: { path: "/legion/engineering/user-manager" }
 };
