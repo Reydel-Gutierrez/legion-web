@@ -26,6 +26,11 @@ import { SHAPE_COLOR_OPTIONS, DEFAULT_SHAPE_COLOR } from "./shapeColorConstants"
 import GraphicsExplorer from "./components/GraphicsExplorer";
 import GraphicsCanvas from "./components/GraphicsCanvas";
 import GraphicsInspector from "./components/GraphicsInspector";
+import {
+  EQUIPMENT_GRAPHIC_CANVAS_DEFAULT,
+  LAYOUT_GRAPHIC_CANVAS_DEFAULT,
+  LAYOUT_BACKGROUND_IMPORT_MAX,
+} from "../../../lib/graphics/graphicsConstants";
 
 // ---------------------------------------------------------------------------
 // File import helpers
@@ -41,9 +46,11 @@ function readFileAsDataUrl(file) {
 
 /**
  * Downscale large raster images before converting to base64.
- * This prevents freezing/crashing on big images.
+ * @param {{ preferJpegForDraftStorage?: boolean, jpegQuality?: number }} [encodeOpts]
+ *        For site/building/floor layout backgrounds, prefer JPEG so localStorage drafts stay under quota.
  */
-function downscaleImageFileToDataUrl(file, maxCanvasW, maxCanvasH) {
+function downscaleImageFileToDataUrl(file, maxCanvasW, maxCanvasH, encodeOpts = {}) {
+  const { preferJpegForDraftStorage = false, jpegQuality = 0.82 } = encodeOpts;
   return new Promise((resolve, reject) => {
     try {
       const objectUrl = URL.createObjectURL(file);
@@ -67,8 +74,10 @@ function downscaleImageFileToDataUrl(file, maxCanvasW, maxCanvasH) {
           ctx.clearRect(0, 0, w, h);
           ctx.drawImage(img, 0, 0, w, h);
 
-          const isJpeg = (file.type || "").toLowerCase().includes("jpeg") || (file.type || "").toLowerCase().includes("jpg");
-          const dataUrl = canvas.toDataURL(isJpeg ? "image/jpeg" : "image/png", isJpeg ? 0.92 : undefined);
+          const isJpeg =
+            (file.type || "").toLowerCase().includes("jpeg") || (file.type || "").toLowerCase().includes("jpg");
+          const useJpeg = preferJpegForDraftStorage || isJpeg;
+          const dataUrl = canvas.toDataURL(useJpeg ? "image/jpeg" : "image/png", useJpeg ? jpegQuality : undefined);
 
           URL.revokeObjectURL(objectUrl);
           resolve({ dataUrl, width: w, height: h });
@@ -132,7 +141,7 @@ export default function GraphicsManagerPage() {
     status: "DRAFT",
     lastEdited: "Now",
     objects: [],
-    canvasSize: { width: 800, height: 800 },
+    canvasSize: { ...EQUIPMENT_GRAPHIC_CANVAS_DEFAULT },
   }));
   const [isFullscreen] = useState(true); // fullscreen is now the only mode
   const [showAssignModal, setShowAssignModal] = useState(false);
@@ -206,7 +215,7 @@ export default function GraphicsManagerPage() {
           ...base,
           objects: base.objects ?? [],
           backgroundImage: base.backgroundImage,
-          canvasSize: base.canvasSize || { width: 800, height: 800 },
+          canvasSize: base.canvasSize || LAYOUT_GRAPHIC_CANVAS_DEFAULT,
         };
       return {
         id: `layout-${selectedLayoutNodeId}`,
@@ -215,7 +224,7 @@ export default function GraphicsManagerPage() {
         status: "DRAFT",
         lastEdited: "Now",
         objects: [],
-        canvasSize: { width: 800, height: 800 },
+        canvasSize: { ...LAYOUT_GRAPHIC_CANVAS_DEFAULT },
       };
     }
     const base = draftGraphics[selectedEquipmentId] ?? null;
@@ -224,7 +233,7 @@ export default function GraphicsManagerPage() {
         ...base,
         objects: base.objects ?? [],
         backgroundImage: base.backgroundImage,
-        canvasSize: base.canvasSize || { width: 800, height: 800 },
+        canvasSize: base.canvasSize || EQUIPMENT_GRAPHIC_CANVAS_DEFAULT,
       };
     if (selectedEquipmentId)
       return {
@@ -234,13 +243,17 @@ export default function GraphicsManagerPage() {
         status: "DRAFT",
         lastEdited: "Now",
         objects: [],
-        canvasSize: { width: 800, height: 800 },
+        canvasSize: { ...EQUIPMENT_GRAPHIC_CANVAS_DEFAULT },
       };
     return workingGraphic;
   }, [selectedEquipmentId, selectedLayoutNodeId, draftGraphics, draftSiteLayoutGraphics, workingGraphic]);
 
-  const canvasWidth = selectedGraphic?.canvasSize?.width ?? 800;
-  const canvasHeight = selectedGraphic?.canvasSize?.height ?? 800;
+  const canvasWidth =
+    selectedGraphic?.canvasSize?.width ??
+    (selectedLayoutNodeId ? LAYOUT_GRAPHIC_CANVAS_DEFAULT.width : EQUIPMENT_GRAPHIC_CANVAS_DEFAULT.width);
+  const canvasHeight =
+    selectedGraphic?.canvasSize?.height ??
+    (selectedLayoutNodeId ? LAYOUT_GRAPHIC_CANVAS_DEFAULT.height : EQUIPMENT_GRAPHIC_CANVAS_DEFAULT.height);
 
   const linkTargets = useMemo(() => {
     const layoutNodes = siteTree ? flattenLayoutNodes(siteTree) : [];
@@ -292,7 +305,7 @@ export default function GraphicsManagerPage() {
           status: "DRAFT",
           lastEdited: new Date().toISOString().slice(0, 10),
           objects: editor.objects ?? [],
-          canvasSize: editor.canvasSize || { width: 800, height: 800 },
+          canvasSize: editor.canvasSize || { ...EQUIPMENT_GRAPHIC_CANVAS_DEFAULT },
           backgroundImage: editor.backgroundImage,
         });
       } else {
@@ -376,7 +389,7 @@ export default function GraphicsManagerPage() {
               status: "DRAFT",
               lastEdited: "Now",
               objects: [],
-          canvasSize: { width: 800, height: 800 },
+          canvasSize: { ...EQUIPMENT_GRAPHIC_CANVAS_DEFAULT },
             };
           const objects = (base.objects || []).map((o) => (o.id === objectId ? { ...o, ...updates } : o));
           return { ...base, objects };
@@ -427,7 +440,7 @@ export default function GraphicsManagerPage() {
           status: "DRAFT",
           lastEdited: "Now",
           objects: [],
-          canvasSize: { width: 800, height: 800 },
+          canvasSize: { ...EQUIPMENT_GRAPHIC_CANVAS_DEFAULT },
         };
         const existingObjects = base.objects || [];
         const maxY = existingObjects.reduce(
@@ -497,7 +510,7 @@ export default function GraphicsManagerPage() {
           status: "DRAFT",
           lastEdited: "Now",
           objects: [],
-          canvasSize: { width: 800, height: 800 },
+          canvasSize: { ...EQUIPMENT_GRAPHIC_CANVAS_DEFAULT },
         };
         const existingObjects = base.objects || [];
         const maxY = existingObjects.reduce(
@@ -570,7 +583,7 @@ export default function GraphicsManagerPage() {
           status: "DRAFT",
           lastEdited: "Now",
           objects: [],
-          canvasSize: { width: 800, height: 800 },
+          canvasSize: { ...EQUIPMENT_GRAPHIC_CANVAS_DEFAULT },
         };
         const existingObjects = base.objects || [];
         const maxY = existingObjects.reduce(
@@ -632,7 +645,7 @@ export default function GraphicsManagerPage() {
           status: "DRAFT",
           lastEdited: "Now",
           objects: [],
-          canvasSize: { width: 800, height: 800 },
+          canvasSize: { ...EQUIPMENT_GRAPHIC_CANVAS_DEFAULT },
         };
         const existingObjects = base.objects || [];
         const maxY = existingObjects.reduce(
@@ -718,7 +731,7 @@ export default function GraphicsManagerPage() {
               status: "DRAFT",
               lastEdited: "Now",
               objects: [],
-              canvasSize: { width: 800, height: 800 },
+              canvasSize: { ...EQUIPMENT_GRAPHIC_CANVAS_DEFAULT },
             };
           const objects = base.objects || [];
           const idx = objects.findIndex((o) => o.id === objectId);
@@ -880,7 +893,7 @@ export default function GraphicsManagerPage() {
             status: "DRAFT",
             lastEdited: now,
             objects: [],
-            canvasSize: { width: 800, height: 800 },
+            canvasSize: { ...EQUIPMENT_GRAPHIC_CANVAS_DEFAULT },
           }),
           name,
           objects: editorState.objects,
@@ -927,7 +940,7 @@ export default function GraphicsManagerPage() {
             status: "DRAFT",
             lastEdited: "Now",
             objects: [],
-            canvasSize: { width: 800, height: 800 },
+            canvasSize: { ...EQUIPMENT_GRAPHIC_CANVAS_DEFAULT },
           }),
           name: name || "",
         }));
@@ -977,7 +990,7 @@ export default function GraphicsManagerPage() {
           status: "DRAFT",
           lastEdited: "Now",
           objects: [],
-          canvasSize: { width: 800, height: 800 },
+          canvasSize: { ...EQUIPMENT_GRAPHIC_CANVAS_DEFAULT },
         }),
         backgroundImage,
       }));
@@ -1055,9 +1068,17 @@ export default function GraphicsManagerPage() {
         if (!file) return;
         try {
           // Downscale before base64 to avoid freezing on huge images.
-          const maxW = Math.max(1, canvasWidth);
-          const maxH = Math.max(1, canvasHeight);
-          const { dataUrl, width: w, height: h } = await downscaleImageFileToDataUrl(file, maxW, maxH);
+          // Layout graphics allow larger imports (floorplans); equipment stays canvas-sized.
+          const maxW = selectedLayoutNodeId
+            ? LAYOUT_BACKGROUND_IMPORT_MAX.width
+            : Math.max(1, canvasWidth);
+          const maxH = selectedLayoutNodeId
+            ? LAYOUT_BACKGROUND_IMPORT_MAX.height
+            : Math.max(1, canvasHeight);
+          const { dataUrl, width: w, height: h } = await downscaleImageFileToDataUrl(file, maxW, maxH, {
+            preferJpegForDraftStorage: !!selectedLayoutNodeId,
+            jpegQuality: 0.82,
+          });
 
           const x = Math.round((canvasWidth - w) / 2);
           const y = Math.round((canvasHeight - h) / 2);
@@ -1075,7 +1096,9 @@ export default function GraphicsManagerPage() {
             objectPositionY: 50,
           });
         } catch (err) {
-          // Fallback: try the old approach only if downscale failed.
+          console.error("Failed to import image (downscale)", err);
+          // Do not embed full-file base64 for layout graphics — it exceeds localStorage and freezes the app.
+          if (selectedLayoutNodeId) return;
           try {
             const dataUrl = await readFileAsDataUrl(file);
             const x = 0;
@@ -1100,7 +1123,7 @@ export default function GraphicsManagerPage() {
       };
       el.click();
     }
-  }, [setGraphicBackgroundImage, selectedGraphic, canvasWidth, canvasHeight]);
+  }, [setGraphicBackgroundImage, selectedGraphic, canvasWidth, canvasHeight, selectedLayoutNodeId]);
 
   const handleOpenAssignModal = useCallback(() => {
     setAssignPendingLayoutNodeId(selectedLayoutNodeId);

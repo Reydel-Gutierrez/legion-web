@@ -6,8 +6,9 @@ import * as operatorRepository from "./repositories/operatorRepository";
 import * as engineeringRepository from "./repositories/engineeringRepository";
 import * as deploymentRepository from "./repositories/deploymentRepository";
 import * as accessRepository from "./repositories/accessRepository";
+import * as siteLayoutRepository from "./repositories/siteLayoutRepository";
 
 export { USE_MOCK_DATA } from "./config";
-export { operatorRepository, engineeringRepository, deploymentRepository, accessRepository };
+export { operatorRepository, engineeringRepository, deploymentRepository, accessRepository, siteLayoutRepository };
 /** Insights energy math + k-factor helpers (shared across app). */
 export * from "../insights/energyInsights";

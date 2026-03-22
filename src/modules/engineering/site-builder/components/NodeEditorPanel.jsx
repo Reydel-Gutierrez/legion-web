@@ -5,6 +5,7 @@ import { faTrashAlt } from "@fortawesome/free-solid-svg-icons";
 
 import LegionFormSelect from "../../../../components/legion/LegionFormSelect";
 import EquipmentEditorPanel from "../../equipment-builder/components/EquipmentEditorPanel";
+import BuildingLocationMapPicker from "./BuildingLocationMapPicker";
 
 /**
  * Right panel: Edit selected node (Site, Building, or Floor) or Equipment
@@ -39,6 +40,10 @@ export default function NodeEditorPanel({
     engineeringNotes: "",
     buildingType: "",
     buildingCode: "",
+    city: "",
+    state: "",
+    lat: "",
+    lng: "",
     floorType: "",
     occupancyType: "",
   });
@@ -58,6 +63,10 @@ export default function NodeEditorPanel({
         engineeringNotes: node.engineeringNotes || "",
         buildingType: node.buildingType || "",
         buildingCode: node.buildingCode || "",
+        city: node.city || "",
+        state: node.state || "",
+        lat: node.lat != null && node.lat !== "" ? String(node.lat) : "",
+        lng: node.lng != null && node.lng !== "" ? String(node.lng) : "",
         floorType: node.floorType || "",
         occupancyType: node.occupancyType || "",
       });
@@ -264,6 +273,84 @@ export default function NodeEditorPanel({
                   placeholder="e.g. TA, TB"
                 />
               </Form.Group>
+              <div className="text-white-50 small mb-2">Location (site map)</div>
+              <Form.Group className="mb-3">
+                <Form.Label className="text-white small">Street address</Form.Label>
+                <Form.Control
+                  size="sm"
+                  className="bg-dark bg-opacity-25 border border-light border-opacity-10 text-white"
+                  value={form.address}
+                  onChange={(e) => handleChange("address", e.target.value)}
+                  placeholder="Optional — shown on map list"
+                />
+              </Form.Group>
+              <div className="row g-2 mb-3">
+                <div className="col-6">
+                  <Form.Group>
+                    <Form.Label className="text-white small">City</Form.Label>
+                    <Form.Control
+                      size="sm"
+                      className="bg-dark bg-opacity-25 border border-light border-opacity-10 text-white"
+                      value={form.city}
+                      onChange={(e) => handleChange("city", e.target.value)}
+                      placeholder="City"
+                    />
+                  </Form.Group>
+                </div>
+                <div className="col-6">
+                  <Form.Group>
+                    <Form.Label className="text-white small">State / Region</Form.Label>
+                    <Form.Control
+                      size="sm"
+                      className="bg-dark bg-opacity-25 border border-light border-opacity-10 text-white"
+                      value={form.state}
+                      onChange={(e) => handleChange("state", e.target.value)}
+                      placeholder="State"
+                    />
+                  </Form.Group>
+                </div>
+              </div>
+              <div className="text-white-50 small mb-2">
+                Click the map to place the pin; drag the pin to adjust. Values below update automatically.
+              </div>
+              <BuildingLocationMapPicker
+                key={node.id}
+                lat={form.lat}
+                lng={form.lng}
+                onPositionChange={(latStr, lngStr) => {
+                  setForm((prev) => ({ ...prev, lat: latStr, lng: lngStr }));
+                }}
+              />
+              <div className="row g-2 mb-3">
+                <div className="col-6">
+                  <Form.Group>
+                    <Form.Label className="text-white small">Latitude</Form.Label>
+                    <Form.Control
+                      type="text"
+                      inputMode="decimal"
+                      size="sm"
+                      className="bg-dark bg-opacity-25 border border-light border-opacity-10 text-white"
+                      value={form.lat}
+                      onChange={(e) => handleChange("lat", e.target.value)}
+                      placeholder="e.g. 25.7617"
+                    />
+                  </Form.Group>
+                </div>
+                <div className="col-6">
+                  <Form.Group>
+                    <Form.Label className="text-white small">Longitude</Form.Label>
+                    <Form.Control
+                      type="text"
+                      inputMode="decimal"
+                      size="sm"
+                      className="bg-dark bg-opacity-25 border border-light border-opacity-10 text-white"
+                      value={form.lng}
+                      onChange={(e) => handleChange("lng", e.target.value)}
+                      placeholder="e.g. -80.1918"
+                    />
+                  </Form.Group>
+                </div>
+              </div>
               <Form.Group className="mb-3">
                 <Form.Label className="text-white small">Sort Order</Form.Label>
                 <Form.Control

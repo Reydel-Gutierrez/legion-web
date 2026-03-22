@@ -25,6 +25,42 @@ function safeStringify(value) {
   }
 }
 
+function isQuotaError(e) {
+  return e && (e.name === "QuotaExceededError" || e.code === 22);
+}
+
+/**
+ * localStorage is limited (~5MB per origin). Large base64 graphics can exceed it and throw,
+ * which breaks React effects if unhandled.
+ */
+function setLocalStorageSafe(key, json) {
+  try {
+    localStorage.setItem(key, json);
+    return true;
+  } catch (e) {
+    if (isQuotaError(e)) {
+      console.warn(
+        "[Legion] Draft/deployment save failed: browser storage quota exceeded. Use smaller images or clear site data.",
+        e
+      );
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(
+          new CustomEvent("legion-storage-quota", {
+            detail: {
+              key,
+              message:
+                "Storage is full (often due to large images in Graphics Manager). Try a smaller image or remove unused graphics.",
+            },
+          })
+        );
+      }
+      return false;
+    }
+    console.error("[Legion] localStorage setItem failed", e);
+    return false;
+  }
+}
+
 /**
  * Load all persisted drafts: { [siteName]: draftState }
  */
@@ -48,7 +84,7 @@ export function saveDraftForSite(siteName, draftState) {
   if (!siteName || !draftState) return;
   const all = loadAllDrafts();
   all[siteName] = draftState;
-  localStorage.setItem(STORAGE_KEY_DRAFTS, safeStringify(all));
+  setLocalStorageSafe(STORAGE_KEY_DRAFTS, safeStringify(all));
 }
 
 /**
@@ -74,7 +110,7 @@ export function saveDeploymentForSite(siteName, snapshot) {
   if (!siteName || !snapshot) return;
   const all = loadAllDeployments();
   all[siteName] = snapshot;
-  localStorage.setItem(STORAGE_KEY_DEPLOYMENTS, safeStringify(all));
+  setLocalStorageSafe(STORAGE_KEY_DEPLOYMENTS, safeStringify(all));
 }
 
 /**

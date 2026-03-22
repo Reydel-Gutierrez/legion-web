@@ -66,6 +66,13 @@ const MIAMI_HQ_SITE = {
       name: "Tower A",
       buildingType: "Office Tower",
       buildingCode: "TA",
+      address: "100 Legion Way",
+      city: "Miami",
+      state: "FL",
+      lat: 25.76185,
+      lng: -80.19145,
+      status: "normal",
+      hasFloors: true,
       floors: [
         { id: "f-miami-ta-1", name: "Floor 1", sortOrder: 1, floorType: "Standard Floor" },
         { id: "f-miami-ta-2", name: "Floor 2", sortOrder: 2, floorType: "Standard Floor" },
@@ -80,6 +87,13 @@ const MIAMI_HQ_SITE = {
       name: "Tower B",
       buildingType: "Office Tower",
       buildingCode: "TB",
+      address: "120 Legion Way",
+      city: "Miami",
+      state: "FL",
+      lat: 25.76225,
+      lng: -80.19205,
+      status: "warning",
+      hasFloors: true,
       floors: [
         { id: "f-miami-tb-1", name: "Floor 1", sortOrder: 1, floorType: "Standard Floor" },
         { id: "f-miami-tb-2", name: "Floor 2", sortOrder: 2, floorType: "Standard Floor" },
@@ -92,6 +106,13 @@ const MIAMI_HQ_SITE = {
       name: "Parking Garage",
       buildingType: "Garage",
       buildingCode: "PG",
+      address: "90 Legion Way",
+      city: "Miami",
+      state: "FL",
+      lat: 25.76135,
+      lng: -80.19265,
+      status: "normal",
+      hasFloors: true,
       floors: [
         { id: "f-miami-pg-1", name: "Level 1", sortOrder: 1, floorType: "Parking Level" },
         { id: "f-miami-pg-2", name: "Level 2", sortOrder: 2, floorType: "Parking Level" },
@@ -100,6 +121,103 @@ const MIAMI_HQ_SITE = {
     },
   ],
 };
+
+/** Brightline Trains — multi-station corridor (operator global map demo) */
+const BRIGHTLINE_SITE = {
+  id: "site-brightline",
+  name: "Brightline Trains",
+  siteType: "Transit",
+  address: "Florida higher-speed rail corridor",
+  timezone: "America/New_York",
+  buildings: [
+    {
+      id: "bldg-bl-miami",
+      name: "Miami Station",
+      buildingType: "Rail Station",
+      buildingCode: "MIA",
+      address: "600 NW 1st Ave",
+      city: "Miami",
+      state: "FL",
+      lat: 25.8461,
+      lng: -80.2582,
+      status: "normal",
+      hasFloors: true,
+      floors: [
+        { id: "f-bl-mia-1", name: "Concourse", sortOrder: 1, floorType: "Public" },
+        { id: "f-bl-mia-m", name: "Mechanical", sortOrder: 2, floorType: "Mechanical" },
+      ],
+    },
+    {
+      id: "bldg-bl-aventura",
+      name: "Aventura Station",
+      buildingType: "Rail Station",
+      buildingCode: "AVE",
+      address: "19796 W Dixie Hwy",
+      city: "Aventura",
+      state: "FL",
+      lat: 25.9567,
+      lng: -80.1445,
+      status: "warning",
+      hasFloors: true,
+      floors: [{ id: "f-bl-ave-1", name: "Platform Level", sortOrder: 1, floorType: "Public" }],
+    },
+    {
+      id: "bldg-bl-ftl",
+      name: "Fort Lauderdale Station",
+      buildingType: "Rail Station",
+      buildingCode: "FTL",
+      address: "200 SW 21st Ave",
+      city: "Fort Lauderdale",
+      state: "FL",
+      lat: 26.1191,
+      lng: -80.1464,
+      status: "normal",
+      hasFloors: true,
+      floors: [{ id: "f-bl-ftl-1", name: "Concourse", sortOrder: 1, floorType: "Public" }],
+    },
+    {
+      id: "bldg-bl-wpb",
+      name: "West Palm Beach Station",
+      buildingType: "Rail Station",
+      buildingCode: "WPB",
+      address: "501 Evernia St",
+      city: "West Palm Beach",
+      state: "FL",
+      lat: 26.7135,
+      lng: -80.064,
+      status: "normal",
+      hasFloors: true,
+      floors: [{ id: "f-bl-wpb-1", name: "Concourse", sortOrder: 1, floorType: "Public" }],
+    },
+    {
+      id: "bldg-bl-mco",
+      name: "Orlando Station",
+      buildingType: "Rail Station",
+      buildingCode: "MCO",
+      address: "1 Orlando Station Blvd",
+      city: "Orlando",
+      state: "FL",
+      lat: 28.4323,
+      lng: -81.3083,
+      status: "alert",
+      hasFloors: true,
+      floors: [
+        { id: "f-bl-mco-1", name: "Grand Hall", sortOrder: 1, floorType: "Public" },
+        { id: "f-bl-mco-m", name: "MEP Level", sortOrder: 2, floorType: "Mechanical" },
+      ],
+    },
+  ],
+};
+
+const BRIGHTLINE_EQUIPMENT = [
+  { id: "eq-bl-mia-1", floorId: "f-bl-mia-1", name: "AHU-MIA-1", displayLabel: "AHU-MIA-1", type: "AHU", locationLabel: "Concourse", controllerRef: "54001", protocol: "BACnet/IP", templateName: "LC VMA-1832 AHU", pointsDefined: 5, status: "CONTROLLER_ASSIGNED", notes: "" },
+  { id: "eq-bl-mia-2", floorId: "f-bl-mia-m", name: "RTU-MIA-1", displayLabel: "RTU-MIA-1", type: "RTU", locationLabel: "Mechanical", controllerRef: "54002", protocol: "BACnet/IP", templateName: "LC FCU-2-Pipe", pointsDefined: 8, status: "CONTROLLER_ASSIGNED", notes: "" },
+  { id: "eq-bl-ave-1", floorId: "f-bl-ave-1", name: "AHU-AVE-1", displayLabel: "AHU-AVE-1", type: "AHU", locationLabel: "Platform", controllerRef: "54101", protocol: "BACnet/IP", templateName: "LC VMA-1832 AHU", pointsDefined: 5, status: "READY_FOR_MAPPING", notes: "" },
+  { id: "eq-bl-ftl-1", floorId: "f-bl-ftl-1", name: "AHU-FTL-1", displayLabel: "AHU-FTL-1", type: "AHU", locationLabel: "Concourse", controllerRef: "54201", protocol: "BACnet/IP", templateName: "LC VMA-1832 AHU", pointsDefined: 5, status: "CONTROLLER_ASSIGNED", notes: "" },
+  { id: "eq-bl-wpb-1", floorId: "f-bl-wpb-1", name: "AHU-WPB-1", displayLabel: "AHU-WPB-1", type: "AHU", locationLabel: "Concourse", controllerRef: "54301", protocol: "BACnet/IP", templateName: "LC VMA-1832 AHU", pointsDefined: 5, status: "CONTROLLER_ASSIGNED", notes: "" },
+  { id: "eq-bl-mco-1", floorId: "f-bl-mco-1", name: "AHU-MCO-1", displayLabel: "AHU-MCO-1", type: "AHU", locationLabel: "Grand Hall", controllerRef: null, protocol: "BACnet/IP", templateName: "LC VMA-1832 AHU", pointsDefined: 0, status: "MISSING_CONTROLLER", notes: "" },
+  { id: "eq-bl-mco-2", floorId: "f-bl-mco-m", name: "CHWP-MCO-1", displayLabel: "CHWP-MCO-1", type: "CHWP", locationLabel: "MEP", controllerRef: "54401", protocol: "BACnet/IP", templateName: "LC CHWP-VFD", pointsDefined: 10, status: "CONTROLLER_ASSIGNED", notes: "" },
+];
 
 /** Miami HQ equipment preview by floor - enriched with BAS metadata */
 const MIAMI_HQ_EQUIPMENT = [
@@ -136,6 +254,25 @@ const MIAMI_HQ_EQUIPMENT = [
 // Network Discovery mock data (hierarchical BACnet devices by site)
 // ---------------------------------------------------------------------------
 const DISCOVERY_STATUS = { ONLINE: "Online", OFFLINE: "Offline", WARNING: "Warning" };
+
+const BRIGHTLINE_DISCOVERY = [
+  {
+    id: "disc-bl-jace",
+    parentId: null,
+    name: "JACE-8000",
+    vendor: "Tridium",
+    deviceInstance: "55001",
+    network: "BAC/IP:0",
+    macOrMstpId: "0",
+    objectCount: 120,
+    lastSeen: "2 minutes ago",
+    status: DISCOVERY_STATUS.ONLINE,
+    protocol: "BACnet/IP",
+    isExpandable: false,
+    assignedEquipmentId: null,
+    children: [],
+  },
+];
 
 /** Miami HQ discovery: JACE, routers, MSTP trunks, VAVs, FCUs, etc. */
 const MIAMI_HQ_DISCOVERY = [
@@ -404,6 +541,7 @@ const MIAMI_HQ_DISCOVERY = [
 /** Get mock discovery devices for a site by display name. Returns null for New Site / New Building. */
 export function getMockDiscoveryForSite(siteName) {
   if (siteName === "Miami HQ") return MIAMI_HQ_DISCOVERY;
+  if (siteName === "Brightline Trains") return BRIGHTLINE_DISCOVERY;
   return null;
 }
 
@@ -433,6 +571,13 @@ function mockSiteToTree(siteData, equipmentList = []) {
       sortOrder: b.sortOrder,
       status: b.status || "Active",
       parentId: siteId,
+      address: b.address,
+      city: b.city,
+      state: b.state,
+      lat: b.lat,
+      lng: b.lng,
+      hasFloors: b.hasFloors,
+      thumbnail: b.thumbnail,
       children: [],
     };
     (b.floors || []).forEach((f) => {
@@ -458,6 +603,7 @@ function mockSiteToTree(siteData, equipmentList = []) {
 /** Get equipment for a site by display name. Only Miami HQ has data. */
 export function getMockEquipmentForSite(siteName) {
   if (siteName === "Miami HQ") return MIAMI_HQ_EQUIPMENT;
+  if (siteName === "Brightline Trains") return BRIGHTLINE_EQUIPMENT;
   return [];
 }
 
@@ -470,6 +616,7 @@ export function getEquipmentByFloorId(equipment, floorId) {
 /** Get mock site tree for Site Builder by display name (with equipment preview). Only Miami HQ. */
 export function getMockSiteTree(siteName) {
   if (siteName === "Miami HQ") return mockSiteToTree(MIAMI_HQ_SITE, MIAMI_HQ_EQUIPMENT);
+  if (siteName === "Brightline Trains") return mockSiteToTree(BRIGHTLINE_SITE, BRIGHTLINE_EQUIPMENT);
   return null;
 }
 

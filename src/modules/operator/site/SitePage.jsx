@@ -1,12 +1,13 @@
-import React, { useMemo, useState, useEffect } from "react";
+import React, { useMemo, useState, useEffect, useCallback } from "react";
 import { useHistory, useLocation } from "react-router-dom";
 import { useSite } from "../../../app/providers/SiteProvider";
 import { useActiveDeployment } from "../../../hooks/useEngineeringDraft";
-import { Container, Card, Button, Dropdown } from "@themesberg/react-bootstrap";
+import { Container, Card, Button } from "@themesberg/react-bootstrap";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faChevronRight, faBoxOpen, faCity, faBuilding, faLayerGroup, faSitemap, faChevronDown, faExclamationTriangle } from "@fortawesome/free-solid-svg-icons";
+import { faChevronRight, faBoxOpen, faExclamationTriangle } from "@fortawesome/free-solid-svg-icons";
 import LegionHeroHeader from "../../../components/legion/LegionHeroHeader";
-import DeployedGraphicPreview from "../equipment/DeployedGraphicPreview";
+import DeployedGraphicPreview, { DEPLOYED_GRAPHIC_PRESENTATION } from "../equipment/DeployedGraphicPreview";
+import SiteGlobalMapView from "./layout/SiteGlobalMapView";
 import { Routes } from "../../../routes";
 import { getSummaryFromActiveDeployment } from "../../../lib/activeDeploymentUtils";
 
@@ -52,63 +53,10 @@ function buildLayoutLevels(activeDeployment) {
   return levels;
 }
 
-/** Build a hierarchy tree: site → buildings → floors (for nav) */
-function buildSiteNavTree(activeDeployment) {
-  const site = activeDeployment?.site;
-  if (!site) return null;
-  const siteName = site.name || "Site";
-  const buildings = (site.buildings || []).map((b) => {
-    const bName = b.name || "Building";
-    const floors = (b.floors || []).map((f) => ({
-      id: f.id,
-      label: f.name || "Floor",
-      type: "floor",
-    }));
-    return { id: b.id, label: bName, type: "building", children: floors };
-  });
-  return { id: site.id, label: siteName, type: "site", children: buildings };
-}
-
 /** Get equipment on a floor from deployment */
 function getEquipmentOnFloor(activeDeployment, floorId) {
   if (!activeDeployment?.equipment || !floorId) return [];
   return activeDeployment.equipment.filter((e) => String(e.floorId) === String(floorId));
-}
-
-const TREE_ICONS = { site: faCity, building: faBuilding, floor: faLayerGroup };
-
-/** Single row in the site nav tree */
-function SiteNavTreeRow({ node, level, selectedId, onSelect }) {
-  const isSelected = selectedId === node.id;
-  const Icon = TREE_ICONS[node.type] || faBuilding;
-  const hasChildren = node.children && node.children.length > 0;
-  const padLeft = 8 + level * 20;
-
-  return (
-    <div className="site-layout-nav-tree">
-      <button
-        type="button"
-        className={`site-layout-nav-tree-row ${isSelected ? "site-layout-nav-tree-row--active" : ""}`}
-        style={{ paddingLeft: padLeft }}
-        onClick={() => onSelect(node.id)}
-      >
-        <span className="site-layout-nav-tree-icon">
-          <FontAwesomeIcon icon={Icon} className="fa-sm" />
-        </span>
-        <span className="site-layout-nav-tree-label">{node.label}</span>
-      </button>
-      {hasChildren &&
-        node.children.map((child) => (
-          <SiteNavTreeRow
-            key={child.id}
-            node={child}
-            level={level + 1}
-            selectedId={selectedId}
-            onSelect={onSelect}
-          />
-        ))}
-    </div>
-  );
 }
 
 export default function SitePage() {
@@ -117,19 +65,47 @@ export default function SitePage() {
   const location = useLocation();
   const activeDeployment = useActiveDeployment();
   const layoutLevels = useMemo(() => buildLayoutLevels(activeDeployment), [activeDeployment]);
-  const siteNavTree = useMemo(() => buildSiteNavTree(activeDeployment), [activeDeployment]);
 
   const hasLevels = layoutLevels.length > 0;
   const [levelIndex, setLevelIndex] = useState(0);
+  const [selectedBuildingId, setSelectedBuildingId] = useState(null);
+
+  const siteStorageKey = activeDeployment?.site?.id ? `legionSiteLayoutSelection:${activeDeployment.site.id}` : null;
 
   useEffect(() => {
     const targetId = location.state?.selectLayoutLevelId;
     if (targetId && layoutLevels.length > 0) {
       const idx = layoutLevels.findIndex((lev) => lev.id === targetId);
-      if (idx >= 0) setLevelIndex(idx);
+      if (idx >= 0) {
+        setLevelIndex(idx);
+        const lev = layoutLevels[idx];
+        if (lev?.type === "building") setSelectedBuildingId(lev.id);
+      }
       history.replace(location.pathname, {}); // clear state so we don't re-apply on refresh
     }
   }, [location.state?.selectLayoutLevelId, layoutLevels, history, location.pathname]);
+
+  useEffect(() => {
+    if (!siteStorageKey || typeof sessionStorage === "undefined") {
+      setSelectedBuildingId(null);
+      return;
+    }
+    try {
+      const v = sessionStorage.getItem(siteStorageKey);
+      setSelectedBuildingId(v || null);
+    } catch {
+      setSelectedBuildingId(null);
+    }
+  }, [siteStorageKey]);
+
+  useEffect(() => {
+    if (!siteStorageKey || !selectedBuildingId) return;
+    try {
+      sessionStorage.setItem(siteStorageKey, selectedBuildingId);
+    } catch {
+      /* ignore */
+    }
+  }, [siteStorageKey, selectedBuildingId]);
 
   const selectedLevel = hasLevels ? layoutLevels[levelIndex] : null;
   const selectedNodeId = selectedLevel?.id ?? null;
@@ -150,12 +126,28 @@ export default function SitePage() {
     () => (activeDeployment ? getSummaryFromActiveDeployment(activeDeployment) : { activeAlarms: 0, unackedAlarms: 0 }),
     [activeDeployment]
   );
-  const [navTreeOpen, setNavTreeOpen] = useState(false);
 
-  const goToLevelByPathId = (pathId) => {
-    const idx = layoutLevels.findIndex((lev) => lev.id === pathId);
-    if (idx >= 0) setLevelIndex(idx);
-  };
+  const goToLevelByPathId = useCallback(
+    (pathId) => {
+      const idx = layoutLevels.findIndex((lev) => lev.id === pathId);
+      if (idx >= 0) {
+        setLevelIndex(idx);
+        const lev = layoutLevels[idx];
+        if (lev?.type === "building") setSelectedBuildingId(lev.id);
+      }
+    },
+    [layoutLevels]
+  );
+
+  const openBuildingLayout = useCallback(
+    (buildingId) => {
+      goToLevelByPathId(buildingId);
+      setSelectedBuildingId(buildingId);
+    },
+    [goToLevelByPathId]
+  );
+
+  const isGlobalSiteView = Boolean(hasLevels && selectedLevel?.type === "site" && levelIndex === 0);
 
   const goToEquipmentDetail = (equipmentId) => {
     const path = Routes.LegionEquipmentDetail.path.replace(":equipmentId", encodeURIComponent(equipmentId));
@@ -199,97 +191,77 @@ export default function SitePage() {
           ))}
         </nav>
 
-        {/* Full-width site layout card: main graphic + navigation tree toggle */}
         <div className="site-layout-full-card-wrap">
-          <Card className="site-layout-full-card bg-primary border border-light border-opacity-10 shadow-sm overflow-hidden">
-            <Card.Body className="p-0 position-relative">
-              <div className="legion-map-wrapper site-layout-map-area">
-                {hasLayoutGraphic ? (
-                  <DeployedGraphicPreview
-                    graphic={layoutGraphic}
-                    points={[]}
-                    onLinkClick={handleGraphicLinkClick}
-                  />
-                ) : (
-                  <div className="legion-map-image d-flex align-items-center justify-content-center text-white-50 small">
-                    No deployed site layout graphic for this {selectedLevel?.type || "layout"}.
-                  </div>
-                )}
-                <div className="legion-map-badge">
-                  {site} • {levelLabel}
-                </div>
-
-                {/* Red zones / status strip — alarm count and legend */}
-                {(summary.activeAlarms > 0 || summary.unackedAlarms > 0) && (
-                  <div className="site-layout-red-zones-strip">
-                    <FontAwesomeIcon icon={faExclamationTriangle} className="me-1" />
-                    <span>
-                      {summary.unackedAlarms > 0
-                        ? `${summary.unackedAlarms} unacked alarm${summary.unackedAlarms !== 1 ? "s" : ""}`
-                        : `${summary.activeAlarms} active alarm${summary.activeAlarms !== 1 ? "s" : ""}`}
-                    </span>
-                    <Button
-                      size="sm"
-                      variant="outline-danger"
-                      className="ms-2 border-danger border-opacity-50 text-danger"
-                      onClick={() => history.push(Routes.LegionAlarms.path)}
-                    >
-                      View Alarms
-                    </Button>
-                  </div>
-                )}
-
-                {/* Navigation tree — small dropdown from button */}
-                <div className="site-layout-nav-toggle-wrap">
-                  <Dropdown
-                    show={navTreeOpen}
-                    onToggle={(next) => setNavTreeOpen(next)}
-                    align="end"
-                    drop="down"
-                    className="site-layout-nav-dropdown"
+          {isGlobalSiteView ? (
+            <>
+              <SiteGlobalMapView
+                activeDeployment={activeDeployment}
+                siteDisplayName={site}
+                selectedBuildingId={selectedBuildingId}
+                onSelectBuilding={setSelectedBuildingId}
+                onOpenBuilding={openBuildingLayout}
+              />
+              {(summary.activeAlarms > 0 || summary.unackedAlarms > 0) && (
+                <div className="site-layout-red-zones-strip site-layout-red-zones-strip--below-map mt-2 rounded border border-light border-opacity-10 px-3 py-2">
+                  <FontAwesomeIcon icon={faExclamationTriangle} className="me-1" />
+                  <span>
+                    {summary.unackedAlarms > 0
+                      ? `${summary.unackedAlarms} unacked alarm${summary.unackedAlarms !== 1 ? "s" : ""}`
+                      : `${summary.activeAlarms} active alarm${summary.activeAlarms !== 1 ? "s" : ""}`}
+                  </span>
+                  <Button
+                    size="sm"
+                    variant="outline-danger"
+                    className="ms-2 border-danger border-opacity-50 text-danger"
+                    onClick={() => history.push(Routes.LegionAlarms.path)}
                   >
-                    <Dropdown.Toggle
-                      variant="outline-light"
-                      size="sm"
-                      id="site-layout-nav-dropdown-toggle"
-                      className="site-layout-nav-toggle-btn border border-light border-opacity-25 text-white"
-                      aria-label={navTreeOpen ? "Close navigation tree" : "Open navigation tree"}
-                    >
-                      <FontAwesomeIcon icon={faSitemap} className="me-1" />
-                      Navigation tree
-                      <FontAwesomeIcon icon={faChevronDown} className="ms-1 fa-xs" />
-                    </Dropdown.Toggle>
-                    <Dropdown.Menu
-                      className="site-layout-nav-dropdown-menu bg-primary border border-light border-opacity-10 shadow-lg py-2"
-                      popperConfig={{ strategy: "fixed" }}
-                    >
-                      <div className="site-layout-nav-dropdown-tree">
-                        {siteNavTree ? (
-                          <SiteNavTreeRow
-                            node={siteNavTree}
-                            level={0}
-                            selectedId={selectedNodeId}
-                            onSelect={(id) => {
-                              goToLevelByPathId(id);
-                              setNavTreeOpen(false);
-                            }}
-                          />
-                        ) : (
-                          <button
-                            type="button"
-                            className="dropdown-item text-white-50"
-                            onClick={() => { setLevelIndex(0); setNavTreeOpen(false); }}
-                          >
-                            Building
-                          </button>
-                        )}
-                      </div>
-                    </Dropdown.Menu>
-                  </Dropdown>
+                    View Alarms
+                  </Button>
                 </div>
-              </div>
-            </Card.Body>
-          </Card>
+              )}
+            </>
+          ) : (
+            <Card className="site-layout-full-card bg-primary border border-light border-opacity-10 shadow-sm overflow-hidden">
+              <Card.Body className="p-0 position-relative">
+                <div className="legion-map-wrapper site-layout-map-area">
+                  {hasLayoutGraphic ? (
+                    <DeployedGraphicPreview
+                      graphic={layoutGraphic}
+                      points={[]}
+                      onLinkClick={handleGraphicLinkClick}
+                      presentation={DEPLOYED_GRAPHIC_PRESENTATION.layout}
+                    />
+                  ) : (
+                    <div className="legion-map-image d-flex align-items-center justify-content-center text-white-50 small">
+                      No deployed site layout graphic for this {selectedLevel?.type || "layout"}.
+                    </div>
+                  )}
+                  <div className="legion-map-badge">
+                    {site} • {levelLabel}
+                  </div>
+
+                  {(summary.activeAlarms > 0 || summary.unackedAlarms > 0) && (
+                    <div className="site-layout-red-zones-strip">
+                      <FontAwesomeIcon icon={faExclamationTriangle} className="me-1" />
+                      <span>
+                        {summary.unackedAlarms > 0
+                          ? `${summary.unackedAlarms} unacked alarm${summary.unackedAlarms !== 1 ? "s" : ""}`
+                          : `${summary.activeAlarms} active alarm${summary.activeAlarms !== 1 ? "s" : ""}`}
+                      </span>
+                      <Button
+                        size="sm"
+                        variant="outline-danger"
+                        className="ms-2 border-danger border-opacity-50 text-danger"
+                        onClick={() => history.push(Routes.LegionAlarms.path)}
+                      >
+                        View Alarms
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </Card.Body>
+            </Card>
+          )}
 
           {selectedLevel?.type === "floor" && equipmentOnFloor.length > 0 && (
             <Card className="bg-primary border border-light border-opacity-10 shadow-sm mt-3">
@@ -320,7 +292,7 @@ export default function SitePage() {
             </Card>
           )}
 
-          {hasLevels && !hasLayoutGraphic && (
+          {!isGlobalSiteView && hasLevels && !hasLayoutGraphic && (
             <div className="text-white-50 small mt-2">
               Create and deploy site layout graphics in Engineering → Graphics Manager to show custom layouts here.
             </div>

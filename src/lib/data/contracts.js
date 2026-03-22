@@ -117,5 +117,23 @@
  * @property {Object} graphics
  */
 
+/**
+ * Building row for operator Site Layout global map / list (normalized).
+ * @typedef {Object} SiteLayoutBuilding
+ * @property {string} id
+ * @property {string} siteId
+ * @property {string} name
+ * @property {string} address
+ * @property {string} city
+ * @property {string} state
+ * @property {number|null} lat
+ * @property {number|null} lng
+ * @property {boolean} hasGeo
+ * @property {string} addressLine
+ * @property {"normal"|"warning"|"alert"} status
+ * @property {boolean} hasFloors
+ * @property {string|null} [thumbnail]
+ */
+
 export {};
 

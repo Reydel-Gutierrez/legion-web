@@ -93,6 +93,26 @@ function GraphicObject({ obj, pointsByPointId, onLinkClick }) {
 const DEFAULT_CANVAS_WIDTH = 800;
 const DEFAULT_CANVAS_HEIGHT = 500;
 
+export const DEPLOYED_GRAPHIC_PRESENTATION = {
+  /** Equipment detail / operator equipment graphics — existing viewport + fit behavior. */
+  equipment: "equipment",
+  /** Site / building / floor layout graphics — fill operator site layout workspace. */
+  layout: "layout",
+};
+
+/**
+ * For layout graphics, always include the full engineering canvas in the fit rect so floorplans
+ * use the full canvas (not a tight crop around overlays only).
+ */
+function mergeLayoutScalingBounds(bounds, canvasWidth, canvasHeight) {
+  return {
+    minX: Math.min(bounds.minX, 0),
+    minY: Math.min(bounds.minY, 0),
+    maxX: Math.max(bounds.maxX, canvasWidth),
+    maxY: Math.max(bounds.maxY, canvasHeight),
+  };
+}
+
 export default function DeployedGraphicPreview({
   graphic,
   points = [],
@@ -100,14 +120,17 @@ export default function DeployedGraphicPreview({
   maxWidth,
   maxHeight,
   zoomFactor = 1,
+  presentation = DEPLOYED_GRAPHIC_PRESENTATION.equipment,
 }) {
   const objects = graphic?.objects ?? [];
   const backgroundImage = graphic?.backgroundImage;
   const canvasWidth = graphic?.canvasSize?.width ?? DEFAULT_CANVAS_WIDTH;
   const canvasHeight = graphic?.canvasSize?.height ?? DEFAULT_CANVAS_HEIGHT;
+  const isLayoutPresentation = presentation === DEPLOYED_GRAPHIC_PRESENTATION.layout;
   // Viewport size (how big the preview rectangle is in the operator UI).
   // Decoupled from canvas world size so we can keep the graphic readable without
   // expanding the card to match engineering canvas dimensions.
+  // Layout mode fills the parent; equipment uses explicit or canvas-sized viewport.
   const viewportWidth = maxWidth ?? canvasWidth;
   const viewportHeight = maxHeight ?? canvasHeight;
   const pointsByPointId = useMemo(() => {
@@ -138,15 +161,26 @@ export default function DeployedGraphicPreview({
     return () => ro.disconnect();
   }, []);
 
-  const containerStyle = {
-    width: viewportWidth,
-    height: viewportHeight,
-    minWidth: viewportWidth,
-    minHeight: viewportHeight,
-    flexShrink: 0,
-    background: "transparent",
-    boxSizing: "border-box",
-  };
+  const containerStyle = isLayoutPresentation
+    ? {
+        width: "100%",
+        height: "100%",
+        minHeight: 0,
+        flex: "1 1 auto",
+        alignSelf: "stretch",
+        background: "transparent",
+        boxSizing: "border-box",
+        position: "relative",
+      }
+    : {
+        width: viewportWidth,
+        height: viewportHeight,
+        minWidth: viewportWidth,
+        minHeight: viewportHeight,
+        flexShrink: 0,
+        background: "transparent",
+        boxSizing: "border-box",
+      };
 
   const contentBounds = useMemo(() => {
     // Tight bounds of what’s actually “used” by this graphic:
@@ -220,8 +254,12 @@ export default function DeployedGraphicPreview({
     if (maxX - minX < 1) maxX = minX + 1;
     if (maxY - minY < 1) maxY = minY + 1;
 
-    return { minX, minY, maxX, maxY };
-  }, [objects, backgroundImage, canvasWidth, canvasHeight]);
+    const bounds = { minX, minY, maxX, maxY };
+    if (isLayoutPresentation) {
+      return mergeLayoutScalingBounds(bounds, canvasWidth, canvasHeight);
+    }
+    return bounds;
+  }, [objects, backgroundImage, canvasWidth, canvasHeight, isLayoutPresentation]);
 
   const contentCenter = useMemo(() => {
     return {
@@ -254,7 +292,9 @@ export default function DeployedGraphicPreview({
   if (objects.length === 0 && !backgroundImage) {
     return (
       <div
-        className="d-flex align-items-center justify-content-center text-white-50 small"
+        className={`d-flex align-items-center justify-content-center text-white-50 small${
+          isLayoutPresentation ? " deployed-graphic-preview deployed-graphic-preview--layout" : ""
+        }`}
         style={containerStyle}
       >
         No graphic defined. Create one in Engineering → Graphics Manager and deploy.
@@ -272,14 +312,20 @@ export default function DeployedGraphicPreview({
   return (
     <div
       ref={containerRef}
+      className={`deployed-graphic-preview${isLayoutPresentation ? " deployed-graphic-preview--layout" : ""}`}
       style={{
         ...containerStyle,
-        // The preview viewport is intentionally smaller than engineering,
-        // but we don't want to hard-clip content (it can cut off text/edges).
-        // Let the content overflow so everything remains visible.
-        overflow: "visible",
-        maxWidth: "100%",
-        margin: "0 auto",
+        ...(isLayoutPresentation
+          ? {
+              overflow: "hidden",
+              maxWidth: "100%",
+            }
+          : {
+              // Equipment: viewport is fixed; allow overflow so labels are not clipped.
+              overflow: "visible",
+              maxWidth: "100%",
+              margin: "0 auto",
+            }),
       }}
     >
       <div

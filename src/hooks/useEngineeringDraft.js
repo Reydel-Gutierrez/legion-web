@@ -133,6 +133,12 @@ export function selectSiteTree(draft) {
         name: b.name,
         buildingType: b.buildingType,
         buildingCode: b.buildingCode,
+        address: b.address,
+        city: b.city,
+        state: b.state,
+        lat: b.lat,
+        lng: b.lng,
+        status: b.status,
         parentId: siteId,
         children: (b.floors || []).map((f) => {
           const floorEq = equipment.filter((e) => e.floorId === f.id);
@@ -171,6 +177,12 @@ export function siteTreeToDraftSite(siteTree) {
       name: b.name,
       buildingType: b.buildingType,
       buildingCode: b.buildingCode,
+      address: b.address,
+      city: b.city,
+      state: b.state,
+      lat: b.lat,
+      lng: b.lng,
+      status: b.status,
       floors: (b.children || []).map((f) => ({
         id: f.id,
         name: f.name,

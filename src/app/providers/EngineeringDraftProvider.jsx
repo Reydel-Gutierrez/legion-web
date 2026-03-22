@@ -34,9 +34,17 @@ function getInitialActiveDeployments() {
     deployedBy: miamiSeed.activeDeploymentSnapshot?.deployedBy ?? "Reydel Gutierrez",
     systemStatus: miamiSeed.activeDeploymentSnapshot?.systemStatus ?? "Running",
   });
+  const brightlineSeed = createSeedDraft(SITE_IDS.BRIGHTLINE);
+  const brightlineSnapshot = buildFullDeploymentSnapshot(brightlineSeed, {
+    version: brightlineSeed.activeDeploymentSnapshot?.version ?? "v1",
+    lastDeployedAt: brightlineSeed.activeDeploymentSnapshot?.lastDeployedAt ?? "2026-03-15T18:00:00.000Z",
+    deployedBy: brightlineSeed.activeDeploymentSnapshot?.deployedBy ?? "Reydel Gutierrez",
+    systemStatus: brightlineSeed.activeDeploymentSnapshot?.systemStatus ?? "Running",
+  });
   const fromStorage = loadAllDeployments();
   return {
     [SITE_IDS.MIAMI_HQ]: fromStorage[SITE_IDS.MIAMI_HQ] != null ? fromStorage[SITE_IDS.MIAMI_HQ] : snapshot,
+    [SITE_IDS.BRIGHTLINE]: fromStorage[SITE_IDS.BRIGHTLINE] != null ? fromStorage[SITE_IDS.BRIGHTLINE] : brightlineSnapshot,
     [SITE_IDS.NEW_SITE]: fromStorage[SITE_IDS.NEW_SITE] != null ? fromStorage[SITE_IDS.NEW_SITE] : null,
     ...fromStorage,
   };
@@ -58,6 +66,16 @@ export function EngineeringDraftProvider({ children }) {
         stored && (stored.site || (stored.equipment && stored.equipment.length > 0))
           ? stored
           : getInitialDraftState(SITE_IDS.MIAMI_HQ);
+      dispatch({
+        type: DRAFT_ACTIONS.RESET_DRAFT,
+        payload: normalizeDraftNetworkConfig(raw, site),
+      });
+    } else if (site === SITE_IDS.BRIGHTLINE) {
+      const stored = loadDraftForSite(SITE_IDS.BRIGHTLINE);
+      const raw =
+        stored && (stored.site || (stored.equipment && stored.equipment.length > 0))
+          ? stored
+          : getInitialDraftState(SITE_IDS.BRIGHTLINE);
       dispatch({
         type: DRAFT_ACTIONS.RESET_DRAFT,
         payload: normalizeDraftNetworkConfig(raw, site),

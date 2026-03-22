@@ -946,6 +946,16 @@ $legion-search-placeholder: #7B818F;
   flex-shrink: 0;
 }
 
+/* Site Builder — building location map (Leaflet picker in Edit Node) */
+.site-builder-building-map-picker {
+  height: 200px;
+  width: 100%;
+  border-radius: 0.35rem;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  margin-bottom: 0.75rem;
+}
+
 /* ========== NETWORK DISCOVERY ========== */
 .discovery-status-banner {
   background: rgba(0, 0, 0, 0.2);
@@ -2958,27 +2968,51 @@ $legion-search-placeholder: #7B818F;
 
 /* ========== SITE LAYOUT — FULL-WIDTH CARD + NAV TREE OVERLAY ========== */
 .site-layout-page {
+  /* Global site map (Leaflet) */
+  --legion-site-layout-view-h: 80vh;
+  --legion-site-layout-view-h-dv: 80dvh;
+  --legion-site-layout-view-min-px: 260px;
+
+  /* Building / floor deployed graphic — ~70% viewport to limit page scroll */
+  --legion-site-layout-graphic-h: 70vh;
+  --legion-site-layout-graphic-h-dv: 70dvh;
+  --legion-site-layout-graphic-min-px: 240px;
+
   .site-layout-full-card-wrap {
     width: 100%;
   }
 
   .site-layout-full-card {
-    min-height: 320px;
+    min-height: var(--legion-site-layout-graphic-min-px);
   }
 
   .site-layout-map-area {
-    min-height: 380px;
     position: relative;
     display: flex;
-    align-items: center;
-    justify-content: center;
+    align-items: stretch;
+    justify-content: stretch;
+    width: 100%;
+    min-height: var(--legion-site-layout-graphic-min-px);
+    height: var(--legion-site-layout-graphic-h);
+    height: var(--legion-site-layout-graphic-h-dv);
+    max-height: var(--legion-site-layout-graphic-h);
+    max-height: var(--legion-site-layout-graphic-h-dv);
     background: rgba(0, 0, 0, 0.2);
+    overflow: hidden;
+  }
+
+  .site-layout-map-area .deployed-graphic-preview--layout {
+    flex: 1 1 auto;
+    width: 100%;
+    min-height: 0;
+    align-self: stretch;
   }
 
   .site-layout-map-area .legion-map-image,
   .site-layout-map-area .legion-map-wrapper > div:first-child {
     max-width: 100%;
-    max-height: 70vh;
+    max-height: var(--legion-site-layout-graphic-h);
+    max-height: var(--legion-site-layout-graphic-h-dv);
     object-fit: contain;
   }
 
@@ -3030,7 +3064,229 @@ $legion-search-placeholder: #7B818F;
     }
   }
 
+  /* Global site map (Leaflet) + buildings panel overlay — full-bleed within content column */
+  .site-layout-global-root {
+    min-height: 0;
+  }
+
+  .site-layout-global-map-shell {
+    margin-left: -0.75rem;
+    margin-right: -0.75rem;
+    width: calc(100% + 1.5rem);
+    @media (min-width: 768px) {
+      margin-left: -1.5rem;
+      margin-right: -1.5rem;
+      width: calc(100% + 3rem);
+    }
+  }
+
+  /* Positioned parent for overlays — global map (80vh); building/floor graphic uses 70vh */
+  .site-layout-global-map {
+    min-height: var(--legion-site-layout-view-h);
+    min-height: var(--legion-site-layout-view-h-dv);
+  }
+
+  .site-layout-global-map-inner {
+    background: #0b1018;
+  }
+
+  .site-layout-global-map-inner--basemap {
+    min-height: var(--legion-site-layout-view-h);
+    min-height: var(--legion-site-layout-view-h-dv);
+    border-radius: 0.5rem;
+  }
+
+  .site-layout-global-map-leaflet {
+    width: 100%;
+    min-height: var(--legion-site-layout-view-min-px);
+    height: var(--legion-site-layout-view-h);
+    height: var(--legion-site-layout-view-h-dv);
+    max-height: var(--legion-site-layout-view-h);
+    max-height: var(--legion-site-layout-view-h-dv);
+  }
+
+  .site-layout-map-no-geo-hint {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    bottom: 3rem;
+    max-width: min(520px, calc(100% - 2rem));
+    padding: 0.5rem 0.85rem;
+    text-align: center;
+    border-radius: 6px;
+    background: rgba(10, 16, 26, 0.88);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.35);
+    z-index: 550;
+    pointer-events: none;
+    line-height: 1.35;
+  }
+
+  .site-layout-global-map-badge {
+    position: absolute;
+    bottom: 0.75rem;
+    left: 0.75rem;
+    z-index: 500;
+    padding: 0.4rem 0.75rem;
+    border-radius: 6px;
+    background: rgba(10, 16, 26, 0.88);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    font-size: 0.8125rem;
+    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.35);
+    pointer-events: none;
+  }
+
+  .site-layout-nav-toggle-wrap--global {
+    position: absolute;
+    top: 0.75rem;
+    right: 0.75rem;
+    z-index: 400;
+  }
+
+  .site-layout-red-zones-strip--below-map {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    background: rgba(220, 53, 69, 0.2);
+    border: 1px solid rgba(220, 53, 69, 0.5);
+    color: #f8d7da;
+    font-size: 0.8rem;
+  }
+
+  .site-layout-buildings-panel {
+    position: absolute;
+    top: 0.75rem;
+    right: 0.75rem;
+    bottom: auto;
+    left: auto;
+    z-index: 600;
+    width: calc(100% - 1.5rem);
+    max-width: min(320px, 100% - 1.5rem);
+    max-height: calc(100% - 1.5rem);
+    display: flex;
+    flex-direction: column;
+    pointer-events: auto;
+    @media (max-width: 575.98px) {
+      max-width: calc(100% - 1.5rem);
+      max-height: min(45vh, calc(100% - 1.5rem));
+    }
+  }
+
+  .site-layout-buildings-panel-card {
+    background: rgba(10, 16, 26, 0.96);
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    min-height: 120px;
+    backdrop-filter: blur(10px);
+  }
+
+  .site-layout-buildings-list {
+    flex: 1 1 auto;
+    min-height: 0;
+    max-height: none;
+    overflow-y: auto;
+  }
+
+  .site-layout-building-row {
+    display: block;
+    padding: 0.65rem 0.75rem;
+    margin: 0;
+    border: none;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    background: transparent;
+    color: inherit;
+    border-radius: 0;
+    transition: background 0.15s ease;
+    &:hover {
+      background: rgba(255, 255, 255, 0.04);
+    }
+    &--active {
+      background: rgba(13, 202, 240, 0.08);
+      box-shadow: inset 3px 0 0 rgba(13, 202, 240, 0.85);
+    }
+  }
+
   /* Compact dropdown — .site-layout-nav-dropdown-menu styled globally (portaled) */
+}
+
+/* Leaflet basemap — Global Site Layout + Site Builder (see leafletBasemapConfig.js) */
+.site-layout-leaflet-map.leaflet-container {
+  font-family: inherit;
+}
+
+.site-layout-leaflet-map--osm.leaflet-container {
+  background: #0b1018;
+}
+
+/* Mapbox Streets: neutral loading color (style is full-color, not flat white) */
+.site-layout-leaflet-map--mapbox.leaflet-container {
+  background: #dfe6ee;
+}
+
+/* OSM fallback: strong tone-down to match Legion dark chrome */
+.site-layout-leaflet-map--osm .leaflet-tile-pane {
+  filter: saturate(0.88) brightness(0.7);
+}
+
+/* Mapbox Streets — keep palette true to style; slight dim only to sit next to dark chrome */
+.site-layout-leaflet-map--mapbox .leaflet-tile-pane {
+  filter: saturate(1.02) contrast(1.03) brightness(0.97);
+}
+
+.site-layout-leaflet-map--osm .leaflet-control-zoom a {
+  background: rgba(10, 16, 26, 0.92);
+  color: rgba(255, 255, 255, 0.85);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+/* Light map: clean zoom chrome (Apple / Tesla–style) */
+.site-layout-leaflet-map--mapbox .leaflet-control-zoom a {
+  background: rgba(255, 255, 255, 0.96);
+  color: rgba(15, 23, 42, 0.92);
+  border-color: rgba(15, 23, 42, 0.1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.site-layout-leaflet-map--mapbox .leaflet-control-zoom a:hover {
+  background: #fff;
+  color: rgba(15, 23, 42, 1);
+}
+
+/* Global map: soft edge vignette — light basemap stays bright in the center */
+.site-layout-global-map-inner--basemap {
+  box-shadow:
+    inset 0 0 90px rgba(0, 0, 0, 0.14),
+    inset 0 0 32px rgba(0, 0, 0, 0.09),
+    0 0.35rem 1.15rem rgba(0, 0, 0, 0.22);
+}
+
+/* Selected marker — OSM (cyan on dark tiles) */
+.site-layout-leaflet-map--osm .leaflet-marker-icon.site-layout-marker--selected {
+  filter: drop-shadow(0 0 10px rgba(13, 202, 240, 0.85)) drop-shadow(0 0 4px rgba(255, 255, 255, 0.35));
+}
+
+/* Selected marker — Mapbox Streets (reads on colored tiles) */
+.site-layout-leaflet-map--mapbox .leaflet-marker-icon.site-layout-marker--selected {
+  filter: drop-shadow(0 0 10px rgba(0, 122, 255, 0.55)) drop-shadow(0 0 5px rgba(0, 0, 0, 0.32));
+}
+
+.legion-site-layout-status--normal {
+  background: rgba(25, 135, 84, 0.2) !important;
+  color: #7dd4a0 !important;
+  border: 1px solid rgba(25, 135, 84, 0.35) !important;
+}
+
+.legion-site-layout-status--warning {
+  background: rgba(255, 193, 7, 0.12) !important;
+  color: #e8c26a !important;
+  border: 1px solid rgba(255, 193, 7, 0.35) !important;
+}
+
+.legion-site-layout-status--alert {
+  background: rgba(220, 53, 69, 0.18) !important;
+  color: #f0a8b0 !important;
+  border: 1px solid rgba(220, 53, 69, 0.4) !important;
 }
 
 /* Site layout nav dropdown — global so portaled menu is styled */

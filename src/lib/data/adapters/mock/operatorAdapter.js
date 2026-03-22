@@ -12,6 +12,7 @@ export function getSitesMock() {
   /** @type {import("../../contracts").Site[]} */
   const sites = [
     { id: "site-miami-hq", name: "Miami HQ", timezone: "America/New_York", status: "Active" },
+    { id: "site-brightline", name: "Brightline Trains", timezone: "America/New_York", status: "Active" },
     { id: "site-new", name: "New Site", timezone: "America/New_York", status: "Draft" },
   ];
   return sites;

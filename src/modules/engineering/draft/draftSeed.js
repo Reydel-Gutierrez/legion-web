@@ -13,10 +13,24 @@ function buildSiteFromTree(siteTree) {
   if (!siteTree) return null;
   const buildings = (siteTree.children || []).map((b) => ({
     id: b.id,
+    siteId: siteTree.id,
     name: b.name,
     buildingType: b.buildingType,
     buildingCode: b.buildingCode,
-    floors: (b.children || []).map((f) => ({ id: f.id, name: f.name, sortOrder: f.sortOrder ?? 0 })),
+    address: b.address,
+    city: b.city,
+    state: b.state,
+    lat: b.lat,
+    lng: b.lng,
+    status: b.status,
+    hasFloors: b.hasFloors,
+    thumbnail: b.thumbnail,
+    floors: (b.children || []).map((f) => ({
+      id: f.id,
+      name: f.name,
+      sortOrder: f.sortOrder ?? 0,
+      floorType: f.floorType,
+    })),
   }));
   return createSite({
     id: siteTree.id,

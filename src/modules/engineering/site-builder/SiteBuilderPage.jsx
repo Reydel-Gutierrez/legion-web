@@ -250,6 +250,11 @@ export default function SiteBuilderPage() {
 
   const handleSaveNode = useCallback((id, form) => {
     if (!siteTree) return;
+    const parseCoord = (v) => {
+      if (v === "" || v == null) return null;
+      const n = parseFloat(String(v).trim());
+      return Number.isFinite(n) ? n : null;
+    };
     const updated = updateNodeInTree(siteTree, id, {
       name: form.name,
       displayLabel: form.displayLabel,
@@ -263,6 +268,10 @@ export default function SiteBuilderPage() {
       engineeringNotes: form.engineeringNotes,
       buildingType: form.buildingType,
       buildingCode: form.buildingCode,
+      city: form.city,
+      state: form.state,
+      lat: parseCoord(form.lat),
+      lng: parseCoord(form.lng),
       floorType: form.floorType,
       occupancyType: form.occupancyType,
     });

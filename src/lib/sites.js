@@ -6,12 +6,14 @@
 
 export const SITE_IDS = {
   MIAMI_HQ: "Miami HQ",
+  BRIGHTLINE: "Brightline Trains",
   NEW_SITE: "New Site",
 };
 
 /** Sites available in the app (for header/sidebar dropdown) */
 export const SITE_LIST = [
   { id: SITE_IDS.MIAMI_HQ, name: "Miami HQ", isEmpty: false },
+  { id: SITE_IDS.BRIGHTLINE, name: "Brightline Trains", isEmpty: false },
   { id: SITE_IDS.NEW_SITE, name: "New Site", isEmpty: true },
 ];
 

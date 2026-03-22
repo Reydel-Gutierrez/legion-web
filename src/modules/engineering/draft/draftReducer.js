@@ -6,6 +6,7 @@
 import { EMPTY_DRAFT } from "./draftModel";
 import { createSeedDraft } from "./draftSeed";
 import { createEmptyNetworkConfig } from "../network/networkConfigModel";
+import { LAYOUT_GRAPHIC_CANVAS_DEFAULT } from "../../../lib/graphics/graphicsConstants";
 
 export const DRAFT_ACTIONS = {
   RESET_DRAFT: "RESET_DRAFT",
@@ -84,11 +85,17 @@ function draftReducer(state, action) {
       const { nodeId, graphic } = action.payload;
       const current = state.siteLayoutGraphics || {};
       const next = graphic
-        ? { ...current, [nodeId]: graphic }
+        ? {
+            ...current,
+            [nodeId]: {
+              ...graphic,
+              canvasSize: graphic.canvasSize || LAYOUT_GRAPHIC_CANVAS_DEFAULT,
+            },
+          }
         : (() => {
-          const { [nodeId]: _, ...rest } = current;
-          return rest;
-        })();
+            const { [nodeId]: _, ...rest } = current;
+            return rest;
+          })();
       return { ...state, siteLayoutGraphics: next };
     }
 
