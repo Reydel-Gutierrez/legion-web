@@ -10,18 +10,6 @@ import DeployedGraphicPreview from "../equipment/DeployedGraphicPreview";
 import { Routes } from "../../../routes";
 import { getSummaryFromActiveDeployment } from "../../../lib/activeDeploymentUtils";
 
-import BuildingImage from "../../../assets/img/bi.jpg";
-import floor1Img from "../../../assets/img/floor1.png";
-import floor2Img from "../../../assets/img/floor2.png";
-import floor3Img from "../../../assets/img/floor3.png";
-
-const FALLBACK_IMAGES = {
-  0: BuildingImage,
-  1: floor1Img,
-  2: floor2Img,
-  3: floor3Img,
-};
-
 /** Path segment for breadcrumb */
 function pathSegment(id, label) {
   return { id, label };
@@ -151,7 +139,6 @@ export default function SitePage() {
   const hasLayoutGraphic = layoutGraphic && (layoutGraphic?.objects?.length > 0 || layoutGraphic?.backgroundImage?.dataUrl);
 
   const breadcrumb = selectedLevel?.breadcrumb ?? [];
-  const fallbackImage = FALLBACK_IMAGES[levelIndex] ?? FALLBACK_IMAGES[0];
   const levelLabel = selectedLevel?.label ?? (levelIndex === 0 ? "Overview" : `Level ${levelIndex}`);
 
   const equipmentOnFloor = useMemo(
@@ -224,7 +211,9 @@ export default function SitePage() {
                     onLinkClick={handleGraphicLinkClick}
                   />
                 ) : (
-                  <img src={fallbackImage} alt={levelLabel} className="legion-map-image" />
+                  <div className="legion-map-image d-flex align-items-center justify-content-center text-white-50 small">
+                    No deployed site layout graphic for this {selectedLevel?.type || "layout"}.
+                  </div>
                 )}
                 <div className="legion-map-badge">
                   {site} • {levelLabel}

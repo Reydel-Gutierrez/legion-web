@@ -1,10 +1,10 @@
 import React from "react";
-import { Form, InputGroup, Button, Dropdown } from "@themesberg/react-bootstrap";
+import { Form, Button, Dropdown } from "@themesberg/react-bootstrap";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
-  faSearch,
   faPlus,
   faSave,
+  faLink,
   faFileImport,
   faImage,
   faCopy,
@@ -13,16 +13,26 @@ import {
   faEllipsisV,
   faCheckCircle,
 } from "@fortawesome/free-solid-svg-icons";
+import GraphicsSelectControl from "./GraphicsSelectControl";
 
 /**
- * Toolbar for Graphics Manager: Save, New Graphic, Import, Duplicate, Delete, Preview, Validate.
+ * Toolbar for Graphics Manager: Select where to work, Save as template, Assign, New Graphic, Import, Duplicate, Delete, Preview, Validate.
  */
 export default function GraphicsToolbar({
-  searchValue,
-  onSearchChange,
+  layoutNodes,
+  equipmentList,
+  selectedLayoutNodeId,
+  selectedEquipmentId,
+  selectedLayoutNode,
+  selectedEquipment,
+  onSelectLayoutNode,
+  onSelectEquipment,
+  onOpenTreeModal,
+  selectDisabled,
   filterValue,
   onFilterChange,
-  onSaveGraphic,
+  onSaveAsTemplate,
+  onAssignGraphic,
   onNewGraphic,
   onImportSvg,
   onImportImage,
@@ -41,30 +51,37 @@ export default function GraphicsToolbar({
 
   return (
     <div className="graphics-manager-toolbar d-flex align-items-center flex-wrap gap-2 mb-3">
-      <Form.Group className="mb-0">
-        <InputGroup className="input-group-merge legion-search-bar">
-          <InputGroup.Text className="legion-search-bar-addon">
-            <FontAwesomeIcon icon={faSearch} />
-          </InputGroup.Text>
-          <Form.Control
-            type="text"
-            placeholder="Search graphics..."
-            className="legion-search-bar-input"
-            value={searchValue}
-            onChange={(e) => onSearchChange?.(e.target.value)}
-          />
-        </InputGroup>
-      </Form.Group>
+      <GraphicsSelectControl
+        inline
+        layoutNodes={layoutNodes || []}
+        equipmentList={equipmentList || []}
+        selectedLayoutNodeId={selectedLayoutNodeId}
+        selectedEquipmentId={selectedEquipmentId}
+        selectedLayoutNode={selectedLayoutNode}
+        selectedEquipment={selectedEquipment}
+        onSelectLayoutNode={onSelectLayoutNode}
+        onSelectEquipment={onSelectEquipment}
+        onOpenTreeModal={onOpenTreeModal}
+        disabled={selectDisabled}
+      />
       <div className="site-builder-toolbar-divider" />
       <Button
         size="sm"
         className="legion-hero-btn legion-hero-btn--primary"
-        onClick={onSaveGraphic}
-        disabled={!hasSelection}
-        title={hasSelection ? "Save graphic and bind to this equipment" : "Select equipment first"}
+        onClick={onSaveAsTemplate}
+        title="Save the current graphic to the Template Library as a reusable graphic template"
       >
         <FontAwesomeIcon icon={faSave} className="me-1" />
-        Save graphic
+        Save As Template
+      </Button>
+      <Button
+        size="sm"
+        className="legion-hero-btn legion-hero-btn--primary"
+        onClick={onAssignGraphic}
+        title="Assign graphic to site, building, floor, or equipment"
+      >
+        <FontAwesomeIcon icon={faLink} className="me-1" />
+        Assign Graphic
       </Button>
       <Button
         size="sm"
@@ -78,8 +95,7 @@ export default function GraphicsToolbar({
         size="sm"
         className="legion-hero-btn legion-hero-btn--secondary"
         onClick={onImportSvg}
-        disabled={!hasSelection}
-        title={hasSelection ? "Set SVG as workspace background" : "Select a graphic first"}
+        title={hasSelection ? "Set SVG as workspace background" : "Assign a site, building, floor, or equipment first (opens Assign Graphic)"}
       >
         <FontAwesomeIcon icon={faFileImport} className="me-1" />
         Import SVG
@@ -88,8 +104,7 @@ export default function GraphicsToolbar({
         size="sm"
         className="legion-hero-btn legion-hero-btn--secondary"
         onClick={onImportImage}
-        disabled={!hasSelection}
-        title={hasSelection ? "Set image as workspace background" : "Select a graphic first"}
+        title={hasSelection ? "Set image as workspace background" : "Assign a site, building, floor, or equipment first (opens Assign Graphic)"}
       >
         <FontAwesomeIcon icon={faImage} className="me-1" />
         Import Image
@@ -98,7 +113,7 @@ export default function GraphicsToolbar({
         size="sm"
         className="legion-hero-btn legion-hero-btn--secondary"
         onClick={onDuplicate}
-        disabled={!hasSelection}
+        title={hasSelection ? "Duplicate this graphic" : "Assign a site, building, floor, or equipment first (opens Assign Graphic)"}
       >
         <FontAwesomeIcon icon={faCopy} className="me-1" />
         Duplicate
@@ -107,8 +122,7 @@ export default function GraphicsToolbar({
         size="sm"
         className="legion-hero-btn legion-hero-btn--secondary"
         onClick={onDelete}
-        disabled={!hasSelection}
-        title={hasSelection ? "Delete this graphic (imported image and all objects)" : "Select a site, building, floor, or equipment in the tree to delete its graphic"}
+        title={hasSelection ? "Delete this graphic (imported image and all objects)" : "Assign a site, building, floor, or equipment first (opens Assign Graphic)"}
       >
         <FontAwesomeIcon icon={faTrashAlt} className="me-1" />
         Delete

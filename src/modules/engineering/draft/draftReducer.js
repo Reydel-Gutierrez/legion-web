@@ -5,6 +5,7 @@
 
 import { EMPTY_DRAFT } from "./draftModel";
 import { createSeedDraft } from "./draftSeed";
+import { createEmptyNetworkConfig } from "../network/networkConfigModel";
 
 export const DRAFT_ACTIONS = {
   RESET_DRAFT: "RESET_DRAFT",
@@ -23,6 +24,7 @@ export const DRAFT_ACTIONS = {
   SET_DEPLOYMENT_HISTORY: "SET_DEPLOYMENT_HISTORY",
   SET_ACTIVE_DEPLOYMENT_SNAPSHOT: "SET_ACTIVE_DEPLOYMENT_SNAPSHOT",
   DEPLOY_DRAFT: "DEPLOY_DRAFT",
+  SET_NETWORK_CONFIG: "SET_NETWORK_CONFIG",
 };
 
 function draftReducer(state, action) {
@@ -98,6 +100,12 @@ function draftReducer(state, action) {
 
     case DRAFT_ACTIONS.SET_ACTIVE_DEPLOYMENT_SNAPSHOT:
       return { ...state, activeDeploymentSnapshot: action.payload };
+
+    case DRAFT_ACTIONS.SET_NETWORK_CONFIG:
+      return {
+        ...state,
+        networkConfig: action.payload ?? createEmptyNetworkConfig(),
+      };
 
     case DRAFT_ACTIONS.DEPLOY_DRAFT: {
       const now = new Date();

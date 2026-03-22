@@ -94,13 +94,13 @@ export default function AlarmsPage() {
           </div>
 
           <div className="d-flex align-items-center gap-2">
-            <span className="badge bg-dark border border-light border-opacity-25 text-white">
+            <span className="badge bg-primary border border-light border-opacity-25 text-white">
               Active: {counts.active}
             </span>
-            <span className="badge bg-dark border border-light border-opacity-25 text-white">
+            <span className="badge bg-primary border border-light border-opacity-25 text-white">
               Unacked: {counts.unackedActive}
             </span>
-            <span className="badge bg-dark border border-light border-opacity-25 text-white">
+            <span className="badge bg-primary border border-light border-opacity-25 text-white">
               Critical: {counts.criticalActive}
             </span>
           </div>
@@ -127,7 +127,7 @@ export default function AlarmsPage() {
                       value={search}
                       onChange={(e) => setSearch(e.target.value)}
                       placeholder="Search equipment, point, message, ID…"
-                      className="bg-dark text-white border border-light border-opacity-10"
+                      className="bg-primary text-white border border-light border-opacity-10"
                     />
                   </Col>
 
@@ -138,7 +138,7 @@ export default function AlarmsPage() {
                     <Form.Select
                       value={state}
                       onChange={(e) => setState(e.target.value)}
-                      className="bg-dark text-white border border-light border-opacity-10"
+                      className="bg-primary text-white border border-light border-opacity-10"
                     >
                       <option>Active</option>
                       <option>History</option>
@@ -153,7 +153,7 @@ export default function AlarmsPage() {
                     <Form.Select
                       value={severity}
                       onChange={(e) => setSeverity(e.target.value)}
-                      className="bg-dark text-white border border-light border-opacity-10"
+                      className="bg-primary text-white border border-light border-opacity-10"
                     >
                       <option>All</option>
                       <option>Critical</option>
@@ -169,7 +169,7 @@ export default function AlarmsPage() {
                     <Form.Select
                       value={ack}
                       onChange={(e) => setAck(e.target.value)}
-                      className="bg-dark text-white border border-light border-opacity-10"
+                      className="bg-primary text-white border border-light border-opacity-10"
                     >
                       <option>All</option>
                       <option>Acked</option>

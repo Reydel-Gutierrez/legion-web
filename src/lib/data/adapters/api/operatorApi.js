@@ -25,3 +25,6 @@ export const getCurrentUser = notImplemented("getCurrentUser");
 export const getUsers = notImplemented("getUsers");
 export const getTrendEquipmentList = notImplemented("getTrendEquipmentList");
 export const getTrendData = notImplemented("getTrendData");
+export const getTrendPointCatalog = notImplemented("getTrendPointCatalog");
+export const getTrendEquipmentGroups = notImplemented("getTrendEquipmentGroups");
+export const getTrendLiveSnapshot = notImplemented("getTrendLiveSnapshot");

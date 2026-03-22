@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { Modal, Button, Form } from "@themesberg/react-bootstrap";
 
 /**
- * Modal for creating the first site.
+ * Modal for creating a new site.
  * Fields: Site Name, Address (optional), Description (optional),
  * Default Building Name, Timezone (optional)
  */

@@ -28,7 +28,7 @@ export default function SettingsPage() {
   );
 
   // UI Preferences
-  const [defaultLanding, setDefaultLanding] = useState("Dashboard"); // Dashboard | Equipment | Alarms | Trends | Events
+  const [defaultLanding, setDefaultLanding] = useState("Site Layout"); // Site Layout | Equipment | Alarms | Trends | Events | Insights
   const [defaultSite, setDefaultSite] = useState(site); // keep in sync with site selector optionally
   const [tableDensity, setTableDensity] = useState("Comfortable"); // Comfortable | Dense
   const [timeFormat, setTimeFormat] = useState("24H"); // 12H | 24H
@@ -54,7 +54,7 @@ export default function SettingsPage() {
   };
 
   const resetMock = () => {
-    setDefaultLanding("Dashboard");
+    setDefaultLanding("Site Layout");
     setDefaultSite(site);
     setTableDensity("Comfortable");
     setTimeFormat("24H");
@@ -94,7 +94,7 @@ export default function SettingsPage() {
           </div>
 
           <div className="d-flex align-items-center gap-2">
-            <span className="badge bg-dark border border-light border-opacity-25 text-white">
+            <span className="badge bg-primary border border-light border-opacity-25 text-white">
               Saved: {savedAt}
             </span>
             <Button
@@ -145,7 +145,7 @@ export default function SettingsPage() {
                     </Form.Label>
                     <Form.Control
                       defaultValue={me.displayName}
-                      className="bg-dark text-white border border-light border-opacity-10"
+                      className="bg-primary text-white border border-light border-opacity-10"
                     />
                   </Col>
 
@@ -156,7 +156,7 @@ export default function SettingsPage() {
                     <Form.Control
                       value={me.email}
                       readOnly
-                      className="bg-dark text-white border border-light border-opacity-10"
+                      className="bg-primary text-white border border-light border-opacity-10"
                     />
                   </Col>
                 </Row>
@@ -195,13 +195,14 @@ export default function SettingsPage() {
                     <Form.Select
                       value={defaultLanding}
                       onChange={(e) => setDefaultLanding(e.target.value)}
-                      className="bg-dark text-white border border-light border-opacity-10"
+                      className="bg-primary text-white border border-light border-opacity-10"
                     >
-                      <option>Dashboard</option>
+                      <option>Site Layout</option>
                       <option>Equipment</option>
                       <option>Alarms</option>
                       <option>Trends</option>
                       <option>Events</option>
+                      <option>Insights</option>
                     </Form.Select>
                   </Col>
 
@@ -212,7 +213,7 @@ export default function SettingsPage() {
                     <Form.Select
                       value={defaultSite}
                       onChange={(e) => setDefaultSite(e.target.value)}
-                      className="bg-dark text-white border border-light border-opacity-10"
+                      className="bg-primary text-white border border-light border-opacity-10"
                     >
                       {me.sites.map((s) => (
                         <option key={s}>{s}</option>
@@ -227,7 +228,7 @@ export default function SettingsPage() {
                     <Form.Select
                       value={tableDensity}
                       onChange={(e) => setTableDensity(e.target.value)}
-                      className="bg-dark text-white border border-light border-opacity-10"
+                      className="bg-primary text-white border border-light border-opacity-10"
                     >
                       <option>Comfortable</option>
                       <option>Dense</option>
@@ -244,7 +245,7 @@ export default function SettingsPage() {
                     <Form.Select
                       value={timeFormat}
                       onChange={(e) => setTimeFormat(e.target.value)}
-                      className="bg-dark text-white border border-light border-opacity-10"
+                      className="bg-primary text-white border border-light border-opacity-10"
                     >
                       <option value="24H">24-hour</option>
                       <option value="12H">12-hour</option>
@@ -258,7 +259,7 @@ export default function SettingsPage() {
                     <Form.Select
                       value={tempUnits}
                       onChange={(e) => setTempUnits(e.target.value)}
-                      className="bg-dark text-white border border-light border-opacity-10"
+                      className="bg-primary text-white border border-light border-opacity-10"
                     >
                       <option>°F</option>
                       <option>°C</option>
@@ -318,7 +319,7 @@ export default function SettingsPage() {
                     <Form.Select
                       value={notifySeverity}
                       onChange={(e) => setNotifySeverity(e.target.value)}
-                      className="bg-dark text-white border border-light border-opacity-10"
+                      className="bg-primary text-white border border-light border-opacity-10"
                     >
                       <option value="Critical only">Critical only</option>
                       <option value="Warning+">Warning + Critical</option>
@@ -427,7 +428,7 @@ export default function SettingsPage() {
                           </div>
                         </div>
 
-                        <span className="badge bg-dark border border-light border-opacity-25 text-white">
+                        <span className="badge bg-primary border border-light border-opacity-25 text-white">
                           Last sync: 2/22/26 14:09
                         </span>
                       </div>

@@ -45,6 +45,7 @@ import {
   BACNET_OBJECT_TYPES,
   GRAPHICS_VALUE_STATES,
   getPointDisplayInfoForEquipment,
+  getPointDisplayInfoForEquipmentTemplate,
   DISCOVERED_OBJECTS_BY_DEVICE,
   getDiscoveredObjects,
 } from "../../../modules/engineering/data/mockPointMappingData";
@@ -121,6 +122,7 @@ export {
   BACNET_OBJECT_TYPES,
   GRAPHICS_VALUE_STATES,
   getPointDisplayInfoForEquipment,
+  getPointDisplayInfoForEquipmentTemplate,
   DISCOVERED_OBJECTS_BY_DEVICE,
   getDiscoveredObjects,
 };

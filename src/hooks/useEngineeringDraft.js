@@ -8,6 +8,7 @@ import { useDraftContext } from "../app/providers/EngineeringDraftProvider";
 import { useSite } from "../app/providers/SiteProvider";
 import { DRAFT_ACTIONS } from "../modules/engineering/draft/draftReducer";
 import { getMappingsForEquipment } from "../modules/engineering/draft/draftModel";
+import { ensureNetworkConfig } from "../modules/engineering/network/networkConfigModel";
 
 // ---------------------------------------------------------------------------
 // useEngineeringDraft — main hook
@@ -37,6 +38,7 @@ export function useEngineeringDraft() {
       setDeploymentHistory: (payload) => dispatch({ type: DRAFT_ACTIONS.SET_DEPLOYMENT_HISTORY, payload }),
       setActiveDeploymentSnapshot: (payload) =>
         dispatch({ type: DRAFT_ACTIONS.SET_ACTIVE_DEPLOYMENT_SNAPSHOT, payload }),
+      setNetworkConfig: (payload) => dispatch({ type: DRAFT_ACTIONS.SET_NETWORK_CONFIG, payload }),
       deployDraftConfiguration: (options) => deployDraftConfiguration(options),
     }),
     [dispatch, deployDraftConfiguration]
@@ -104,6 +106,10 @@ export function selectDeploymentHistory(draft) {
 
 export function selectActiveDeploymentSnapshot(draft) {
   return draft?.activeDeploymentSnapshot ?? null;
+}
+
+export function selectNetworkConfig(draft) {
+  return ensureNetworkConfig(draft || {});
 }
 
 /** Site tree for Site Builder: build from draft.site (buildings/floors) with equipment preview on floors */
@@ -200,6 +206,7 @@ export function useDraftSelectors() {
       validation: selectValidation(draft),
       deploymentHistory: selectDeploymentHistory(draft),
       activeDeploymentSnapshot: selectActiveDeploymentSnapshot(draft),
+      networkConfig: selectNetworkConfig(draft),
       siteTree: selectSiteTree(draft),
     }),
     [draft]

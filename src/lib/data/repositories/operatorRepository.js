@@ -15,6 +15,9 @@ import {
   getCurrentUserMock,
   getTrendEquipmentListMock,
   getTrendDataMock,
+  getTrendPointCatalogMock,
+  getTrendEquipmentGroupsMock,
+  getTrendLiveSnapshotMock,
 } from "../adapters/mock/operatorAdapter";
 
 export { USE_MOCK_DATA };
@@ -98,8 +101,34 @@ export function getTrendEquipmentList(siteId) {
   return getTrendEquipmentListMock(siteId);
 }
 
-export function getTrendData(siteId, equipmentId, range) {
-  if (USE_MOCK_DATA) return getTrendDataMock(siteId, equipmentId, range);
-  return getTrendDataMock(siteId, equipmentId, range);
+/**
+ * @param {string} siteId
+ * @param {string} equipmentId
+ * @param {string} range
+ * @param {{ recordingStartedAt?: number }} [options] When set, mock delays historical samples until after logging warmup (trend session).
+ */
+export function getTrendData(siteId, equipmentId, range, options) {
+  if (USE_MOCK_DATA) return getTrendDataMock(siteId, equipmentId, range, options);
+  return getTrendDataMock(siteId, equipmentId, range, options);
+}
+
+/** Live point values (not historian) for current-value displays. */
+export function getTrendLiveSnapshot(siteId, equipmentId) {
+  if (USE_MOCK_DATA) return getTrendLiveSnapshotMock(siteId, equipmentId);
+  return getTrendLiveSnapshotMock(siteId, equipmentId);
+}
+
+/** Point metadata for the selected equipment/device (for trend configuration). */
+export function getTrendPointCatalog(siteId, equipmentId) {
+  const list = getTrendEquipmentList(siteId);
+  const eq = list.find((e) => e.id === equipmentId);
+  if (USE_MOCK_DATA) return getTrendPointCatalogMock(equipmentId, eq);
+  return getTrendPointCatalogMock(equipmentId, eq);
+}
+
+/** Equipment groups for bulk assignment (mock). */
+export function getTrendEquipmentGroups(siteId) {
+  if (USE_MOCK_DATA) return getTrendEquipmentGroupsMock(siteId);
+  return getTrendEquipmentGroupsMock(siteId);
 }
 

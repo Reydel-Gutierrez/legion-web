@@ -182,6 +182,35 @@ export function getSummaryFromActiveDeployment(activeDeployment) {
 }
 
 /**
+ * Per-floor communication health for Insights (devices with a controller ref = on-network).
+ * One row per floor defined on the site; equipment grouped by `floorId`.
+ */
+export function getFloorCommunicationHealthFromDeployment(activeDeployment) {
+  if (!activeDeployment?.site?.buildings?.length) return [];
+  const equipment = activeDeployment.equipment ?? [];
+  const rows = [];
+  for (const b of activeDeployment.site.buildings) {
+    for (const f of b.floors || []) {
+      const onFloor = equipment.filter((e) => e.floorId === f.id);
+      const total = onFloor.length;
+      const online = onFloor.filter((e) => Boolean(e.controllerRef)).length;
+      const pct = total === 0 ? 100 : Math.round((100 * online) / total);
+      const offline = total - online;
+      rows.push({
+        id: f.id,
+        label: f.name || f.label || String(f.id),
+        buildingLabel: b.name || "",
+        pct,
+        offline,
+        total,
+        online,
+      });
+    }
+  }
+  return rows;
+}
+
+/**
  * Derive equipment health list from active deployment for dashboard widget.
  */
 export function getEquipmentHealthFromActiveDeployment(activeDeployment) {

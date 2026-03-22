@@ -6,6 +6,7 @@
 
 import { createSite, createEquipment, createEquipmentTemplate, createGraphicTemplate } from "./draftModel";
 import { engineeringRepository } from "../../../lib/data";
+import { createEmptyNetworkConfig, createMiamiHqNetworkConfig } from "../network/networkConfigModel";
 
 /** Build draft site from site tree (from getMockSiteTree) */
 function buildSiteFromTree(siteTree) {
@@ -103,17 +104,21 @@ function buildEquipmentTemplatesFromMock(siteName) {
 
 /** Graphic templates from template library mock */
 function buildGraphicTemplatesFromMock(siteName) {
-  const { graphic = [] } = engineeringRepository.getSiteTemplates(siteName || "Miami HQ", true);
-  return graphic.map((g) =>
-    createGraphicTemplate({
+  const { graphic = [], equipment = [] } = engineeringRepository.getSiteTemplates(siteName || "Miami HQ", true);
+  return graphic.map((g) => {
+    const eq = equipment.find(
+      (e) => (e.name || "").toLowerCase() === (g.appliesTo || "").toLowerCase()
+    );
+    return createGraphicTemplate({
       id: g.id,
       name: g.name,
       appliesTo: g.appliesTo,
+      equipmentTemplateId: eq?.id ?? null,
       boundPointCount: g.boundPointCount ?? 0,
       source: g.source || "Global Imported",
       lastUpdated: g.lastUpdated || null,
-    })
-  );
+    });
+  });
 }
 
 /** Template points by template name (from mockPointMappingData) */
@@ -203,6 +208,7 @@ export function createSeedDraft(siteName) {
       mappings: {},
       graphics: {},
       siteLayoutGraphics: {},
+      networkConfig: createEmptyNetworkConfig(),
       validation: null,
       deploymentHistory: [],
       activeDeploymentSnapshot: null,
@@ -232,6 +238,7 @@ export function createSeedDraft(siteName) {
     mappings,
     graphics,
     siteLayoutGraphics: {},
+    networkConfig: createMiamiHqNetworkConfig(),
     validation: null,
     deploymentHistory: buildDeploymentHistory(),
     activeDeploymentSnapshot: buildActiveDeploymentSnapshot(),

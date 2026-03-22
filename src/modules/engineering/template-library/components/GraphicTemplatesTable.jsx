@@ -7,6 +7,7 @@ import {
   faCopy,
   faTrashAlt,
   faCog,
+  faLink,
 } from "@fortawesome/free-solid-svg-icons";
 import { engineeringRepository } from "../../../../lib/data";
 
@@ -15,12 +16,13 @@ export default function GraphicTemplatesTable({
   onView,
   onEdit,
   onDuplicate,
+  onBindEquipmentTemplate,
   onRemoveFromSite,
 }) {
   if (!templates || templates.length === 0) {
     return (
       <div className="p-4 text-center text-white-50 small">
-        No graphic templates in this site. Import from Global Library or create one (requires an equipment template).
+        No graphic templates in this site. Import from Global Library or create one from Graphics Manager.
       </div>
     );
   }
@@ -42,7 +44,7 @@ export default function GraphicTemplatesTable({
           {templates.map((row) => (
             <tr key={row.id} className="discovery-table-row">
               <td className="fw-semibold text-white">{row.name}</td>
-              <td className="text-white-50">{row.appliesTo}</td>
+              <td className="text-white-50">{row.appliesTo || "—"}</td>
               <td className="text-white-50">{row.boundPointCount}</td>
               <td>
                 <span
@@ -86,6 +88,16 @@ export default function GraphicTemplatesTable({
                     >
                       <FontAwesomeIcon icon={faCopy} className="me-2" /> Duplicate
                     </Dropdown.Item>
+                    {row._origin === "template" && (
+                      <Dropdown.Item
+                        className="text-white"
+                        onClick={() =>
+                          typeof onBindEquipmentTemplate === "function" && onBindEquipmentTemplate(row)
+                        }
+                      >
+                        <FontAwesomeIcon icon={faLink} className="me-2" /> Bind to equipment template
+                      </Dropdown.Item>
+                    )}
                     <Dropdown.Divider className="border-light border-opacity-10" />
                     <Dropdown.Item
                       className="text-danger"

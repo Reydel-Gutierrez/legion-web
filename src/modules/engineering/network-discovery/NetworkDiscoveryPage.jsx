@@ -1,11 +1,11 @@
-import React, { useState, useCallback, useEffect, useMemo } from "react";
-import { Container, Card } from "@themesberg/react-bootstrap";
+import React, { useState, useCallback, useMemo } from "react";
+import { Card } from "@themesberg/react-bootstrap";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faNetworkWired } from "@fortawesome/free-solid-svg-icons";
 
 import { useSite } from "../../../app/providers/SiteProvider";
-import { useEngineeringDraft } from "../../../hooks/useEngineeringDraft";
-import LegionHeroHeader from "../../../components/legion/LegionHeroHeader";
+import { useEngineeringDraft, selectNetworkConfig } from "../../../hooks/useEngineeringDraft";
+import { hasEnabledDiscoveryPaths, getMockDiscoveryScanResult, flattenDeviceCount } from "../network/discoveryScan";
 import LegionTablePagination from "../../../components/legion/LegionTablePagination";
 import { useTablePagination } from "../../../hooks/useTablePagination";
 import { engineeringRepository } from "../../../lib/data";
@@ -16,7 +16,10 @@ import DiscoveryTable from "./components/DiscoveryTable";
 import AssignDevicesModal from "./components/AssignDevicesModal";
 import DeviceInspectorDrawer from "./components/DeviceInspectorDrawer";
 import EmptyDiscoveryState from "./components/EmptyDiscoveryState";
+import NetworkDiscoveryConfigRequiredState from "./components/NetworkDiscoveryConfigRequiredState";
 import NoSiteSelectedState from "./components/NoSiteSelectedState";
+import ScanStatusArea from "./components/ScanStatusArea";
+import AdvancedScanModal from "./components/AdvancedScanModal";
 import NoSearchResultsState from "./components/NoSearchResultsState";
 import { POINTS_STATUS } from "./components/DeviceInspectorPanel";
 
@@ -98,6 +101,7 @@ function generateMockDiscoveredObjects(device) {
 export default function NetworkDiscoveryPage() {
   const { site } = useSite();
   const { draft, actions } = useEngineeringDraft();
+  const networkConfig = selectNetworkConfig(draft);
   const siteTree = selectSiteTree(draft);
   const siteStructure = useMemo(
     () => engineeringRepository.getEngineeringSiteStructureFromTree(siteTree),
@@ -110,6 +114,10 @@ export default function NetworkDiscoveryPage() {
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
+  const [scanPhase, setScanPhase] = useState("");
+  const [activeScanLines, setActiveScanLines] = useState([]);
+  const [lastScanLines, setLastScanLines] = useState([]);
+  const [showAdvancedScan, setShowAdvancedScan] = useState(false);
   const [inspectorDevice, setInspectorDevice] = useState(null);
   /** Per-device point discovery state: deviceId -> { pointsStatus, lastPointDiscoveryTime } — UI only; objects live in draft.discoveredObjects */
   const [devicePointDiscoveryMeta, setDevicePointDiscoveryMeta] = useState({});
@@ -153,12 +161,53 @@ export default function NetworkDiscoveryPage() {
     });
   }, []);
 
-  const handleScanNetwork = useCallback(() => {
-    setIsScanning(true);
-    setTimeout(() => {
-      setIsScanning(false);
-    }, 1500);
-  }, []);
+  const includeUnconfigured = networkConfig?.scanDefaults?.includeUnconfiguredProtocols === true;
+  const canRunScan = hasEnabledDiscoveryPaths(networkConfig) || includeUnconfigured;
+
+  const runDiscoveryScan = useCallback(
+    (scanMode) => {
+      if (!canRunScan) return;
+
+      const phaseLabel =
+        scanMode === "bacnet_ip"
+          ? "BACnet/IP scan — supervisory engine"
+          : scanMode === "bacnet_mstp"
+          ? "BACnet MS/TP scan — serial trunks"
+          : "Scan all — BACnet/IP and MS/TP paths";
+
+      setIsScanning(true);
+      setScanPhase(phaseLabel);
+      setLastScanLines([]);
+      const preview = getMockDiscoveryScanResult({ siteName: site, scanMode, networkConfig });
+      setActiveScanLines(preview.scanLines || []);
+
+      window.setTimeout(() => {
+        const { devices, scanLines, statusSummary } = getMockDiscoveryScanResult({
+          siteName: site,
+          scanMode,
+          networkConfig,
+        });
+        actions.setDiscoveredDevices(devices);
+        const count = flattenDeviceCount(devices);
+        const summaryLine =
+          statusSummary !== "ok"
+            ? count === 0
+              ? "No devices returned for this scan."
+              : `${count} device(s) (partial / filtered).`
+            : `${count} device(s) in result tree.`;
+
+        setActiveScanLines([]);
+        setLastScanLines([...(scanLines || []), summaryLine]);
+        setScanPhase("");
+        setIsScanning(false);
+      }, 1500);
+    },
+    [actions, canRunScan, networkConfig, site]
+  );
+
+  const handleScanNetwork = useCallback(() => runDiscoveryScan("all"), [runDiscoveryScan]);
+  const handleScanBacnetIp = useCallback(() => runDiscoveryScan("bacnet_ip"), [runDiscoveryScan]);
+  const handleScanMstp = useCallback(() => runDiscoveryScan("bacnet_mstp"), [runDiscoveryScan]);
 
   const handleAssign = useCallback((payload) => {
     console.log("Assign devices:", payload);
@@ -233,11 +282,7 @@ export default function NetworkDiscoveryPage() {
 
   if (hasNoSite) {
     return (
-      <Container fluid className="px-0">
-        <div className="px-3 px-md-4 pt-3">
-          <LegionHeroHeader />
-          <hr className="border-light border-opacity-25 my-3" />
-        </div>
+      <>
         <div className="px-3 px-md-4 pb-4">
           <div className="mb-3">
             <h5 className="text-white fw-bold mb-1">Network Discovery</h5>
@@ -251,20 +296,16 @@ export default function NetworkDiscoveryPage() {
             </Card.Body>
           </Card>
         </div>
-      </Container>
+      </>
     );
   }
 
   const hasDevices = devices.length > 0;
   const hasFilteredResults = filteredDevices.length > 0;
+  const showConfigRequired = !canRunScan && !hasDevices;
 
   return (
-    <Container fluid className="px-0">
-      <div className="px-3 px-md-4 pt-3">
-        <LegionHeroHeader />
-        <hr className="border-light border-opacity-25 my-3" />
-      </div>
-
+    <>
       <div className="px-3 px-md-4 pb-4">
         <div className="mb-3">
           <h5 className="text-white fw-bold mb-1">
@@ -281,10 +322,27 @@ export default function NetworkDiscoveryPage() {
         <DiscoveryToolbar
           searchValue={searchQuery}
           onSearchChange={setSearchQuery}
-          onScan={handleScanNetwork}
+          onScanAll={handleScanNetwork}
+          onScanBacnetIp={handleScanBacnetIp}
+          onScanMstp={handleScanMstp}
+          onAdvancedScan={() => setShowAdvancedScan(true)}
           onRefresh={() => {}}
           onAssign={handleAssignFromBanner}
           isScanning={isScanning}
+          canRunScan={canRunScan}
+        />
+
+        <ScanStatusArea
+          isScanning={isScanning}
+          scanPhase={scanPhase}
+          lines={isScanning ? activeScanLines : lastScanLines}
+          idleHint={
+            !isScanning && lastScanLines.length === 0
+              ? canRunScan
+                ? "Scan uses enabled BACnet/IP networks and MS/TP trunks from Network Configuration. Open the split menu for protocol-specific scans."
+                : "Enable at least one network path in Network Configuration, or allow unconfigured protocols in Scan defaults."
+              : null
+          }
         />
 
         <Card className="bg-primary border border-light border-opacity-10 shadow-sm">
@@ -295,8 +353,10 @@ export default function NetworkDiscoveryPage() {
             </span>
           </Card.Header>
           <Card.Body className="p-0 overflow-auto" style={{ minHeight: 400 }}>
-            {!hasDevices ? (
-              <EmptyDiscoveryState onScanNetwork={handleScanNetwork} />
+            {showConfigRequired ? (
+              <NetworkDiscoveryConfigRequiredState />
+            ) : !hasDevices ? (
+              <EmptyDiscoveryState onScanNetwork={handleScanNetwork} canRunScan={canRunScan} />
             ) : !hasFilteredResults ? (
               <NoSearchResultsState />
             ) : (
@@ -355,6 +415,8 @@ export default function NetworkDiscoveryPage() {
             : undefined
         }
       />
-    </Container>
+
+      <AdvancedScanModal show={showAdvancedScan} onHide={() => setShowAdvancedScan(false)} />
+    </>
   );
 }

@@ -15,7 +15,7 @@ export default function Footer({ controllers = 18, devices = "1.42", ...props })
     if (mode === "engineering") {
       history.push(Routes.EngineeringSiteBuilder.path);
     } else {
-      history.push(Routes.LegionDashboard.path);
+      history.push(Routes.LegionSite.path);
     }
   };
   const [showDefault, setShowDefault] = useState(false);
@@ -54,7 +54,7 @@ export default function Footer({ controllers = 18, devices = "1.42", ...props })
               </div>
             </div>
             <span className="legion-footer-sep d-none d-sm-inline">·</span>
-            <Link to={Routes.LegionDashboard.path} className="legion-footer-link">Legion</Link>
+            <Link to={Routes.LegionSite.path} className="legion-footer-link">Legion</Link>
             <span className="legion-footer-sep">·</span>
             <button type="button" className="legion-footer-link legion-footer-link--btn" onClick={() => setShowDefault(true)}>
               Help

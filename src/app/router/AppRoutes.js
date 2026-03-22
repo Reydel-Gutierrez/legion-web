@@ -17,7 +17,7 @@ import LegionSettings from "../../modules/operator/settings/SettingsPage";
 // Engineering pages
 import SiteBuilderPage from "../../modules/engineering/site-builder/SiteBuilderPage";
 import EngineeringPlaceholderPage from "../../modules/engineering/EngineeringPlaceholderPage";
-import NetworkDiscoveryPage from "../../modules/engineering/network-discovery/NetworkDiscoveryPage";
+import EngineeringNetworkSection from "../../modules/engineering/network/EngineeringNetworkSection";
 import PointMappingPage from "../../modules/engineering/point-mapping/PointMappingPage";
 import GraphicsManagerPage from "../../modules/engineering/graphics-manager/GraphicsManagerPage";
 import TemplateLibraryPage from "../../modules/engineering/template-library/TemplateLibraryPage";
@@ -30,6 +30,13 @@ import Sidebar from "../layout/Sidebar";
 import Navbar from "../layout/Navbar";
 import Footer from "../layout/Footer";
 import Preloader from "../layout/Preloader";
+
+function LegacyNetworkDiscoveryRedirect() {
+  return <Redirect to={Routes.EngineeringNetworkDiscovery.path} />;
+}
+function LegacyNetworkConfigurationRedirect() {
+  return <Redirect to={Routes.EngineeringNetworkConfiguration.path} />;
+}
 
 const RouteWithSidebar = ({ component: Component, ...rest }) => {
   const [loaded, setLoaded] = useState(false);
@@ -71,7 +78,7 @@ const RouteWithSidebar = ({ component: Component, ...rest }) => {
 export default function AppRoutes() {
   return (
     <Switch>
-      <Redirect exact from="/" to={Routes.LegionDashboard.path} />
+      <Redirect exact from="/" to={Routes.LegionSite.path} />
 
       <RouteWithSidebar exact path={Routes.LegionDashboard.path} component={LegionDashboard} />
       <RouteWithSidebar exact path={Routes.LegionSite.path} component={LegionSite} />
@@ -86,7 +93,17 @@ export default function AppRoutes() {
 
       {/* Engineering mode routes */}
       <RouteWithSidebar exact path={Routes.EngineeringSiteBuilder.path} component={SiteBuilderPage} />
-      <RouteWithSidebar exact path={Routes.EngineeringNetworkDiscovery.path} component={NetworkDiscoveryPage} />
+      <RouteWithSidebar
+        exact
+        path="/legion/engineering/network-discovery"
+        component={LegacyNetworkDiscoveryRedirect}
+      />
+      <RouteWithSidebar
+        exact
+        path="/legion/engineering/network-configuration"
+        component={LegacyNetworkConfigurationRedirect}
+      />
+      <RouteWithSidebar path={Routes.EngineeringNetwork.path} component={EngineeringNetworkSection} />
       <RouteWithSidebar exact path={Routes.EngineeringPointMapping.path} component={PointMappingPage} />
       <RouteWithSidebar exact path={Routes.EngineeringGraphicsManager.path} component={GraphicsManagerPage} />
       <RouteWithSidebar exact path={Routes.EngineeringTemplateLibrary.path} component={TemplateLibraryPage} />
@@ -94,7 +111,7 @@ export default function AppRoutes() {
       <RouteWithSidebar exact path={Routes.EngineeringDeployment.path} component={DeploymentPage} />
       <RouteWithSidebar exact path={Routes.EngineeringUserManager.path} component={UserManagerPage} />
 
-      <Redirect to={Routes.LegionDashboard.path} />
+      <Redirect to={Routes.LegionSite.path} />
     </Switch>
   );
 }

@@ -523,3 +523,49 @@ export function enrichEquipmentForPointMapping(equipmentList, siteTree, siteName
     };
   });
 }
+
+/**
+ * Operator Trends: equipment rows + floor groups derived from the same engineering mock
+ * (Site Builder / equipment library). Uses stable equipment id (eq-m3) for API keys.
+ *
+ * @param {string} siteDisplayName - e.g. "Miami HQ" (matches SiteProvider)
+ * @returns {{ equipment: object[]; floors: { id: string; label: string; floorName: string; buildingName: string }[] }}
+ */
+export function getTrendEquipmentLibraryForSite(siteDisplayName) {
+  const equipment = getMockEquipmentForSite(siteDisplayName);
+  const tree = getMockSiteTree(siteDisplayName);
+  if (!equipment.length || !tree) {
+    return { equipment: [], floors: [] };
+  }
+  const enriched = enrichEquipmentForPointMapping(equipment, tree, siteDisplayName);
+  const floorMap = new Map();
+  for (const eq of enriched) {
+    if (!eq.floorId) continue;
+    if (!floorMap.has(eq.floorId)) {
+      floorMap.set(eq.floorId, {
+        id: eq.floorId,
+        label: `${eq.building} — ${eq.floor}`,
+        floorName: eq.floor,
+        buildingName: eq.building,
+      });
+    }
+  }
+  const floors = Array.from(floorMap.values()).sort((a, b) => {
+    const c = a.buildingName.localeCompare(b.buildingName);
+    if (c !== 0) return c;
+    return a.floorName.localeCompare(b.floorName);
+  });
+  const trendEquipment = enriched.map((eq) => ({
+    id: eq.id,
+    name: eq.name,
+    type: eq.type,
+    label: `${eq.displayLabel || eq.name} · ${eq.building} · ${eq.floor}`,
+    floorId: eq.floorId,
+    floorName: eq.floor,
+    buildingName: eq.building,
+    groupId: eq.floorId,
+    templateKey: eq.templateName || eq.type || "",
+    locationLabel: eq.locationLabel,
+  }));
+  return { equipment: trendEquipment, floors };
+}

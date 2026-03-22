@@ -3,8 +3,8 @@ import SimpleBar from 'simplebar-react';
 import { useLocation } from "react-router-dom";
 import { CSSTransition } from 'react-transition-group';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faUsers, faBoxOpen, faChartPie, faCog, faSignOutAlt, faTimes, faCalendarAlt, faMapPin, faInbox, faSitemap, faNetworkWired, faMapMarkerAlt, faObjectGroup, faCheckCircle, faRocket, faBook, faUserCog } from "@fortawesome/free-solid-svg-icons";
-import { Nav, Badge, Image, Button, Dropdown, Accordion, Navbar } from '@themesberg/react-bootstrap';
+import { faUsers, faBoxOpen, faCog, faSignOutAlt, faTimes, faCalendarAlt, faMapPin, faInbox } from "@fortawesome/free-solid-svg-icons";
+import { Nav, Badge, Image, Button, Dropdown, Navbar } from '@themesberg/react-bootstrap';
 import { Link } from 'react-router-dom';
 
 import { Routes } from "../../routes";
@@ -17,6 +17,9 @@ import { useWorkspaceMode } from "../providers/WorkspaceModeProvider";
 import { useDraftContext } from "../providers/EngineeringDraftProvider";
 import { SITE_IDS } from "../../lib/sites";
 import { getPersistedDraftSiteNames } from "../../lib/data/persistence/draftPersistence";
+import EngineeringSidebarTreeGroup from "./EngineeringSidebarTreeGroup";
+import { getEngineeringSidebarGroups } from "./engineeringSidebarConfig";
+import { getOperatorSidebarGroups } from "./operatorSidebarConfig";
 
 export default function Sidebar() {
   const { site, setSite } = useSite();
@@ -36,33 +39,28 @@ export default function Sidebar() {
 
   const onCollapse = () => setShow(!show);
 
-  const CollapsableNavItem = (props) => {
-    const { eventKey, title, icon, children = null } = props;
-    const defaultKey = pathname.indexOf(eventKey) !== -1 ? eventKey : "";
-
-    return (
-      <Accordion as={Nav.Item} defaultActiveKey={defaultKey}>
-        <Accordion.Item eventKey={eventKey}>
-          <Accordion.Button as={Nav.Link} className="d-flex justify-content-between align-items-center">
-            <span>
-              <span className="sidebar-icon"><FontAwesomeIcon icon={icon} /> </span>
-              <span className="sidebar-text">{title}</span>
-            </span>
-          </Accordion.Button>
-          <Accordion.Body className="multi-level">
-            <Nav className="flex-column">
-              {children}
-            </Nav>
-          </Accordion.Body>
-        </Accordion.Item>
-      </Accordion>
-    );
-  };
-
   const NavItem = (props) => {
-    const { title, link, external, target, icon, image, badgeText, badgeBg = "secondary", badgeColor = "light" } = props;
-    const classNames = badgeText ? "d-flex justify-content-start align-items-center justify-content-between" : "";
-    const navItemClassName = link === pathname ? "active" : "";
+    const {
+      title,
+      link,
+      external,
+      target,
+      icon,
+      image,
+      badgeText,
+      badgeBg = "secondary",
+      badgeColor = "light",
+      activePrefix,
+      linkClassName = "",
+    } = props;
+    const classNames = [
+      badgeText ? "d-flex justify-content-start align-items-center justify-content-between" : "",
+      linkClassName,
+    ]
+      .filter(Boolean)
+      .join(" ");
+    const isActive = activePrefix != null ? pathname.startsWith(activePrefix) : link === pathname;
+    const navItemClassName = isActive ? "active" : "";
     const linkProps = external ? { href: link } : { as: Link, to: link };
 
     return (
@@ -85,7 +83,7 @@ export default function Sidebar() {
   return (
     <>
       <Navbar expand={false} collapseOnSelect variant="dark" className="navbar-theme-primary px-4 d-md-none">
-        <Navbar.Brand className="me-lg-5" as={Link} to={currentMode === "engineering" ? Routes.EngineeringSiteBuilder.path : Routes.LegionDashboard.path}>
+        <Navbar.Brand className="me-lg-5" as={Link} to={currentMode === "engineering" ? Routes.EngineeringSiteBuilder.path : Routes.LegionSite.path}>
           <Image src={ReactHero} className="navbar-brand-light" />
         </Navbar.Brand>
         <Navbar.Toggle as={Button} aria-controls="main-navbar" onClick={onCollapse}>
@@ -103,7 +101,7 @@ export default function Sidebar() {
                 </div>
                 <div className="d-block">
                   <h6>Hi, Jane</h6>
-                  <Button as={Link} variant="secondary" size="xs" to={Routes.LegionDashboard.path} className="text-dark">
+                  <Button as={Link} variant="secondary" size="xs" to={Routes.LegionSite.path} className="text-dark">
                     <FontAwesomeIcon icon={faSignOutAlt} className="me-2" /> Sign Out
                   </Button>
                 </div>
@@ -183,34 +181,39 @@ export default function Sidebar() {
 
               {currentMode === "operator" ? (
                 <>
-                  <NavItem title="Dashboard" link={Routes.LegionDashboard.path} icon={faChartPie} />
-                  <NavItem title="Site Layout" link={Routes.LegionSite.path} icon={faMapPin} />
-                  <NavItem title="Equipment" link={Routes.LegionEquipment.path} icon={faBoxOpen} />
-                  <NavItem title="Alarms" link={Routes.LegionAlarms.path} icon={faInbox} />
-                  <NavItem title="Trends" link={Routes.LegionTrends.path} icon={faChartPie} />
-
-                  <Dropdown.Divider className="my-3 border-indigo" />
-
-                  <NavItem title="Schedules" link={Routes.LegionSchedules.path} icon={faCalendarAlt} />
-                  <NavItem title="Events" link={Routes.LegionEvents.path} icon={faCog} />
-
-                  <Dropdown.Divider className="my-3 border-indigo" />
-
-                  <NavItem title="Users" link={Routes.LegionUsers.path} icon={faUsers} />
-                  <NavItem title="Settings" link={Routes.LegionSettings.path} icon={faCog} />
+                  <NavItem
+                    title="Site Layout"
+                    link={Routes.LegionSite.path}
+                    icon={faMapPin}
+                    linkClassName="legion-sidebar-parent-tone-link"
+                  />
+                  {getOperatorSidebarGroups().map((group) => (
+                    <EngineeringSidebarTreeGroup
+                      key={group.title}
+                      title={group.title}
+                      parentIcon={group.parentIcon}
+                      parentPath={group.parentPath}
+                      sectionPaths={group.sectionPaths}
+                      children={group.children}
+                      onNavigate={() => setShow(false)}
+                    />
+                  ))}
                 </>
               ) : (
                 <>
-                  <NavItem title="Site Builder" link={Routes.EngineeringSiteBuilder.path} icon={faSitemap} />
-                  <NavItem title="Network Discovery" link={Routes.EngineeringNetworkDiscovery.path} icon={faNetworkWired} />
-                  <NavItem title="Point Mapping" link={Routes.EngineeringPointMapping.path} icon={faMapMarkerAlt} />
-                  <NavItem title="Graphics Manager" link={Routes.EngineeringGraphicsManager.path} icon={faObjectGroup} />
-                  <NavItem title="Template Library" link={Routes.EngineeringTemplateLibrary.path} icon={faBook} />
-                  <NavItem title="Validation Center" link={Routes.EngineeringValidationCenter.path} icon={faCheckCircle} />
-                  <NavItem title="Deployment" link={Routes.EngineeringDeployment.path} icon={faRocket} />
-                  {canViewUserManager(accessRepository.getCurrentUserForAccess()) && (
-                    <NavItem title="User Manager" link={Routes.EngineeringUserManager.path} icon={faUserCog} />
-                  )}
+                  {getEngineeringSidebarGroups({
+                    includeAdministration: canViewUserManager(accessRepository.getCurrentUserForAccess()),
+                  }).map((group) => (
+                    <EngineeringSidebarTreeGroup
+                      key={group.title}
+                      title={group.title}
+                      parentIcon={group.parentIcon}
+                      parentPath={group.parentPath}
+                      sectionPaths={group.sectionPaths}
+                      children={group.children}
+                      onNavigate={() => setShow(false)}
+                    />
+                  ))}
                 </>
               )}
             </Nav>

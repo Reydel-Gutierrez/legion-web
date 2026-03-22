@@ -182,6 +182,27 @@ function getPlaceholderValue(templatePoint) {
  * @param {object} equipment - Equipment with templateName (and optionally controllerRef)
  * @param {{ equipmentTemplates?: array }} [draftTemplates] - Optional draft templates for template-only sites
  */
+/**
+ * Template points for Graphics Manager when authoring a graphic template (no live equipment).
+ */
+export function getPointDisplayInfoForEquipmentTemplate(equipmentTemplate) {
+  if (!equipmentTemplate) return [];
+  const templatePoints = getTemplatePoints(equipmentTemplate.name, [equipmentTemplate]);
+  return templatePoints.map((tp) => ({
+    id: tp.id,
+    displayName: tp.displayName,
+    units: tp.units || "",
+    key: tp.key,
+    pointCategory: tp.pointCategory,
+    required: tp.required,
+    valueState: GRAPHICS_VALUE_STATES.TEMPLATE_ONLY,
+    displayValue: getPlaceholderValue(tp),
+    mappedBacnetRef: null,
+    mappedBacnetId: null,
+    presentValue: getPlaceholderValue(tp),
+  }));
+}
+
 export function getPointDisplayInfoForEquipment(equipment, draftTemplates) {
   if (!equipment) return [];
   const draftEquipmentTemplates = draftTemplates?.equipmentTemplates;

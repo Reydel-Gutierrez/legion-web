@@ -4,6 +4,8 @@
  * Phase 1: lightweight, mock-data driven; no backend.
  */
 
+import { createEmptyNetworkConfig } from "../network/networkConfigModel";
+
 /** Initial empty draft state shape */
 export const EMPTY_DRAFT = {
   site: null,
@@ -18,6 +20,8 @@ export const EMPTY_DRAFT = {
   graphics: {},
   /** Site layout graphics: nodeId (site/building/floor id) -> graphic. Shown in Operator Site Layout. */
   siteLayoutGraphics: {},
+  /** BACnet/IP, MSTP trunks, scan defaults — drives mock discovery until backend exists */
+  networkConfig: createEmptyNetworkConfig(),
   validation: null,
   deploymentHistory: [],
   activeDeploymentSnapshot: null,
@@ -122,7 +126,10 @@ export function createGraphicTemplate(overrides = {}) {
     id: null,
     name: null,
     appliesTo: null,
+    equipmentTemplateId: null,
     boundPointCount: 0,
+    /** Persisted canvas: { objects, canvasSize, backgroundImage } */
+    graphicEditorState: null,
     source: "Global Imported",
     lastUpdated: null,
     ...overrides,

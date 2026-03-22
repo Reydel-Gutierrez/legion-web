@@ -31,6 +31,8 @@ import SaveToGlobalModal from "./components/SaveToGlobalModal";
 import CreateTemplateModal from "./components/CreateTemplateModal";
 import EquipmentTemplateEditorDrawer from "./components/EquipmentTemplateEditorDrawer";
 import CreateGraphicTemplateModal from "./components/CreateGraphicTemplateModal";
+import BindGraphicTemplateModal from "./components/BindGraphicTemplateModal";
+import { countBoundTemplatePointBindings } from "../graphics-manager/graphicTemplateUtils";
 
 // ---------------------------------------------------------------------------
 // Helpers: convert global template to site template shape
@@ -57,11 +59,15 @@ function globalGraphicToSite(globalRow, equipmentTemplates) {
   const appliesTo = equipmentTemplates.find(
     (e) => e.equipmentType === globalRow.appliesToEquipmentType
   )?.name || globalRow.appliesToEquipmentType;
+  const matchedEqTemplate =
+    equipmentTemplates.find((e) => e.equipmentType === globalRow.appliesToEquipmentType) || null;
   return {
     id: generateId("site-gfx"),
     name: globalRow.name,
     appliesTo,
+    equipmentTemplateId: globalRow.equipmentTemplateId || matchedEqTemplate?.id || null,
     boundPointCount: globalRow.boundPointCount,
+    graphicEditorState: globalRow.graphicEditorState || null,
     source: engineeringRepository.SOURCE.GLOBAL_IMPORTED,
     lastUpdated: new Date().toISOString().slice(0, 10),
   };
@@ -82,6 +88,8 @@ export default function TemplateLibraryPage() {
   const [showCreateGraphicModal, setShowCreateGraphicModal] = useState(false);
   const [showSaveToGlobalModal, setShowSaveToGlobalModal] = useState(false);
   const [saveToGlobalToast, setSaveToGlobalToast] = useState(null);
+  const [showBindGraphicTemplateModal, setShowBindGraphicTemplateModal] = useState(false);
+  const [bindGraphicTemplateRow, setBindGraphicTemplateRow] = useState(null);
 
   const siteTemplates = {
     equipment: draft.templates?.equipmentTemplates ?? [],
@@ -93,6 +101,10 @@ export default function TemplateLibraryPage() {
     const fromTemplates = (siteTemplates.graphic || []).map((g) => ({
       ...g,
       _origin: "template",
+      boundPointCount:
+        g.graphicEditorState?.objects != null
+          ? countBoundTemplatePointBindings(g.graphicEditorState.objects)
+          : g.boundPointCount ?? 0,
     }));
     const equipmentList = draft?.equipment ?? [];
     const graphics = draft?.graphics ?? {};
@@ -245,6 +257,12 @@ export default function TemplateLibraryPage() {
 
   const handleViewGraphic = useCallback(
     (row) => {
+      if (row._origin === "template") {
+        history.push(
+          `${Routes.EngineeringGraphicsManager.path}?graphicTemplateId=${encodeURIComponent(row.id)}`
+        );
+        return;
+      }
       const equipmentId =
         row._origin === "equipment"
           ? row.equipmentId
@@ -264,6 +282,12 @@ export default function TemplateLibraryPage() {
 
   const handleEditGraphic = useCallback(
     (row) => {
+      if (row._origin === "template") {
+        history.push(
+          `${Routes.EngineeringGraphicsManager.path}?graphicTemplateId=${encodeURIComponent(row.id)}`
+        );
+        return;
+      }
       const equipmentId =
         row._origin === "equipment"
           ? row.equipmentId
@@ -290,10 +314,50 @@ export default function TemplateLibraryPage() {
       name: `${row.name} (Copy)`,
       source: engineeringRepository.SOURCE.SITE_CUSTOM,
       lastUpdated: new Date().toISOString().slice(0, 10),
+      graphicEditorState: row.graphicEditorState
+        ? JSON.parse(JSON.stringify(row.graphicEditorState))
+        : row.graphicEditorState,
     };
     const prevGfx = draft.templates?.graphicTemplates ?? [];
     actions.setTemplates({ equipmentTemplates: draft.templates?.equipmentTemplates ?? [], graphicTemplates: [...prevGfx, newGfx] });
   }, [draft.templates, actions]);
+
+  const handleOpenBindGraphicTemplate = useCallback((row) => {
+    if (row._origin !== "template") return;
+    setBindGraphicTemplateRow(row);
+    setShowBindGraphicTemplateModal(true);
+  }, []);
+
+  const handleBindGraphicTemplateConfirm = useCallback(
+    ({ equipmentTemplateId }) => {
+      const row = bindGraphicTemplateRow;
+      if (!row || row._origin !== "template" || !equipmentTemplateId) return;
+      const eq = (draft.templates?.equipmentTemplates || []).find((e) => e.id === equipmentTemplateId);
+      if (!eq) return;
+      const prevGfx = draft.templates?.graphicTemplates || [];
+      const prevEq = draft.templates?.equipmentTemplates || [];
+      const now = new Date().toISOString().slice(0, 10);
+      const nextGfx = prevGfx.map((g) =>
+        g.id === row.id
+          ? {
+              ...g,
+              equipmentTemplateId: eq.id,
+              appliesTo: eq.name || "",
+              lastUpdated: now,
+            }
+          : g
+      );
+      actions.setTemplates({ equipmentTemplates: prevEq, graphicTemplates: nextGfx });
+      setShowBindGraphicTemplateModal(false);
+      setBindGraphicTemplateRow(null);
+    },
+    [bindGraphicTemplateRow, draft.templates?.equipmentTemplates, draft.templates?.graphicTemplates, actions]
+  );
+
+  const handleCloseBindGraphicTemplateModal = useCallback(() => {
+    setShowBindGraphicTemplateModal(false);
+    setBindGraphicTemplateRow(null);
+  }, []);
 
   return (
     <Container fluid className="px-0">
@@ -420,6 +484,7 @@ export default function TemplateLibraryPage() {
                   onView={handleViewGraphic}
                   onEdit={handleEditGraphic}
                   onDuplicate={handleDuplicateGraphic}
+                  onBindEquipmentTemplate={handleOpenBindGraphicTemplate}
                   onRemoveFromSite={handleRemoveGraphic}
                 />
               )}
@@ -494,6 +559,15 @@ export default function TemplateLibraryPage() {
       <CreateGraphicTemplateModal
         show={showCreateGraphicModal}
         onHide={() => setShowCreateGraphicModal(false)}
+      />
+
+      <BindGraphicTemplateModal
+        show={showBindGraphicTemplateModal}
+        onHide={handleCloseBindGraphicTemplateModal}
+        graphicTemplateName={bindGraphicTemplateRow?.name}
+        equipmentTemplates={siteTemplates.equipment}
+        initialEquipmentTemplateId={bindGraphicTemplateRow?.equipmentTemplateId || ""}
+        onConfirm={handleBindGraphicTemplateConfirm}
       />
     </Container>
   );

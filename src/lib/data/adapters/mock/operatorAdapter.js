@@ -1,5 +1,6 @@
 import { getDashboardSummary, getRecentEvents, getDashboardAlarms, getEquipmentHealth, getWeather } from "../../mockDashboard";
 import { getWorkspaceRowsFromDeployment } from "../../../activeDeploymentUtils";
+import { getTrendEquipmentLibraryForSite } from "../../../../modules/engineering/data/mockEngineeringData";
 
 // NOTE: This module is the only place in the operator stack that should
 // know about the concrete mock data sources. Repositories call into this
@@ -244,35 +245,317 @@ export function getUsersMock(/* siteId */) {
   ];
 }
 
-// Trends: equipment list and trend data (timestamps + series)
-export function getTrendEquipmentListMock(/* siteId */) {
+// Trends: equipment + floor groups from engineering Site Builder mock (see mockEngineeringData).
+/** @param {string} siteDisplayName - matches SiteProvider (e.g. "Miami HQ") */
+export function getTrendEquipmentListMock(siteDisplayName) {
+  const lib = getTrendEquipmentLibraryForSite(siteDisplayName || "");
+  return lib.equipment;
+}
+
+/** Floor-based groups for bulk assignment (one button per building + floor). */
+export function getTrendEquipmentGroupsMock(siteDisplayName) {
+  const lib = getTrendEquipmentLibraryForSite(siteDisplayName || "");
+  return lib.floors;
+}
+
+/**
+ * BACnet-style points unique per equipment instance. IDs are `${equipmentId}::slug` so each asset has its own series keys.
+ * @param {string} equipmentId
+ * @param {{ name?: string; type?: string; label?: string } | null | undefined} eq - row from getTrendEquipmentListMock
+ */
+export function getTrendPointCatalogMock(equipmentId, eq) {
+  const t = ((eq && eq.type) || "").toUpperCase();
+  const assetName = (eq && (eq.name || eq.label)) || equipmentId || "Equipment";
+  const shortLabel = typeof assetName === "string" ? assetName.split("·")[0].trim() : String(assetName);
+
+  /** @type {{ slug: string; name: string; unit: string; min: number; max: number }[]} */
+  let templates = [
+    { slug: "cmd_pct", name: "Output command", unit: "%", min: 0, max: 100 },
+    { slug: "status_word", name: "Present value / status", unit: "%", min: 0, max: 100 },
+    { slug: "occ_mode", name: "Occupancy mode", unit: "enum", min: 0, max: 3 },
+  ];
+
+  if (t === "VAV") {
+    templates = [
+      { slug: "zone_temp", name: "Zone air temperature", unit: "°F", min: 65, max: 78 },
+      { slug: "sat", name: "Supply air temperature", unit: "°F", min: 52, max: 65 },
+      { slug: "airflow", name: "Airflow (actual)", unit: "CFM", min: 0, max: 2200 },
+      { slug: "damper_cmd", name: "Damper position command", unit: "%", min: 0, max: 100 },
+      { slug: "reheat_valve", name: "Reheat valve", unit: "%", min: 0, max: 100 },
+      { slug: "cooling_cmd", name: "Cooling loop command", unit: "%", min: 0, max: 100 },
+      { slug: "heat_cmd", name: "Heating loop command", unit: "%", min: 0, max: 100 },
+      { slug: "flow_sp", name: "Airflow setpoint", unit: "CFM", min: 0, max: 2200 },
+    ];
+  } else if (t === "AHU") {
+    templates = [
+      { slug: "sat_sp", name: "Supply air temp setpoint", unit: "°F", min: 52, max: 58 },
+      { slug: "sat_act", name: "Supply air temperature", unit: "°F", min: 50, max: 60 },
+      { slug: "mat", name: "Mixed air temperature", unit: "°F", min: 55, max: 85 },
+      { slug: "rat", name: "Return air temperature", unit: "°F", min: 68, max: 78 },
+      { slug: "oa_damper", name: "Outside air damper", unit: "%", min: 0, max: 100 },
+      { slug: "sa_fan", name: "Supply fan speed command", unit: "%", min: 0, max: 100 },
+      { slug: "static_pressure", name: "Duct static pressure", unit: "in w.g.", min: 0.5, max: 3.5 },
+      { slug: "humidity", name: "Supply humidity", unit: "%RH", min: 30, max: 70 },
+    ];
+  } else if (t === "FCU") {
+    templates = [
+      { slug: "space_temp", name: "Space temperature", unit: "°F", min: 68, max: 76 },
+      { slug: "cw_valve", name: "Chilled water valve", unit: "%", min: 0, max: 100 },
+      { slug: "hw_valve", name: "Hot water valve", unit: "%", min: 0, max: 100 },
+      { slug: "fan_speed", name: "Fan speed command", unit: "%", min: 0, max: 100 },
+      { slug: "entering_water", name: "Entering water temperature", unit: "°F", min: 42, max: 52 },
+      { slug: "leaving_water", name: "Leaving water temperature", unit: "°F", min: 52, max: 62 },
+    ];
+  } else if (t === "CH" || t === "CHWP" || t === "BL" || t === "CT") {
+    templates = [
+      { slug: "tons", name: "Chiller load / tons", unit: "tons", min: 0, max: 500 },
+      { slug: "kw", name: "Compressor power", unit: "kW", min: 0, max: 400 },
+      { slug: "chw_leaving", name: "Chilled water leaving temp", unit: "°F", min: 40, max: 48 },
+      { slug: "chw_entering", name: "Chilled water entering temp", unit: "°F", min: 48, max: 58 },
+      { slug: "cw_entering", name: "Condenser water entering", unit: "°F", min: 75, max: 95 },
+      { slug: "cw_leaving", name: "Condenser water leaving", unit: "°F", min: 85, max: 105 },
+      { slug: "evap_pressure", name: "Evaporator pressure", unit: "PSIG", min: 20, max: 45 },
+      { slug: "cond_pressure", name: "Condenser pressure", unit: "PSIG", min: 80, max: 180 },
+    ];
+  } else if (t === "EF") {
+    templates = [
+      { slug: "fan_cmd", name: "Fan speed command", unit: "%", min: 0, max: 100 },
+      { slug: "airflow", name: "Exhaust airflow", unit: "CFM", min: 0, max: 15000 },
+      { slug: "static", name: "Fan static pressure", unit: "in w.g.", min: 0.2, max: 4 },
+      { slug: "motor_amps", name: "Motor current", unit: "A", min: 0, max: 45 },
+      { slug: "vfd_hz", name: "VFD output frequency", unit: "Hz", min: 0, max: 60 },
+    ];
+  } else if (t === "HX") {
+    templates = [
+      { slug: "pri_enter", name: "Primary entering temp", unit: "°F", min: 40, max: 95 },
+      { slug: "pri_leave", name: "Primary leaving temp", unit: "°F", min: 45, max: 100 },
+      { slug: "sec_enter", name: "Secondary entering temp", unit: "°F", min: 40, max: 95 },
+      { slug: "sec_leave", name: "Secondary leaving temp", unit: "°F", min: 45, max: 100 },
+      { slug: "valve_pct", name: "Isolation / mixing valve", unit: "%", min: 0, max: 100 },
+      { slug: "flow_gpm", name: "Water flow", unit: "GPM", min: 0, max: 900 },
+    ];
+  } else if (t === "SENSOR") {
+    templates = [
+      { slug: "co_ppm", name: "CO concentration", unit: "PPM", min: 0, max: 250 },
+      { slug: "co2_ppm", name: "CO₂ concentration", unit: "PPM", min: 400, max: 2000 },
+      { slug: "space_temp", name: "Space temperature", unit: "°F", min: 65, max: 80 },
+      { slug: "humidity", name: "Relative humidity", unit: "%RH", min: 30, max: 70 },
+    ];
+  }
+
+  const seed = (equipmentId || "x").split("").reduce((a, c) => a + c.charCodeAt(0), 0);
+  return templates.map((p, i) => {
+    const id = `${equipmentId}::${p.slug}`;
+    const label = `${shortLabel} · ${p.name}`;
+    return {
+      id,
+      label,
+      unit: p.unit,
+      min: p.min + ((seed + i) % 3),
+      max: p.max + ((seed + i * 2) % 5),
+    };
+  });
+}
+
+function buildTrendMockEvents(pointCount, equipmentId) {
+  const n = Math.max(2, pointCount);
+  const seed = (equipmentId || "").split("").reduce((a, c) => a + c.charCodeAt(0), 0);
+  const clamp = (v) => Math.max(0, Math.min(n - 1, v));
+  const a = clamp(5 + (seed % 4));
+  const b = clamp(8 + (seed % 4));
+  const [lo, hi] = a <= b ? [a, b] : [b, a];
   return [
-    { id: "VAV-2", type: "VAV", label: "VAV-2 (2nd Floor East)" },
-    { id: "VAV-7", type: "VAV", label: "VAV-7 (3rd Floor North)" },
-    { id: "AHU-1", type: "AHU", label: "AHU-1 (Main Air Handler)" },
-    { id: "FCU-3", type: "FCU", label: "FCU-3 (Amenity)" },
-    { id: "OAU-1", type: "OAU", label: "OAU-1 (Outdoor Air Unit)" },
+    { kind: "alarm", atIdx: clamp(3 + (seed % 6)), label: "Limit" },
+    { kind: "comm_loss", startIdx: lo, endIdx: hi },
+    { kind: "schedule", atIdx: clamp(Math.floor(n * 0.35) + (seed % 3)), label: "Schedule" },
+    { kind: "mode", atIdx: clamp(Math.floor(n * 0.72)), label: "Mode" },
   ];
 }
 
-/** Returns { timestamps, damper, flow, dat } for given equipment and range (6H|24H|7D|14D). Mock only. */
-export function getTrendDataMock(siteId, equipmentId, range) {
-  const pad2 = (n) => String(n).padStart(2, "0");
+const TREND_WARMUP_MS = 800;
+const TREND_HISTORY_READY_MS = 2200;
+
+/**
+ * Live point values (not trend history) — same equipment as real-time displays elsewhere.
+ * @returns {Record<string, { value: number; unit: string }>}
+ */
+export function getTrendLiveSnapshotMock(siteDisplayName, equipmentId) {
+  const list = getTrendEquipmentListMock(siteDisplayName);
+  if (!list.length) return {};
+  const eq = list.find((e) => e.id === equipmentId) || list[0];
+  const catalog = getTrendPointCatalogMock(equipmentId, eq);
+  const seed = (equipmentId || "x").split("").reduce((a, c) => a + c.charCodeAt(0), 0);
+  const out = {};
+  catalog.forEach((pt, i) => {
+    const mid = (pt.min + pt.max) / 2;
+    const w = ((seed + i * 13) % 100) / 100;
+    const v = mid + (pt.max - pt.min) * 0.15 * (w - 0.5);
+    out[pt.id] = { value: Math.round(Math.max(pt.min, Math.min(pt.max, v)) * 10) / 10, unit: pt.unit };
+  });
+  return out;
+}
+
+function parseDaysRange(range) {
+  const m = typeof range === "string" && /^(\d+)D$/.exec(range);
+  return m ? parseInt(m[1], 10) : null;
+}
+
+function trendRangeConfig(range) {
+  if (range === "6H") return { points: 18, stepMin: 20 };
+  const days = parseDaysRange(range);
+  if (days != null && days > 0) {
+    const stepMin = Math.max(60, Math.round((days * 24 * 60) / 28));
+    return { points: 28, stepMin };
+  }
+  return { points: 24, stepMin: 60 };
+}
+
+/** Display window length for rolling history (aligned with toolbar ranges). */
+function trendRangeSpanMs(range) {
+  if (range === "6H") return 6 * 60 * 60 * 1000;
+  const days = parseDaysRange(range);
+  if (days != null && days > 0) return days * 24 * 60 * 60 * 1000;
+  return 24 * 60 * 60 * 1000;
+}
+
+function buildTrendSeriesFromTimestamps(catalog, timestamps, equipmentId, range, requireEightForEvents) {
+  const seed = (equipmentId || "").length * (range.length + 1);
+  const series = catalog.map((pt, pi) => {
+    const values = timestamps.map((_, i) => {
+      const phase = i / Math.max(1, timestamps.length - 1);
+      const mid = (pt.min + pt.max) / 2;
+      const amp = (pt.max - pt.min) * 0.38;
+      const v =
+        mid +
+        amp * Math.sin(phase * Math.PI * 2.2 + seed * 0.08 + pi * 0.7) +
+        ((seed + i + pi * 3) % 5);
+      const clamped = Math.max(pt.min, Math.min(pt.max, v));
+      return Math.round(clamped * 10) / 10;
+    });
+    return { pointId: pt.id, label: pt.label, unit: pt.unit, min: pt.min, max: pt.max, values };
+  });
+  const events =
+    requireEightForEvents && timestamps.length < 8
+      ? []
+      : buildTrendMockEvents(timestamps.length, equipmentId);
+  const damper = series[0]?.values || [];
+  const flow = series[1]?.values || [];
+  const dat = series[2]?.values || [];
+  return { series, events, damper, flow, dat };
+}
+
+/** Evenly spaced samples from window start through window end (inclusive), trend-only — no samples before recording. */
+function buildEvenlySpacedTimestamps(windowStartMs, windowEndMs, pointCount) {
+  const start = Math.min(windowStartMs, windowEndMs);
+  const end = Math.max(windowEndMs, start + 1);
+  const n = Math.max(2, pointCount);
+  const timestamps = [];
+  for (let i = 0; i < n; i++) {
+    timestamps.push(new Date(start + (i / (n - 1)) * (end - start)));
+  }
+  return timestamps;
+}
+
+function buildTrendHistoryPayload(siteDisplayName, equipmentId, range) {
+  const list = getTrendEquipmentListMock(siteDisplayName);
+  if (!list.length) {
+    return { timestamps: [], series: [], events: [], damper: [], flow: [], dat: [] };
+  }
+  const eq = list.find((e) => e.id === equipmentId) || list[0];
+  const catalog = getTrendPointCatalogMock(equipmentId, eq);
   const now = new Date();
-  const ms = now.getTime();
-  const config =
-    range === "6H" ? { points: 18, stepMin: 20 } : range === "7D" ? { points: 28, stepMin: 6 * 60 } : range === "14D" ? { points: 28, stepMin: 12 * 60 } : { points: 24, stepMin: 60 };
+  const config = trendRangeConfig(range);
   const stepMs = config.stepMin * 60 * 1000;
-  const rounded = Math.floor(ms / (5 * 60 * 1000)) * (5 * 60 * 1000);
+  const rounded = Math.floor(now.getTime() / (5 * 60 * 1000)) * (5 * 60 * 1000);
   const end = new Date(rounded);
   const timestamps = [];
   for (let i = 0; i < config.points; i++) {
     timestamps.push(new Date(end.getTime() - stepMs * (config.points - 1 - i)));
   }
-  const seed = (equipmentId || "").length * (range.length + 1);
-  const damper = timestamps.map((_, i) => 40 + (i % 35) + (seed % 20));
-  const flow = timestamps.map((_, i) => 200 + (i % 250) + ((seed * 2) % 50));
-  const dat = timestamps.map((_, i) => 55 + (i % 12) + ((seed * 3) % 5));
-  return { timestamps, damper, flow, dat };
+  const { series, events, damper, flow, dat } = buildTrendSeriesFromTimestamps(
+    catalog,
+    timestamps,
+    equipmentId,
+    range,
+    false
+  );
+  return { timestamps, series, events, damper, flow, dat };
+}
+
+/**
+ * Historical samples only after `recordingStartedAt`, within the selected range window ending at `nowMs`.
+ * Timestamps run from max(recordingStartedAt, now - span) through now — never before the trend was started.
+ */
+function buildTrendHistoryPayloadFromRecording(siteDisplayName, equipmentId, range, recordingStartedAt, nowMs, pointCount) {
+  const list = getTrendEquipmentListMock(siteDisplayName);
+  if (!list.length) {
+    return { timestamps: [], series: [], events: [], damper: [], flow: [], dat: [] };
+  }
+  const eq = list.find((e) => e.id === equipmentId) || list[0];
+  const catalog = getTrendPointCatalogMock(equipmentId, eq);
+  const config = trendRangeConfig(range);
+  const maxPoints = config.points;
+  const span = trendRangeSpanMs(range);
+  const windowStart = Math.max(recordingStartedAt, nowMs - span);
+  const windowEnd = nowMs;
+  const n = Math.min(maxPoints, Math.max(2, pointCount));
+  const timestamps = buildEvenlySpacedTimestamps(windowStart, windowEnd, n);
+  const { series, events, damper, flow, dat } = buildTrendSeriesFromTimestamps(
+    catalog,
+    timestamps,
+    equipmentId,
+    range,
+    true
+  );
+  return { timestamps, series, events, damper, flow, dat };
+}
+
+/**
+ * Returns { timestamps, series, events, collecting?, historyLoggingActive? }.
+ * When `options.recordingStartedAt` is set, historical samples only exist after logging has run (mock warmup + ramp),
+ * and timestamps never precede the moment the trend was started.
+ * @param {{ recordingStartedAt?: number }} [options]
+ */
+export function getTrendDataMock(siteDisplayName, equipmentId, range, options = {}) {
+  const full = buildTrendHistoryPayload(siteDisplayName, equipmentId, range);
+  const { recordingStartedAt } = options;
+  const nowMs = Date.now();
+  const config = trendRangeConfig(range);
+  const maxPoints = config.points;
+
+  if (recordingStartedAt == null) {
+    return { ...full, collecting: false, historyLoggingActive: false };
+  }
+
+  const elapsed = nowMs - recordingStartedAt;
+
+  if (elapsed < TREND_WARMUP_MS) {
+    return {
+      timestamps: [],
+      series: [],
+      events: [],
+      damper: [],
+      flow: [],
+      dat: [],
+      collecting: true,
+      historyLoggingActive: true,
+    };
+  }
+
+  if (elapsed < TREND_HISTORY_READY_MS) {
+    const t = (elapsed - TREND_WARMUP_MS) / (TREND_HISTORY_READY_MS - TREND_WARMUP_MS);
+    const keep = Math.max(3, Math.min(maxPoints, Math.floor(3 + t * (maxPoints - 3))));
+    return {
+      ...buildTrendHistoryPayloadFromRecording(siteDisplayName, equipmentId, range, recordingStartedAt, nowMs, keep),
+      collecting: true,
+      historyLoggingActive: true,
+    };
+  }
+
+  return {
+    ...buildTrendHistoryPayloadFromRecording(siteDisplayName, equipmentId, range, recordingStartedAt, nowMs, maxPoints),
+    collecting: false,
+    historyLoggingActive: true,
+  };
 }
 

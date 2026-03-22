@@ -88,13 +88,13 @@ export default function UsersPage() {
           </div>
 
           <div className="d-flex align-items-center gap-2">
-            <span className="badge bg-dark border border-light border-opacity-25 text-white">
+            <span className="badge bg-primary border border-light border-opacity-25 text-white">
               Total: {counts.total}
             </span>
-            <span className="badge bg-dark border border-light border-opacity-25 text-white">
+            <span className="badge bg-primary border border-light border-opacity-25 text-white">
               Active: {counts.active}
             </span>
-            <span className="badge bg-dark border border-light border-opacity-25 text-white">
+            <span className="badge bg-primary border border-light border-opacity-25 text-white">
               Engineers: {counts.engineers}
             </span>
           </div>
@@ -189,7 +189,7 @@ export default function UsersPage() {
                           value={search}
                           onChange={(e) => setSearch(e.target.value)}
                           placeholder="Search name, username, email, site, ID…"
-                          className="bg-dark text-white border border-light border-opacity-10"
+                          className="bg-primary text-white border border-light border-opacity-10"
                         />
                       </Col>
 
@@ -200,7 +200,7 @@ export default function UsersPage() {
                         <Form.Select
                           value={role}
                           onChange={(e) => setRole(e.target.value)}
-                          className="bg-dark text-white border border-light border-opacity-10"
+                          className="bg-primary text-white border border-light border-opacity-10"
                         >
                           <option>All</option>
                           <option>Admin</option>
@@ -217,7 +217,7 @@ export default function UsersPage() {
                         <Form.Select
                           value={status}
                           onChange={(e) => setStatus(e.target.value)}
-                          className="bg-dark text-white border border-light border-opacity-10"
+                          className="bg-primary text-white border border-light border-opacity-10"
                         >
                           <option>All</option>
                           <option>Active</option>

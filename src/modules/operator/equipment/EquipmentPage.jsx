@@ -2,10 +2,10 @@ import React, { useCallback, useMemo, useState, useEffect, useRef } from "react"
 import { useSite } from "../../../app/providers/SiteProvider";
 import { useActiveDeployment } from "../../../hooks/useEngineeringDraft";
 import { activeDeploymentToEquipmentTree } from "../../../lib/activeDeploymentUtils";
-import { Container, Row, Col, Card, Button, ButtonGroup, Form, Table, Modal, Toast } from "@themesberg/react-bootstrap";
+import { Container, Row, Col, Card, Button, Form, Table, Modal, Toast } from "@themesberg/react-bootstrap";
 import { useHistory } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faChevronDown, faChevronRight, faBuilding, faLayerGroup, faSnowflake, faFolder } from "@fortawesome/free-solid-svg-icons";
+import { faChevronDown, faChevronRight, faLayerGroup, faSnowflake, faFolder, faFilter, faSearch } from "@fortawesome/free-solid-svg-icons";
 import LegionHeroHeader from "../../../components/legion/LegionHeroHeader";
 import StatusDotLabel from "../../../components/legion/StatusDotLabel";
 import { operatorRepository } from "../../../lib/data";
@@ -467,7 +467,7 @@ function WorkspacePanel({
 
   return (
     <div className="workspace-panel">
-      {/* Header + Controls */}
+      {/* Header row */}
       <div className="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
         <div className="d-flex align-items-center gap-2">
           <span className="text-white fw-semibold">{workspace.name}</span>
@@ -477,59 +477,102 @@ function WorkspacePanel({
             </Button>
           )}
         </div>
-        <div className="d-flex align-items-center gap-1 flex-wrap">
-          <Button size="sm" variant="dark" className="border border-light border-opacity-10 text-white-50" onClick={clearTable}>
-            Clear Table
-          </Button>
-          <Button size="sm" variant="dark" className="border border-light border-opacity-10 text-white-50" onClick={removeSelected} disabled={selectedCount === 0}>
-            Remove Selected
-          </Button>
-          <Button size="sm" variant="dark" className="border border-light border-opacity-10 text-white-50">
-            Refresh
-          </Button>
-          <Button size="sm" variant="dark" className="border border-light border-opacity-10 text-white-50" onClick={clearSearch}>
-            Clear Search
-          </Button>
-        </div>
-      </div>
-      <div className="text-white-50 small mb-2">{rows.length} points</div>
-
-      {/* Search mode toggle */}
-      <div className="d-flex align-items-center gap-2 mb-2">
-        <ButtonGroup size="sm">
-          <Button
-            variant={workspace.searchMode === "filter" ? "success" : "dark"}
-            className={workspace.searchMode !== "filter" ? "border border-light border-opacity-10 text-white-50" : ""}
-            onClick={() => setWorkspace((p) => ({ ...p, searchMode: "filter" }))}
-          >
-            Filter (Workspace)
-          </Button>
-          <Button
-            variant={workspace.searchMode === "global" ? "success" : "dark"}
-            className={workspace.searchMode !== "global" ? "border border-light border-opacity-10 text-white-50" : ""}
-            onClick={() => setWorkspace((p) => ({ ...p, searchMode: "global" }))}
-          >
-            Global Search (Scoped)
-          </Button>
-        </ButtonGroup>
       </div>
 
-      {/* Filter mode: simple search input */}
-      {workspace.searchMode === "filter" && (
-        <div className="mb-3">
-          <Form.Control
-            size="sm"
-            className="bg-dark bg-opacity-25 border border-light border-opacity-10 text-white"
-            placeholder="Filter by equipment, point, value, status..."
-            value={workspace.filterText ?? ""}
-            onChange={(e) => {
-              const value = e.target.value;
-              setWorkspace((p) => ({ ...p, filterText: value }));
-            }}
-            style={{ minWidth: 260 }}
-          />
+      <div className="workspace-toolbar workspace-toolbar--structured mb-3">
+        <div className="workspace-toolbar__row workspace-toolbar__row--modes">
+          <div
+            className="workspace-mode-segmented"
+            role="tablist"
+            aria-label="Workspace search mode"
+          >
+            <button
+              type="button"
+              role="tab"
+              aria-selected={workspace.searchMode === "filter"}
+              className={`workspace-mode-segmented__opt ${workspace.searchMode === "filter" ? "workspace-mode-segmented__opt--active" : ""}`}
+              onClick={() => setWorkspace((p) => ({ ...p, searchMode: "filter" }))}
+            >
+              <FontAwesomeIcon icon={faFilter} className="workspace-mode-segmented__icon" aria-hidden />
+              <span className="workspace-mode-segmented__text">
+                <span className="workspace-mode-segmented__title">Workspace filter</span>
+                <span className="workspace-mode-segmented__hint">Narrow rows in this table</span>
+              </span>
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={workspace.searchMode === "global"}
+              className={`workspace-mode-segmented__opt ${workspace.searchMode === "global" ? "workspace-mode-segmented__opt--active" : ""}`}
+              onClick={() => setWorkspace((p) => ({ ...p, searchMode: "global" }))}
+            >
+              <FontAwesomeIcon icon={faSearch} className="workspace-mode-segmented__icon" aria-hidden />
+              <span className="workspace-mode-segmented__text">
+                <span className="workspace-mode-segmented__title">Scoped search</span>
+                <span className="workspace-mode-segmented__hint">Find points across equipment in scope</span>
+              </span>
+            </button>
+          </div>
+          <div className="workspace-toolbar__meta">
+            <span className="workspace-toolbar__count">{rows.length}</span>
+            <span className="workspace-toolbar__count-label">points in workspace</span>
+          </div>
         </div>
-      )}
+        <div className="workspace-toolbar__row workspace-toolbar__row--actions">
+          <div className="workspace-toolbar__search-wrap">
+            {workspace.searchMode === "filter" ? (
+              <Form.Control
+                size="sm"
+                className="workspace-toolbar__input bg-primary border border-light border-opacity-10 text-white"
+                placeholder="Filter by equipment, point, value, status..."
+                value={workspace.filterText ?? ""}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setWorkspace((p) => ({ ...p, filterText: value }));
+                }}
+              />
+            ) : (
+              <Form.Control
+                size="sm"
+                className="workspace-toolbar__input bg-primary border border-light border-opacity-10 text-white"
+                placeholder="Query within scope (e.g. DA-T, Flow, Damper) — press Enter or Run"
+                value={workspace.globalQuery}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setWorkspace((p) => ({ ...p, globalQuery: value }));
+                }}
+                onKeyDown={(e) => e.key === "Enter" && runGlobalSearch()}
+                disabled={scopeEquipment.length === 0}
+              />
+            )}
+            {workspace.searchMode === "global" && (
+              <Button
+                size="sm"
+                variant="dark"
+                className="workspace-action-btn workspace-action-btn--brand workspace-toolbar__run"
+                disabled={workspace.scopeEquipment.length === 0}
+                onClick={runGlobalSearch}
+              >
+                Run
+              </Button>
+            )}
+          </div>
+          <div className="workspace-toolbar__right workspace-toolbar__right--compact">
+            <Button size="sm" variant="dark" className="workspace-table-action-btn" onClick={clearTable}>
+              Clear table
+            </Button>
+            <Button size="sm" variant="dark" className="workspace-table-action-btn" onClick={removeSelected} disabled={selectedCount === 0}>
+              Remove selected
+            </Button>
+            <Button size="sm" variant="dark" className="workspace-table-action-btn">
+              Refresh
+            </Button>
+            <Button size="sm" variant="dark" className="workspace-table-action-btn" onClick={clearSearch}>
+              Clear search
+            </Button>
+          </div>
+        </div>
+      </div>
 
       {/* Global mode: Scope tray + Query input */}
       {workspace.searchMode === "global" && (
@@ -567,25 +610,9 @@ function WorkspacePanel({
             )}
           </div>
           <div className="position-relative">
-            <Form.Control
-              size="sm"
-              className="bg-dark bg-opacity-25 border border-light border-opacity-10 text-white"
-              placeholder="Query within scope (example: *DA-T*, *Flow*, *Damper*)"
-              value={workspace.globalQuery}
-              onChange={(e) => {
-                const value = e.target.value;
-                setWorkspace((p) => ({ ...p, globalQuery: value }));
-              }}
-              onKeyDown={(e) => e.key === "Enter" && runGlobalSearch()}
-              disabled={scopeEquipment.length === 0}
-              style={{ minWidth: 280 }}
-            />
             {scopeEquipment.length === 0 && (
               <div className="small text-white-50 mt-1">Add equipment to scope to run search</div>
             )}
-            <Button size="sm" variant="success" className="ms-2" disabled={workspace.scopeEquipment.length === 0} onClick={runGlobalSearch}>
-              Run
-            </Button>
 
             {/* Global search results dropdown */}
             {showGlobalResults && (
@@ -656,7 +683,11 @@ function WorkspacePanel({
         tabIndex={0}
         role="grid"
         aria-label="Workspace points table"
-        className={`border border-light border-opacity-10 rounded overflow-hidden legion-workspace-dropzone ${dropActive[zone] ? "legion-workspace-dropzone--active" : ""}`}
+        className={[
+          "legion-workspace-dropzone border border-light border-opacity-10 rounded",
+          dropActive[zone] ? "legion-workspace-dropzone--active" : "",
+          rows.length === 0 ? "legion-workspace-dropzone--empty" : "legion-workspace-dropzone--has-rows",
+        ].filter(Boolean).join(" ")}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDropOnTable}
@@ -664,61 +695,74 @@ function WorkspacePanel({
         onClick={(e) => e.currentTarget.focus()}
         style={{ outline: "none" }}
       >
-        <Table responsive hover className="bg-primary border-0 legion-workspace-table">
-          <thead className="small">
-            <tr>
-              <th style={{ width: 40 }} />
-              <th style={{ width: 200 }} className="text-white">Equipment</th>
-              <th style={{ width: 180 }} className="text-white">Point</th>
-              <th className="text-white">Value</th>
-              <th style={{ width: 100 }} className="text-white">Status</th>
-              <th style={{ width: 100 }} className="text-end text-white">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredRows.length === 0 ? (
+        <div className="legion-workspace-table-scroll">
+          <Table hover className="bg-primary border-0 legion-workspace-table mb-0">
+            <thead>
               <tr>
-                <td colSpan={6} className="text-center text-white-50 py-4">
-                  {rows.length === 0
-                    ? `${workspace.name} is empty — drag equipment or floors here to add points.`
-                    : "No points match your search."}
-                </td>
+                <th className="legion-workspace-th legion-workspace-th--check" scope="col" />
+                <th className="legion-workspace-th" scope="col">Equipment</th>
+                <th className="legion-workspace-th" scope="col">Point</th>
+                <th className="legion-workspace-th" scope="col">Value</th>
+                <th className="legion-workspace-th legion-workspace-th--narrow" scope="col">Status</th>
+                <th className="legion-workspace-th legion-workspace-th--actions text-end" scope="col">Actions</th>
               </tr>
-            ) : (
-              filteredRows.map((row) => (
-                <tr
-                  key={row.id}
-                  className={`legion-workspace-row ${selectedRowIds.includes(row.id) ? "table-active" : ""}`}
-                  onClick={(e) => handleRowClick(e, row)}
-                >
-                  <td>
-                    <Form.Check
-                      type="checkbox"
-                      checked={workspace.selectedRowIds.includes(row.id)}
-                      onChange={() => {}}
-                      onClick={(e) => e.stopPropagation()}
-                    />
-                  </td>
-                  <td className="text-white fw-semibold">{row.equipmentName}</td>
-                  <td className="legion-workspace-point text-white">{row.pointId}</td>
-                  <td className="text-white fw-semibold">{row.value}</td>
-                  <td>
-                    <StatusDotLabel
-                      value={row.status || "Normal"}
-                      kind="status"
-                      dotOnly={["ok", "normal", "online"].includes((row.status || "").toLowerCase())}
-                    />
-                  </td>
-                  <td className="text-end">
-                    <Button size="sm" variant="outline-light" className="border-opacity-10">
-                      Command
-                    </Button>
+            </thead>
+            <tbody>
+              {filteredRows.length === 0 ? (
+                <tr>
+                  <td
+                    colSpan={6}
+                    className={
+                      rows.length === 0
+                        ? "legion-workspace-empty legion-workspace-empty--drop-hint"
+                        : "legion-workspace-empty"
+                    }
+                  >
+                    {rows.length === 0 ? (
+                      <p className="legion-workspace-empty-hint text-white-50 mb-0">
+                        Drag equipment from the tree into this table to add points. You can drop one unit or an entire floor.
+                      </p>
+                    ) : (
+                      <span className="legion-workspace-empty-filter-hint text-white-50">No matches</span>
+                    )}
                   </td>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </Table>
+              ) : (
+                filteredRows.map((row) => (
+                  <tr
+                    key={row.id}
+                    className={`legion-workspace-row ${selectedRowIds.includes(row.id) ? "table-active" : ""}`}
+                    onClick={(e) => handleRowClick(e, row)}
+                  >
+                    <td className="legion-workspace-td legion-workspace-td--check">
+                      <Form.Check
+                        type="checkbox"
+                        checked={workspace.selectedRowIds.includes(row.id)}
+                        onChange={() => {}}
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                    </td>
+                    <td className="legion-workspace-td text-white fw-semibold">{row.equipmentName}</td>
+                    <td className="legion-workspace-td legion-workspace-point text-white">{row.pointId}</td>
+                    <td className="legion-workspace-td text-white">{row.value}</td>
+                    <td className="legion-workspace-td legion-workspace-td--status">
+                      <StatusDotLabel
+                        value={row.status || "Normal"}
+                        kind="status"
+                        dotOnly={["ok", "normal", "online"].includes((row.status || "").toLowerCase())}
+                      />
+                    </td>
+                    <td className="legion-workspace-td text-end">
+                      <Button size="sm" variant="outline-light" className="legion-workspace-cmd-btn border-opacity-10">
+                        Command
+                      </Button>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </Table>
+        </div>
       </div>
 
       {/* Add to Workspace Confirmation Modal */}
@@ -792,7 +836,7 @@ function WorkspacePanel({
               <Form.Group>
                 <Form.Label className="text-white small">Command</Form.Label>
                 <Form.Control
-                  className="bg-dark border border-light border-opacity-10 text-white"
+                  className="bg-primary border border-light border-opacity-10 text-white"
                   placeholder="Enter command..."
                   value={commandInput}
                   onChange={(e) => setCommandInput(e.target.value)}
@@ -924,16 +968,11 @@ export default function EquipmentPage() {
       </div>
 
       <div className="legion-equipment-page px-3 px-md-4 pb-4 mt-3">
-        <div className="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
-          <h5 className="text-white fw-bold mb-0">Equipment</h5>
-          <Button size="sm" variant="success">Filters</Button>
-        </div>
-
-        <Row className="g-3">
+        <Row className="g-3 align-items-start">
           <Col xs={12} lg={4} xl={3}>
-            <Card className="bg-primary border border-light border-opacity-10 shadow-sm h-100">
+            <Card className="legion-equipment-sidebar-card bg-primary border border-light border-opacity-10 shadow-sm">
               <Card.Body className="p-0">
-                <div className="px-3 pt-3 pb-2 d-flex align-items-center justify-content-between">
+                <div className="px-3 pt-2 pb-2 d-flex align-items-center justify-content-between">
                   <div className="text-white fw-bold">Equipment</div>
                   <Button size="sm" variant="dark" className="border border-light border-opacity-10 text-white-50 py-0" style={{ height: 24 }}>
                     Collapse
@@ -943,13 +982,13 @@ export default function EquipmentPage() {
                   <Form.Control
                     size="sm"
                     placeholder="Search equipment..."
-                    className="bg-dark bg-opacity-25 border border-light border-opacity-10 text-white"
+                    className="bg-primary border border-light border-opacity-10 text-white"
                     value={treeSearch}
                     onChange={(e) => setTreeSearch(e.target.value)}
                   />
                 </div>
                 <div className="border-top border-light border-opacity-10" style={{ height: 1 }} />
-                <div className="legion-equipment-tree site-builder-tree operator-equipment-tree pb-2">
+                <div className="legion-equipment-tree site-builder-tree operator-equipment-tree legion-equipment-tree--scroll pb-2">
                   {filteredTree.map((n) => (
                     <TreeNode key={n.id} node={n} level={0} />
                   ))}
@@ -969,17 +1008,22 @@ export default function EquipmentPage() {
                       Drag equipment from the tree to add points to a workspace or scope. Each workspace has its own search and selection.
                     </div>
                   </div>
-                  <Button
-                    size="sm"
-                    variant="dark"
-                    className="border border-light border-opacity-10 text-white-50"
-                    onClick={() => {
-                      setMainWorkspace((p) => ({ ...p, rows: [], selectedRowIds: [] }));
-                      setSecondaryWorkspace((p) => ({ ...p, rows: [], selectedRowIds: [] }));
-                    }}
-                  >
-                    Clear All
-                  </Button>
+                  <div className="d-flex align-items-center gap-2">
+                    <Button size="sm" variant="dark" className="workspace-action-btn workspace-action-btn--brand">
+                      Filters
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="dark"
+                      className="border border-light border-opacity-10 text-white-50"
+                      onClick={() => {
+                        setMainWorkspace((p) => ({ ...p, rows: [], selectedRowIds: [] }));
+                        setSecondaryWorkspace((p) => ({ ...p, rows: [], selectedRowIds: [] }));
+                      }}
+                    >
+                      Clear All
+                    </Button>
+                  </div>
                 </div>
 
                 <WorkspacePanel

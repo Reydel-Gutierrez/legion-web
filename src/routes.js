@@ -22,7 +22,10 @@ export const Routes = {
 
   // Engineering mode routes
   EngineeringSiteBuilder: { path: "/legion/engineering/site-builder" },
-  EngineeringNetworkDiscovery: { path: "/legion/engineering/network-discovery" },
+  /** Parent path; redirects to discovery. Subpages use the dropdown in EngineeringNetworkSection. */
+  EngineeringNetwork: { path: "/legion/engineering/network" },
+  EngineeringNetworkDiscovery: { path: "/legion/engineering/network/discovery" },
+  EngineeringNetworkConfiguration: { path: "/legion/engineering/network/configuration" },
   EngineeringPointMapping: { path: "/legion/engineering/point-mapping" },
   EngineeringGraphicsManager: { path: "/legion/engineering/graphics-manager" },
   EngineeringTemplateLibrary: { path: "/legion/engineering/templates" },

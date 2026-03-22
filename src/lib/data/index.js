@@ -9,3 +9,5 @@ import * as accessRepository from "./repositories/accessRepository";
 
 export { USE_MOCK_DATA } from "./config";
 export { operatorRepository, engineeringRepository, deploymentRepository, accessRepository };
+/** Insights energy math + k-factor helpers (shared across app). */
+export * from "../insights/energyInsights";

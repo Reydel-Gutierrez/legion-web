@@ -2,8 +2,8 @@ import React from "react";
 import { Card } from "@themesberg/react-bootstrap";
 
 /**
- * Empty state when no site exists.
- * Centered onboarding panel with Create Site CTA.
+ * Empty state when no site exists (e.g. after choosing New Site).
+ * Centered panel with Create Site CTA.
  */
 export default function EmptySiteState({ onCreateSite, onCreateClick }) {
   const handleCreate = onCreateSite || onCreateClick;
@@ -19,10 +19,10 @@ export default function EmptySiteState({ onCreateSite, onCreateClick }) {
   return (
     <Card className="bg-primary border border-light border-opacity-10 shadow-sm" style={{ position: "relative", zIndex: 10 }}>
       <Card.Body className="text-center py-5 px-4">
-        <h5 className="text-white fw-bold mb-3">Create Your First Site</h5>
+        <h5 className="text-white fw-bold mb-3">Create Your New Site</h5>
         <p className="text-white-50 mb-4" style={{ maxWidth: 400, margin: "0 auto 1rem" }}>
           The Site Builder defines the physical structure of your project.
-          Start by creating the site and its first building.
+          Start by creating the site and its new building.
         </p>
         <button
           type="button"

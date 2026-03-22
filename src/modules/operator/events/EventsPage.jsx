@@ -96,13 +96,13 @@ export default function EventsPage() {
           </div>
 
           <div className="d-flex align-items-center gap-2">
-            <span className="badge bg-dark border border-light border-opacity-25 text-white">
+            <span className="badge bg-primary border border-light border-opacity-25 text-white">
               Total: {counts.total}
             </span>
-            <span className="badge bg-dark border border-light border-opacity-25 text-white">
+            <span className="badge bg-primary border border-light border-opacity-25 text-white">
               New: {counts.newCount}
             </span>
-            <span className="badge bg-dark border border-light border-opacity-25 text-white">
+            <span className="badge bg-primary border border-light border-opacity-25 text-white">
               Comm: {counts.comm}
             </span>
           </div>
@@ -130,7 +130,7 @@ export default function EventsPage() {
                       value={search}
                       onChange={(e) => setSearch(e.target.value)}
                       placeholder="Search equipment, point, message, ID, user…"
-                      className="form-control bg-dark text-white border border-light border-opacity-10"
+                      className="form-control bg-primary text-white border border-light border-opacity-10"
                       aria-label="Search events"
                       autoComplete="off"
                     />
@@ -143,7 +143,7 @@ export default function EventsPage() {
                     <Form.Select
                       value={type}
                       onChange={(e) => setType(e.target.value)}
-                      className="bg-dark text-white border border-light border-opacity-10"
+                      className="bg-primary text-white border border-light border-opacity-10"
                     >
                       <option>All</option>
                       <option>Command</option>
@@ -162,7 +162,7 @@ export default function EventsPage() {
                     <Form.Select
                       value={state}
                       onChange={(e) => setState(e.target.value)}
-                      className="bg-dark text-white border border-light border-opacity-10"
+                      className="bg-primary text-white border border-light border-opacity-10"
                     >
                       <option value="All">All</option>
                       <option value="New">New</option>
@@ -177,7 +177,7 @@ export default function EventsPage() {
                     <Form.Select
                       value={range}
                       onChange={(e) => setRange(e.target.value)}
-                      className="bg-dark text-white border border-light border-opacity-10"
+                      className="bg-primary text-white border border-light border-opacity-10"
                     >
                       <option>24H</option>
                       <option>7D</option>

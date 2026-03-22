@@ -76,9 +76,9 @@ export default function SchedulesPage() {
         <div className="d-flex align-items-start justify-content-between flex-wrap gap-2 mb-2">
           <div><h5 className="text-white fw-bold mb-1">Schedules</h5><div className="text-white small">Create and manage weekly schedules for equipment commands (occupancy, enable/disable, setpoints, etc.).</div></div>
           <div className="d-flex align-items-center gap-2">
-            <span className="badge bg-dark border border-light border-opacity-25 text-white">Total: {counts.total}</span>
-            <span className="badge bg-dark border border-light border-opacity-25 text-white">Enabled: {counts.enabled}</span>
-            <span className="badge bg-dark border border-light border-opacity-25 text-white">Disabled: {counts.disabled}</span>
+            <span className="badge bg-primary border border-light border-opacity-25 text-white">Total: {counts.total}</span>
+            <span className="badge bg-primary border border-light border-opacity-25 text-white">Enabled: {counts.enabled}</span>
+            <span className="badge bg-primary border border-light border-opacity-25 text-white">Disabled: {counts.disabled}</span>
             <Button size="sm" variant="outline-light" className="border-opacity-10" onClick={openCreate}>+ New Schedule</Button>
           </div>
         </div>
@@ -92,17 +92,17 @@ export default function SchedulesPage() {
                 <Row className="g-2 align-items-end mb-3">
                   <Col xs={12} md={6} lg={6}>
                     <Form.Label className="text-white fw-semibold small mb-1">Search</Form.Label>
-                    <Form.Control value={search} onChange={(e) => { const v = e.target.value; setSearch(v); }} placeholder="Search schedule, equipment, point, action, ID…" className="bg-dark text-white border border-light border-opacity-10" />
+                    <Form.Control value={search} onChange={(e) => { const v = e.target.value; setSearch(v); }} placeholder="Search schedule, equipment, point, action, ID…" className="bg-primary text-white border border-light border-opacity-10" />
                   </Col>
                   <Col xs={6} md={3} lg={3}>
                     <Form.Label className="text-white fw-semibold small mb-1">Scope</Form.Label>
-                    <Form.Select value={scope} onChange={(e) => { const v = e.target.value; setScope(v); }} className="bg-dark text-white border border-light border-opacity-10">
+                    <Form.Select value={scope} onChange={(e) => { const v = e.target.value; setScope(v); }} className="bg-primary text-white border border-light border-opacity-10">
                       <option>All</option><option>AHU</option><option>VAV</option><option>FCU</option><option>OAU</option><option>Lighting</option><option>Other</option>
                     </Form.Select>
                   </Col>
                   <Col xs={6} md={3} lg={2}>
                     <Form.Label className="text-white fw-semibold small mb-1">Status</Form.Label>
-                    <Form.Select value={status} onChange={(e) => { const v = e.target.value; setStatus(v); }} className="bg-dark text-white border border-light border-opacity-10">
+                    <Form.Select value={status} onChange={(e) => { const v = e.target.value; setStatus(v); }} className="bg-primary text-white border border-light border-opacity-10">
                       <option>All</option><option>Enabled</option><option>Disabled</option>
                     </Form.Select>
                   </Col>
@@ -188,36 +188,36 @@ export default function SchedulesPage() {
           <Row className="g-2">
             <Col xs={12}>
               <Form.Label className="text-white fw-semibold small mb-1">Name</Form.Label>
-              <Form.Control value={editor.name} onChange={(e) => { const v = e.target.value; setEditor((p) => ({ ...p, name: v })); }} placeholder="e.g. AHU-1 Weekday Occupancy" className="bg-dark text-white border border-light border-opacity-10" />
+              <Form.Control value={editor.name} onChange={(e) => { const v = e.target.value; setEditor((p) => ({ ...p, name: v })); }} placeholder="e.g. AHU-1 Weekday Occupancy" className="bg-primary text-white border border-light border-opacity-10" />
             </Col>
 
             <Col xs={12} md={6}>
               <Form.Label className="text-white fw-semibold small mb-1">Equipment</Form.Label>
-              <Form.Select value={editor.equipment} onChange={(e) => { const v = e.target.value; setEditor((p) => ({ ...p, equipment: v })); }} className="bg-dark text-white border border-light border-opacity-10">
+              <Form.Select value={editor.equipment} onChange={(e) => { const v = e.target.value; setEditor((p) => ({ ...p, equipment: v })); }} className="bg-primary text-white border border-light border-opacity-10">
                 <option>AHU-1</option><option>AHU-2</option><option>VAV-2</option><option>VAV-7</option><option>FCU-3</option><option>OAU-1</option>
               </Form.Select>
             </Col>
 
             <Col xs={12} md={6}>
               <Form.Label className="text-white fw-semibold small mb-1">Point</Form.Label>
-              <Form.Select value={editor.point} onChange={(e) => { const v = e.target.value; setEditor((p) => ({ ...p, point: v })); }} className="bg-dark text-white border border-light border-opacity-10">
+              <Form.Select value={editor.point} onChange={(e) => { const v = e.target.value; setEditor((p) => ({ ...p, point: v })); }} className="bg-primary text-white border border-light border-opacity-10">
                 <option>Occ Mode</option><option>Enable</option><option>Supply Fan Cmd</option><option>Space Temp SP</option><option>Cooling SP</option><option>Heating SP</option>
               </Form.Select>
             </Col>
 
             <Col xs={12}>
               <Form.Label className="text-white fw-semibold small mb-1">Action</Form.Label>
-              <Form.Control value={editor.action} onChange={(e) => { const v = e.target.value; setEditor((p) => ({ ...p, action: v })); }} placeholder='e.g. "Occupied" or "Setback 78°F" or "ON"' className="bg-dark text-white border border-light border-opacity-10" />
+              <Form.Control value={editor.action} onChange={(e) => { const v = e.target.value; setEditor((p) => ({ ...p, action: v })); }} placeholder='e.g. "Occupied" or "Setback 78°F" or "ON"' className="bg-primary text-white border border-light border-opacity-10" />
             </Col>
 
             <Col xs={6}>
               <Form.Label className="text-white fw-semibold small mb-1">Start</Form.Label>
-              <Form.Control type="time" value={editor.startTime} onChange={(e) => { const v = e.target.value; setEditor((p) => ({ ...p, startTime: v })); }} className="bg-dark text-white border border-light border-opacity-10" />
+              <Form.Control type="time" value={editor.startTime} onChange={(e) => { const v = e.target.value; setEditor((p) => ({ ...p, startTime: v })); }} className="bg-primary text-white border border-light border-opacity-10" />
             </Col>
 
             <Col xs={6}>
               <Form.Label className="text-white fw-semibold small mb-1">End</Form.Label>
-              <Form.Control type="time" value={editor.endTime} onChange={(e) => { const v = e.target.value; setEditor((p) => ({ ...p, endTime: v })); }} className="bg-dark text-white border border-light border-opacity-10" />
+              <Form.Control type="time" value={editor.endTime} onChange={(e) => { const v = e.target.value; setEditor((p) => ({ ...p, endTime: v })); }} className="bg-primary text-white border border-light border-opacity-10" />
             </Col>
 
             <Col xs={12}>
@@ -238,7 +238,7 @@ export default function SchedulesPage() {
 
             <Col xs={12}>
               <Form.Label className="text-white fw-semibold small mb-1">Notes (optional)</Form.Label>
-              <Form.Control as="textarea" rows={2} value={editor.notes} onChange={(e) => { const v = e.target.value; setEditor((p) => ({ ...p, notes: v })); }} placeholder="Internal notes for your team…" className="bg-dark text-white border border-light border-opacity-10" />
+              <Form.Control as="textarea" rows={2} value={editor.notes} onChange={(e) => { const v = e.target.value; setEditor((p) => ({ ...p, notes: v })); }} placeholder="Internal notes for your team…" className="bg-primary text-white border border-light border-opacity-10" />
             </Col>
           </Row>
         </Modal.Body>

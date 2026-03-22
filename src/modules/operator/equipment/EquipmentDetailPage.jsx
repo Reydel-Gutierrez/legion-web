@@ -124,17 +124,22 @@ export default function EquipmentDetailPage() {
                         className="d-flex justify-content-center"
                         style={{ overflowX: "auto", overflowY: "visible", width: "100%" }}
                       >
-                        <div style={{ width: 800, flexShrink: 0 }}>
+                        {/* Smaller viewport rectangle on operator UI.
+                            The preview will zoom to fill this viewport (graphic itself stays readable). */}
+                        <div style={{ width: 700, flexShrink: 0 }}>
                           {graphic?.objects?.length > 0 ? (
                             <DeployedGraphicPreview
                               graphic={graphic}
                               points={points}
                               onLinkClick={handleGraphicLinkClick}
+                              maxWidth={700}
+                              maxHeight={360}
+                              zoomFactor={1.75}
                             />
                           ) : (
                             <div
                               className="d-flex align-items-center justify-content-center bg-transparent"
-                              style={{ width: 800, height: 500 }}
+                              style={{ width: 700, height: 360 }}
                             >
                               <img src={VavGraphicImg} alt={displayName} className="w-40 mb-0" />
                             </div>

@@ -10,6 +10,10 @@ import React, { createContext, useContext, useReducer, useEffect, useCallback, u
 import { useSite } from "./SiteProvider";
 import draftReducer, { getInitialDraftState, DRAFT_ACTIONS } from "../../modules/engineering/draft/draftReducer";
 import { createSeedDraft } from "../../modules/engineering/draft/draftSeed";
+import {
+  createEmptyNetworkConfig,
+  normalizeDraftNetworkConfig,
+} from "../../modules/engineering/network/networkConfigModel";
 import { buildFullDeploymentSnapshot } from "../../modules/engineering/draft/deploymentSnapshot";
 import { SITE_IDS } from "../../lib/sites";
 import {
@@ -50,15 +54,20 @@ export function EngineeringDraftProvider({ children }) {
     isMountedRef.current = true;
     if (site === SITE_IDS.MIAMI_HQ) {
       const stored = loadDraftForSite(SITE_IDS.MIAMI_HQ);
+      const raw =
+        stored && (stored.site || (stored.equipment && stored.equipment.length > 0))
+          ? stored
+          : getInitialDraftState(SITE_IDS.MIAMI_HQ);
       dispatch({
         type: DRAFT_ACTIONS.RESET_DRAFT,
-        payload: stored && (stored.site || (stored.equipment && stored.equipment.length > 0)) ? stored : getInitialDraftState(SITE_IDS.MIAMI_HQ),
+        payload: normalizeDraftNetworkConfig(raw, site),
       });
     } else if (site === SITE_IDS.NEW_SITE || site === "New Building") {
       const stored = loadDraftForSite(SITE_IDS.NEW_SITE) || loadDraftForSite("New Building");
+      const raw = stored || getInitialDraftState(SITE_IDS.NEW_SITE);
       dispatch({
         type: DRAFT_ACTIONS.RESET_DRAFT,
-        payload: stored || getInitialDraftState(SITE_IDS.NEW_SITE),
+        payload: normalizeDraftNetworkConfig(raw, site),
       });
     } else {
       const stored = loadDraftForSite(site);
@@ -69,21 +78,23 @@ export function EngineeringDraftProvider({ children }) {
       if (currentDraftSiteName === site && draftHasContent) {
         return;
       }
+      const emptyPayload = {
+        site: null,
+        templates: { equipmentTemplates: [], graphicTemplates: [] },
+        equipment: [],
+        discoveredDevices: [],
+        discoveredObjects: {},
+        mappings: {},
+        graphics: {},
+        siteLayoutGraphics: {},
+        networkConfig: createEmptyNetworkConfig(),
+        validation: null,
+        deploymentHistory: [],
+        activeDeploymentSnapshot: null,
+      };
       dispatch({
         type: DRAFT_ACTIONS.RESET_DRAFT,
-        payload: stored || {
-          site: null,
-          templates: { equipmentTemplates: [], graphicTemplates: [] },
-          equipment: [],
-          discoveredDevices: [],
-          discoveredObjects: {},
-          mappings: {},
-          graphics: {},
-          siteLayoutGraphics: {},
-          validation: null,
-          deploymentHistory: [],
-          activeDeploymentSnapshot: null,
-        },
+        payload: normalizeDraftNetworkConfig(stored || emptyPayload, site),
       });
     }
     return () => {
