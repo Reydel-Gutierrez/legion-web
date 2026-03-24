@@ -16,7 +16,7 @@ export default function LegionHeroHeader() {
   const { validationSnapshot, hasBlockingErrors } = useValidation();
   const BrandLogo = currentMode === "engineering" ? LCCLogo : LCILogo;
 
-  const handleSaveDraft = () => console.log("Save Draft clicked");
+  const handleSaveWorkingVersion = () => console.log("Save working version clicked");
   const handleValidateConfiguration = () => {
     history.push(Routes.EngineeringValidationCenter.path);
   };
@@ -56,9 +56,9 @@ export default function LegionHeroHeader() {
             <button
               type="button"
               className="legion-hero-btn legion-hero-btn--secondary"
-              onClick={handleSaveDraft}
+              onClick={handleSaveWorkingVersion}
             >
-              Save Draft
+              Save
             </button>
             <button
               type="button"

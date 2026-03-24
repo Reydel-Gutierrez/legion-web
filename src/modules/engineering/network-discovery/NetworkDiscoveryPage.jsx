@@ -4,12 +4,12 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faNetworkWired } from "@fortawesome/free-solid-svg-icons";
 
 import { useSite } from "../../../app/providers/SiteProvider";
-import { useEngineeringDraft, selectNetworkConfig } from "../../../hooks/useEngineeringDraft";
+import { useWorkingVersion, selectNetworkConfig } from "../../../hooks/useWorkingVersion";
 import { hasEnabledDiscoveryPaths, getMockDiscoveryScanResult, flattenDeviceCount } from "../network/discoveryScan";
 import LegionTablePagination from "../../../components/legion/LegionTablePagination";
 import { useTablePagination } from "../../../hooks/useTablePagination";
 import { engineeringRepository } from "../../../lib/data";
-import { selectSiteTree } from "../../../hooks/useEngineeringDraft";
+import { selectSiteTree } from "../../../hooks/useWorkingVersion";
 import DiscoveryStatusBanner from "./components/DiscoveryStatusBanner";
 import DiscoveryToolbar from "./components/DiscoveryToolbar";
 import DiscoveryTable from "./components/DiscoveryTable";
@@ -100,15 +100,15 @@ function generateMockDiscoveredObjects(device) {
 // ---------------------------------------------------------------------------
 export default function NetworkDiscoveryPage() {
   const { site } = useSite();
-  const { draft, actions } = useEngineeringDraft();
-  const networkConfig = selectNetworkConfig(draft);
-  const siteTree = selectSiteTree(draft);
+  const { workingVersion, workingState, actions } = useWorkingVersion();
+  const networkConfig = selectNetworkConfig(workingVersion);
+  const siteTree = selectSiteTree(workingVersion);
   const siteStructure = useMemo(
     () => engineeringRepository.getEngineeringSiteStructureFromTree(siteTree),
     [siteTree]
   );
-  const equipmentList = draft.equipment ?? [];
-  const devices = draft.discoveredDevices ?? [];
+  const equipmentList = workingState.equipment ?? [];
+  const devices = workingState.discoveredDevices ?? [];
 
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedIds, setSelectedIds] = useState(new Set());
@@ -119,7 +119,7 @@ export default function NetworkDiscoveryPage() {
   const [lastScanLines, setLastScanLines] = useState([]);
   const [showAdvancedScan, setShowAdvancedScan] = useState(false);
   const [inspectorDevice, setInspectorDevice] = useState(null);
-  /** Per-device point discovery state: deviceId -> { pointsStatus, lastPointDiscoveryTime } — UI only; objects live in draft.discoveredObjects */
+  /** Per-device point discovery state: deviceId -> { pointsStatus, lastPointDiscoveryTime } — UI only; objects live in workingState.discoveredObjects */
   const [devicePointDiscoveryMeta, setDevicePointDiscoveryMeta] = useState({});
 
   const flatDevices = useMemo(() => flattenDiscoveryTree(devices), [devices]);
@@ -259,12 +259,12 @@ export default function NetworkDiscoveryPage() {
   }, [inspectorDevice, actions]);
 
   const isNewBuilding = engineeringRepository.isNewEngineeringBuildingFlow(site);
-  const hasNoSite = isNewBuilding && !draft?.site;
+  const hasNoSite = isNewBuilding && !workingState?.site;
   const inspectorPointDiscovery = inspectorDevice
     ? (() => {
         const meta = devicePointDiscoveryMeta[inspectorDevice.id] ?? null;
         const key = String(inspectorDevice.deviceInstance ?? inspectorDevice.id);
-        const discoveredObjects = (draft.discoveredObjects || {})[key] ?? [];
+        const discoveredObjects = (workingState.discoveredObjects || {})[key] ?? [];
         return meta
           ? { ...meta, discoveredObjects }
           : discoveredObjects.length > 0

@@ -5,7 +5,7 @@
 import { USE_MOCK_DATA } from "../config";
 import {
   getMockCurrentDeployment,
-  getMockPendingDraftChanges,
+  getMockPendingWorkingVersionChanges,
   getMockDeploymentHistory,
   getEmptyPendingChanges as getEmptyPendingChangesFromMock,
   hasPendingChanges as hasPendingChangesMock,
@@ -16,8 +16,8 @@ export function getCurrentDeployment() {
   throw new Error("Deployment API not implemented");
 }
 
-export function getPendingDraftChanges() {
-  if (USE_MOCK_DATA) return getMockPendingDraftChanges();
+export function getPendingWorkingVersionChanges() {
+  if (USE_MOCK_DATA) return getMockPendingWorkingVersionChanges();
   throw new Error("Deployment API not implemented");
 }
 

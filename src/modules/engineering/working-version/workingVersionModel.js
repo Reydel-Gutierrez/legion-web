@@ -1,13 +1,12 @@
 /**
- * Central Legion engineering draft model — domain shape only.
- * Engineering = author/configure draft; Operator = consume active deployed state.
- * Phase 1: lightweight, mock-data driven; no backend.
+ * Engineering working-version domain model (frontend-only).
+ * Engineering edits the working version; deploy activates a release for Operator Mode.
  */
 
 import { createEmptyNetworkConfig } from "../network/networkConfigModel";
 
-/** Initial empty draft state shape */
-export const EMPTY_DRAFT = {
+/** Initial empty working-version data payload (nested under workingVersion.data). */
+export const EMPTY_WORKING_DATA = {
   site: null,
   templates: {
     equipmentTemplates: [],
@@ -18,28 +17,26 @@ export const EMPTY_DRAFT = {
   discoveredObjects: {},
   mappings: {},
   graphics: {},
-  /** Site layout graphics: nodeId (site/building/floor id) -> graphic. Shown in Operator Site Layout. */
   siteLayoutGraphics: {},
-  /** BACnet/IP, MSTP trunks, scan defaults — drives mock discovery until backend exists */
   networkConfig: createEmptyNetworkConfig(),
   validation: null,
   deploymentHistory: [],
+  /** Metadata for the last activated release (version label / timestamps) — persisted under this key for compatibility. */
   activeDeploymentSnapshot: null,
 };
 
-/** Draft site: id, name, mode/status metadata, buildings/floors summary */
+/** Site under configuration: id, name, mode/status metadata, buildings/floors summary */
 export function createSite(overrides = {}) {
   return {
     id: null,
     name: null,
-    mode: "draft",
+    mode: "working",
     status: "editing",
     buildings: [],
     ...overrides,
   };
 }
 
-/** Equipment instance: site location, type, template id, assigned device id, graphic ref. instanceNumber = user-defined unique ref for URL/identification. */
 export function createEquipment(overrides = {}) {
   return {
     id: null,
@@ -66,7 +63,6 @@ export function createEquipment(overrides = {}) {
   };
 }
 
-/** Discovered device: BACnet device/controller metadata, assignment status, online/offline, last seen */
 export function createDiscoveredDevice(overrides = {}) {
   return {
     id: null,
@@ -87,7 +83,6 @@ export function createDiscoveredDevice(overrides = {}) {
   };
 }
 
-/** Discovered BACnet object (per device) */
 export function createDiscoveredObject(overrides = {}) {
   return {
     id: null,
@@ -104,7 +99,6 @@ export function createDiscoveredObject(overrides = {}) {
   };
 }
 
-/** Equipment template */
 export function createEquipmentTemplate(overrides = {}) {
   return {
     id: null,
@@ -120,7 +114,6 @@ export function createEquipmentTemplate(overrides = {}) {
   };
 }
 
-/** Graphic template */
 export function createGraphicTemplate(overrides = {}) {
   return {
     id: null,
@@ -128,7 +121,6 @@ export function createGraphicTemplate(overrides = {}) {
     appliesTo: null,
     equipmentTemplateId: null,
     boundPointCount: 0,
-    /** Persisted canvas: { objects, canvasSize, backgroundImage } */
     graphicEditorState: null,
     source: "Global Imported",
     lastUpdated: null,
@@ -136,12 +128,10 @@ export function createGraphicTemplate(overrides = {}) {
   };
 }
 
-/** Mappings: equipmentId -> { templatePointId -> bacnetObjectId } */
 export function getMappingsForEquipment(mappings, equipmentId) {
   return mappings[equipmentId] || {};
 }
 
-/** Validation result (computed by validateDraft) */
 export function createValidationResult(overrides = {}) {
   return {
     issues: [],
@@ -153,8 +143,7 @@ export function createValidationResult(overrides = {}) {
   };
 }
 
-/** Deployment history entry */
-export function createDeploymentEntry(overrides = {}) {
+export function createReleaseHistoryEntry(overrides = {}) {
   return {
     version: null,
     date: null,

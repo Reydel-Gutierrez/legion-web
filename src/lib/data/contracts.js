@@ -62,7 +62,7 @@
  */
 
 /**
- * @typedef {Object} EngineeringDraftSummary
+ * @typedef {Object} WorkingVersionSummary
  * @property {string} siteId
  * @property {number} equipmentCount
  * @property {number} controllerCount

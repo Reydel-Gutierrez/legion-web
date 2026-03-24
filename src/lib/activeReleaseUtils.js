@@ -1,13 +1,10 @@
 /**
- * Helpers to derive Operator UI data from active deployment.
- * Operator reads from activeDeployment only — no separate mock project/site data.
- * Supports sites with no discovered devices: logical points from templates, status "unbound" when no live source.
+ * Helpers to derive Operator UI data from an active release payload (`activeRelease.data`).
  */
 
-// Lazy require to avoid circular deps; called only when building rows from deployment
-function getTemplatePoints(name, draftTemplates) {
+function getTemplatePoints(name, equipmentTemplates) {
   const { getTemplatePoints: get } = require("../modules/engineering/data/mockPointMappingData");
-  return get(name, draftTemplates);
+  return get(name, equipmentTemplates);
 }
 function getDiscoveredObjects(controllerRef) {
   const { getDiscoveredObjects: get } = require("../modules/engineering/data/mockPointMappingData");
@@ -35,14 +32,13 @@ function placeholderValueForPoint(tp) {
 }
 
 /**
- * Get logical points for one equipment from deployed snapshot (template-based; no discovery required).
+ * @param {object} releaseData - Snapshot payload (site, equipment, templates, …)
  */
-export function getLogicalPointsForEquipmentFromDeployment(activeDeployment, equipmentId) {
-  if (!activeDeployment?.equipment) return [];
-  const eq = activeDeployment.equipment.find((e) => String(e.id) === String(equipmentId));
+export function getLogicalPointsForEquipmentFromRelease(releaseData, equipmentId) {
+  if (!releaseData?.equipment) return [];
+  const eq = releaseData.equipment.find((e) => String(e.id) === String(equipmentId));
   if (!eq?.templateName) return [];
-  const draftTemplates = activeDeployment.templates;
-  const templatePoints = getTemplatePoints(eq.templateName, draftTemplates?.equipmentTemplates);
+  const templatePoints = getTemplatePoints(eq.templateName, releaseData.templates?.equipmentTemplates);
   return templatePoints.map((tp) => ({
     id: tp.id,
     name: tp.displayName,
@@ -54,15 +50,11 @@ export function getLogicalPointsForEquipmentFromDeployment(activeDeployment, equ
   }));
 }
 
-/**
- * Build WorkspaceRow[] for operator from deployed snapshot. Uses logical points; value from mapped live or placeholder.
- * Status: "OK" when mapped/live, "Unbound" when no live source.
- */
-export function getWorkspaceRowsFromDeployment(activeDeployment, equipmentId, equipmentName) {
-  const logicalPoints = getLogicalPointsForEquipmentFromDeployment(activeDeployment, equipmentId);
+export function getWorkspaceRowsFromRelease(releaseData, equipmentId, equipmentName) {
+  const logicalPoints = getLogicalPointsForEquipmentFromRelease(releaseData, equipmentId);
   if (logicalPoints.length === 0) return [];
-  const mappings = activeDeployment?.mappings?.[equipmentId] || {};
-  const controllerRef = activeDeployment?.equipment?.find((e) => String(e.id) === String(equipmentId))?.controllerRef;
+  const mappings = releaseData?.mappings?.[equipmentId] || {};
+  const controllerRef = releaseData?.equipment?.find((e) => String(e.id) === String(equipmentId))?.controllerRef;
   const discovered = controllerRef ? getDiscoveredObjects(controllerRef) : [];
   /** @type {import("../data/contracts").WorkspaceRow[]} */
   const rows = logicalPoints.map((tp) => {
@@ -87,29 +79,21 @@ export function getWorkspaceRowsFromDeployment(activeDeployment, equipmentId, eq
   return rows;
 }
 
-/**
- * Find equipment in deployment by id or instance number (for detail page URL).
- */
-export function getEquipmentFromDeployment(activeDeployment, equipmentIdOrInstance) {
-  if (!activeDeployment?.equipment || !equipmentIdOrInstance) return null;
+export function getEquipmentFromRelease(releaseData, equipmentIdOrInstance) {
+  if (!releaseData?.equipment || !equipmentIdOrInstance) return null;
   const key = String(equipmentIdOrInstance).trim();
   return (
-    activeDeployment.equipment.find(
+    releaseData.equipment.find(
       (e) => String(e.id) === key || String(e.instanceNumber || "").trim() === key
     ) || null
   );
 }
 
-/**
- * Build equipment tree for Operator Equipment page from active deployment.
- * Returns array of { id, label, sub, type: "group"|"floor"|"equip", children }.
- * If no deployment or no site, returns empty array.
- */
-export function activeDeploymentToEquipmentTree(activeDeployment) {
-  if (!activeDeployment?.site?.buildings?.length || !Array.isArray(activeDeployment.equipment)) {
+export function activeReleaseDataToEquipmentTree(releaseData) {
+  if (!releaseData?.site?.buildings?.length || !Array.isArray(releaseData.equipment)) {
     return [];
   }
-  const equipment = activeDeployment.equipment;
+  const equipment = releaseData.equipment;
   const byFloor = {};
   equipment.forEach((eq) => {
     const floorId = eq.floorId || "unknown";
@@ -124,7 +108,7 @@ export function activeDeploymentToEquipmentTree(activeDeployment) {
   });
 
   const floors = [];
-  activeDeployment.site.buildings.forEach((b) => {
+  releaseData.site.buildings.forEach((b) => {
     (b.floors || []).forEach((f) => {
       const eqList = byFloor[f.id] || [];
       const sub = eqList.length
@@ -165,12 +149,8 @@ export function activeDeploymentToEquipmentTree(activeDeployment) {
   return floors;
 }
 
-/**
- * Derive dashboard summary from active deployment (equipment count, etc.).
- * Use for counts; keep events/alarms as placeholders until backend.
- */
-export function getSummaryFromActiveDeployment(activeDeployment) {
-  const equipment = activeDeployment?.equipment ?? [];
+export function getSummaryFromActiveRelease(releaseData) {
+  const equipment = releaseData?.equipment ?? [];
   return {
     equipmentCount: equipment.length,
     activeAlarms: 0,
@@ -181,15 +161,11 @@ export function getSummaryFromActiveDeployment(activeDeployment) {
   };
 }
 
-/**
- * Per-floor communication health for Insights (devices with a controller ref = on-network).
- * One row per floor defined on the site; equipment grouped by `floorId`.
- */
-export function getFloorCommunicationHealthFromDeployment(activeDeployment) {
-  if (!activeDeployment?.site?.buildings?.length) return [];
-  const equipment = activeDeployment.equipment ?? [];
+export function getFloorCommunicationHealthFromRelease(releaseData) {
+  if (!releaseData?.site?.buildings?.length) return [];
+  const equipment = releaseData.equipment ?? [];
   const rows = [];
-  for (const b of activeDeployment.site.buildings) {
+  for (const b of releaseData.site.buildings) {
     for (const f of b.floors || []) {
       const onFloor = equipment.filter((e) => e.floorId === f.id);
       const total = onFloor.length;
@@ -210,11 +186,8 @@ export function getFloorCommunicationHealthFromDeployment(activeDeployment) {
   return rows;
 }
 
-/**
- * Derive equipment health list from active deployment for dashboard widget.
- */
-export function getEquipmentHealthFromActiveDeployment(activeDeployment) {
-  const equipment = activeDeployment?.equipment ?? [];
+export function getEquipmentHealthFromActiveRelease(releaseData) {
+  const equipment = releaseData?.equipment ?? [];
   return equipment.slice(0, 12).map((eq) => ({
     id: eq.id,
     name: eq.displayLabel || eq.name,

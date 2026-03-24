@@ -4,9 +4,11 @@ import { Link, useLocation } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faHome } from "@fortawesome/free-solid-svg-icons";
 import { useSite } from "../../app/providers/SiteProvider";
+import { useSiteDisplayLabel } from "../../hooks/useSiteDisplayLabel";
 
 export default function PageBreadcrumbs() {
   const { site } = useSite();
+  const siteLabel = useSiteDisplayLabel();
   const { pathname } = useLocation();
   const segments = pathname.split("/").filter(Boolean);
 
@@ -31,7 +33,7 @@ export default function PageBreadcrumbs() {
       {segments.map((seg, idx) => {
         const label =
           seg === "legion" && site
-            ? site
+            ? siteLabel
             : seg
                 .replace(/[-_]/g, " ")
                 .replace(/\b\w/g, (c) => c.toUpperCase());

@@ -3,6 +3,8 @@
 // that pages do not import mock files directly. Later we can route these
 // functions to real APIs without rewriting the pages.
 
+import { USE_HIERARCHY_API } from "../config";
+import * as hierarchyRepository from "./hierarchyRepository";
 import {
   initialEngineeringMock,
   EQUIPMENT_GROUPS,
@@ -62,7 +64,45 @@ import {
 } from "../../../modules/engineering/data/mockTemplateLibraryData";
 
 export const USE_MOCK_ENGINEERING_DATA = true;
-export { EQUIPMENT_GROUPS, EQUIPMENT_STATUSES };
+export { EQUIPMENT_GROUPS, EQUIPMENT_STATUSES, USE_HIERARCHY_API };
+
+/** Load working-version site + equipment from the API (when configured). */
+export async function fetchWorkingVersion(siteId) {
+  if (!USE_HIERARCHY_API) return null;
+  return hierarchyRepository.fetchWorkingVersionForEngineering(siteId);
+}
+
+/** @deprecated use fetchWorkingVersion */
+export async function fetchEngineeringSiteDraftFromApi(siteId) {
+  return fetchWorkingVersion(siteId);
+}
+
+/** Persist working version — API hook; no-op when hierarchy API is off. */
+export async function saveWorkingVersion(siteId, payload, notes) {
+  if (!USE_HIERARCHY_API) return Promise.resolve();
+  return hierarchyRepository.saveWorkingVersionToApi(siteId, payload, notes);
+}
+
+/**
+ * Promote working version on the backend (POST .../deploy).
+ * @param {string} siteId
+ * @param {string} [notes]
+ * @returns {Promise<object|null>} API JSON (e.g. `{ activeRelease }`) or null when API is off
+ */
+export async function postDeployWorkingVersion(siteId, notes) {
+  if (!USE_HIERARCHY_API) return Promise.resolve(null);
+  return hierarchyRepository.deployWorkingVersionViaApi(siteId, notes);
+}
+
+export function notifyEngineeringHierarchyChanged(siteId) {
+  hierarchyRepository.notifyHierarchyChanged(siteId);
+}
+
+/** @returns {Promise<{ activeVersionNumber: number|null, workingVersionNumber: number|null, workingStatus: string|null } | null>} */
+export async function fetchSiteVersionSummary(siteId) {
+  if (!USE_HIERARCHY_API) return Promise.resolve(null);
+  return hierarchyRepository.fetchSiteVersionSummary(siteId);
+}
 
 // Core engineering state / seed
 export function getInitialEngineeringSeed() {

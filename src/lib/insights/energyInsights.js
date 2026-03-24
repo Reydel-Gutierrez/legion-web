@@ -132,10 +132,10 @@ export function meanDailyRunHoursFromSchedules(schedules) {
 }
 
 /**
- * Build equipment rows for kWh: prefer deployment equipment; else unique enabled schedules.
+ * Build equipment rows for kWh: prefer active-release equipment; else unique enabled schedules.
  */
-export function buildEquipmentRowsForEnergy(activeDeployment, schedules) {
-  const eqList = activeDeployment?.equipment;
+export function buildEquipmentRowsForEnergy(releaseSnapshot, schedules) {
+  const eqList = releaseSnapshot?.equipment;
   if (Array.isArray(eqList) && eqList.length > 0) {
     return eqList.map((e) => ({
       id: e.id,
@@ -238,11 +238,13 @@ export function efficiencyScoreFromMetrics({ monthlyRuntimeHours, todaysKwh, equ
 export function computeInsightsSnapshot({
   siteId,
   activeDeployment,
+  releaseSnapshot,
   schedules,
   mergedKFactors,
   summaryDevicesOffline = 0,
 }) {
-  const equipmentRows = buildEquipmentRowsForEnergy(activeDeployment, schedules);
+  const snap = releaseSnapshot ?? activeDeployment;
+  const equipmentRows = buildEquipmentRowsForEnergy(snap, schedules);
   const meanRun = meanDailyRunHoursFromSchedules(schedules);
   const todaysKwh = computeTodaysKwhEstimate(equipmentRows, mergedKFactors, meanRun);
   const monthlyRuntimeHours = monthlyRuntimeSavingsHoursFromSchedules(schedules);

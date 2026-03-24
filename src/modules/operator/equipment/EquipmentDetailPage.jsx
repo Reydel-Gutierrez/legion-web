@@ -1,8 +1,8 @@
 import React, { useMemo } from "react";
 import { useParams, useHistory } from "react-router-dom";
-import { useSite } from "../../../app/providers/SiteProvider";
-import { useActiveDeployment } from "../../../hooks/useEngineeringDraft";
-import { getEquipmentFromDeployment, getWorkspaceRowsFromDeployment } from "../../../lib/activeDeploymentUtils";
+import { useActiveDeployment } from "../../../hooks/useWorkingVersion";
+import { getEquipmentFromRelease } from "../../../lib/activeReleaseUtils";
+import { operatorRepository } from "../../../lib/data";
 import { Container, Row, Col, Card, Button } from "@themesberg/react-bootstrap";
 import LegionHeroHeader from "../../../components/legion/LegionHeroHeader";
 import StatusDotLabel from "../../../components/legion/StatusDotLabel";
@@ -11,7 +11,7 @@ import VavGraphicImg from "../../../assets/graphics/mysvgvav.svg";
 import DeployedGraphicPreview from "./DeployedGraphicPreview";
 
 /**
- * Build network details rows from equipment and deployment (no static data).
+ * Build network details rows from equipment and active release (no static data).
  */
 function buildNetworkDetails(equipment, siteName) {
   if (!equipment) return [];
@@ -30,32 +30,33 @@ function buildNetworkDetails(equipment, siteName) {
 export default function EquipmentDetailPage() {
   const { equipmentId } = useParams();
   const history = useHistory();
-  const { site } = useSite();
-  const activeDeployment = useActiveDeployment();
+  const { deployment, loading: releaseLoading, error: releaseError } = useActiveDeployment();
+  const releaseData = deployment;
 
   const equipment = useMemo(
-    () => (activeDeployment && equipmentId ? getEquipmentFromDeployment(activeDeployment, equipmentId) : null),
-    [activeDeployment, equipmentId]
+    () => (releaseData && equipmentId ? getEquipmentFromRelease(releaseData, equipmentId) : null),
+    [releaseData, equipmentId]
   );
 
   const points = useMemo(() => {
-    if (!activeDeployment || !equipment) return [];
-    return getWorkspaceRowsFromDeployment(
-      activeDeployment,
+    if (!releaseData || !equipment) return [];
+    return operatorRepository.getWorkspacePointsForEquipment(
       equipment.id,
-      equipment.displayLabel || equipment.name
+      equipment.displayLabel || equipment.name,
+      equipment.status,
+      { activeRelease: releaseData }
     );
-  }, [activeDeployment, equipment]);
+  }, [releaseData, equipment]);
 
   const networkDetails = useMemo(
-    () => buildNetworkDetails(equipment, activeDeployment?.site?.name),
-    [equipment, activeDeployment?.site?.name]
+    () => buildNetworkDetails(equipment, releaseData?.site?.name),
+    [equipment, releaseData?.site?.name]
   );
 
   const graphic = useMemo(() => {
-    if (!activeDeployment?.graphics || !equipment) return null;
-    return activeDeployment.graphics[equipment.id] || null;
-  }, [activeDeployment?.graphics, equipment]);
+    if (!releaseData?.graphics || !equipment) return null;
+    return releaseData.graphics[equipment.id] || null;
+  }, [releaseData?.graphics, equipment]);
 
   const handleGraphicLinkClick = (linkTarget) => {
     if (!linkTarget?.type) return;
@@ -71,6 +72,30 @@ export default function EquipmentDetailPage() {
     }
   };
 
+  if (releaseLoading && !equipment) {
+    return (
+      <Container fluid className="px-0 app-scale">
+        <div className="px-3 px-md-4 pt-3">
+          <LegionHeroHeader />
+          <hr className="border-light border-opacity-25 my-3" />
+        </div>
+        <div className="px-3 px-md-4 text-white-50 small">Loading equipment…</div>
+      </Container>
+    );
+  }
+
+  if (releaseError && !equipment) {
+    return (
+      <Container fluid className="px-0 app-scale">
+        <div className="px-3 px-md-4 pt-3">
+          <LegionHeroHeader />
+          <hr className="border-light border-opacity-25 my-3" />
+        </div>
+        <div className="px-3 px-md-4 alert alert-danger py-2 small">{releaseError}</div>
+      </Container>
+    );
+  }
+
   if (!equipment) {
     return (
       <Container fluid className="px-0 app-scale">
@@ -83,7 +108,7 @@ export default function EquipmentDetailPage() {
           <Card className="bg-primary border border-light border-opacity-10 shadow-sm">
             <Card.Body className="text-center text-white-50 py-5">
               <p className="mb-2">Equipment not found.</p>
-              <p className="small mb-0">It may not be deployed for this site or the reference may be invalid.</p>
+              <p className="small mb-0">It may not be in the active release for this site or the reference may be invalid.</p>
               <Button
                 size="sm"
                 className="legion-hero-btn legion-hero-btn--secondary mt-3"
@@ -124,8 +149,6 @@ export default function EquipmentDetailPage() {
                         className="d-flex justify-content-center"
                         style={{ overflowX: "auto", overflowY: "visible", width: "100%" }}
                       >
-                        {/* Smaller viewport rectangle on operator UI.
-                            The preview will zoom to fill this viewport (graphic itself stays readable). */}
                         <div style={{ width: 700, flexShrink: 0 }}>
                           {graphic?.objects?.length > 0 ? (
                             <DeployedGraphicPreview
@@ -171,7 +194,7 @@ export default function EquipmentDetailPage() {
                                   {points.length === 0 ? (
                                     <tr>
                                       <td colSpan={5} className="text-white-50 text-center py-4">
-                                        No points defined. Add a template in Engineering and deploy.
+                                        No points defined. Add a template in Engineering and deploy a version.
                                       </td>
                                     </tr>
                                   ) : (

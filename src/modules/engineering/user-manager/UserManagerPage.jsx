@@ -28,7 +28,10 @@ import LegionHeroHeader from "../../../components/legion/LegionHeroHeader";
 import LegionTablePagination from "../../../components/legion/LegionTablePagination";
 import { useTablePagination } from "../../../hooks/useTablePagination";
 import { useSite } from "../../../app/providers/SiteProvider";
+import { USE_HIERARCHY_API } from "../../../lib/data/config";
+import { isBackendSiteId } from "../../../lib/data/siteIdUtils";
 import { isEmptySite } from "../../../lib/sites";
+import { useSiteDisplayLabel } from "../../../hooks/useSiteDisplayLabel";
 import { accessRepository } from "../../../lib/data";
 import { canViewUserManager, canManageUsers, canEditSiteMemberships } from "../../../lib/access/currentUserAccess";
 import { USER_STATUS } from "../../../lib/access/types";
@@ -53,7 +56,8 @@ function StatusBadge({ status }) {
 }
 
 export default function UserManagerPage() {
-  const { site: currentSite } = useSite();
+  const { site: currentSite, apiSites } = useSite();
+  const siteDisplayLabel = useSiteDisplayLabel();
   const currentUser = useMemo(() => accessRepository.getCurrentUserForAccess(), []);
   const canView = canViewUserManager(currentUser);
   const canManage = canManageUsers(currentUser);
@@ -64,12 +68,24 @@ export default function UserManagerPage() {
   const [roles] = useState(() => accessRepository.getRoles());
   const [siteMemberships, setSiteMemberships] = useState(() => accessRepository.getSiteMemberships());
   const sites = useMemo(() => {
+    if (USE_HIERARCHY_API && apiSites.length > 0) {
+      return apiSites.map((s) => ({ siteId: s.id, siteName: s.name }));
+    }
     const list = accessRepository.getSitesForAccess();
-    if (currentSite && !list.some((s) => s.siteName === currentSite)) {
-      return [...list, { siteId: currentSite.toLowerCase().replace(/\s+/g, "-"), siteName: currentSite }];
+    const hasCurrent = list.some(
+      (s) => s.siteId === currentSite || s.siteName === siteDisplayLabel || s.siteName === currentSite
+    );
+    if (currentSite && !hasCurrent) {
+      return [
+        ...list,
+        {
+          siteId: isBackendSiteId(currentSite) ? currentSite : String(currentSite).toLowerCase().replace(/\s+/g, "-"),
+          siteName: siteDisplayLabel || currentSite,
+        },
+      ];
     }
     return list;
-  }, [currentSite]);
+  }, [currentSite, apiSites, siteDisplayLabel]);
 
   const refreshUsers = useCallback(() => setUsers(accessRepository.getUsers()), []);
   const refreshMemberships = useCallback(() => setSiteMemberships(accessRepository.getSiteMemberships()), []);
@@ -102,7 +118,9 @@ export default function UserManagerPage() {
       usersInCurrentProject = [builderUser];
     } else {
       usersInCurrentProject = users.filter((u) =>
-        siteMemberships.some((m) => m.userId === u.id && m.siteName === currentSite)
+        siteMemberships.some(
+          (m) => m.userId === u.id && (m.siteId === currentSite || m.siteName === currentSite)
+        )
       );
     }
     return usersInCurrentProject.filter((u) => {

@@ -1,6 +1,6 @@
 /**
  * Shared site tree helpers for Site Builder and Graphics Manager.
- * Used to add/update/delete Site/Building/Floor nodes and convert tree <-> draft site.
+ * Used to add/update/delete Site/Building/Floor nodes and convert tree <-> working site shape.
  */
 
 export function generateId() {

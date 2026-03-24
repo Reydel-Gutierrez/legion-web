@@ -1,25 +1,39 @@
-import React, { createContext, useState, useContext, useEffect } from "react";
+import React, { createContext, useCallback, useContext, useMemo } from "react";
+import { useLocation, useHistory } from "react-router-dom";
+import { Routes } from "../../routes";
 
-const WORKSPACE_MODE_KEY = "workspaceMode";
 const MODES = { operator: "operator", engineering: "engineering" };
 
 const WorkspaceModeContext = createContext(null);
 
+/** Engineering routes live under this prefix; everything else is treated as Operator workspace. */
+function deriveModeFromPathname(pathname) {
+  if (!pathname) return MODES.operator;
+  return pathname.startsWith("/legion/engineering") ? MODES.engineering : MODES.operator;
+}
+
+/**
+ * Mode follows the current route so Operator pages never show Engineering chrome (and vice versa)
+ * when navigating via sidebar, logo, links, or history — not only via the footer toggle.
+ */
 export function WorkspaceModeProvider({ children }) {
-  const [currentMode, setCurrentModeState] = useState(() => {
-    const stored = localStorage.getItem(WORKSPACE_MODE_KEY);
-    return stored === MODES.engineering ? MODES.engineering : MODES.operator;
-  });
+  const location = useLocation();
+  const history = useHistory();
 
-  useEffect(() => {
-    localStorage.setItem(WORKSPACE_MODE_KEY, currentMode);
-  }, [currentMode]);
+  const currentMode = useMemo(
+    () => deriveModeFromPathname(location.pathname),
+    [location.pathname]
+  );
 
-  const setCurrentMode = (mode) => {
-    if (mode === MODES.operator || mode === MODES.engineering) {
-      setCurrentModeState(mode);
+  const setCurrentMode = useCallback((mode) => {
+    if (mode === MODES.engineering) {
+      history.push(Routes.EngineeringSiteBuilder.path);
+      return;
     }
-  };
+    if (mode === MODES.operator) {
+      history.push(Routes.LegionSite.path);
+    }
+  }, [history]);
 
   return (
     <WorkspaceModeContext.Provider value={{ currentMode, setCurrentMode }}>

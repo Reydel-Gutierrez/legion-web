@@ -6,15 +6,11 @@ import { faObjectGroup } from "@fortawesome/free-solid-svg-icons";
 
 import { Routes } from "../../../routes";
 import { useSite } from "../../../app/providers/SiteProvider";
-import {
-  useEngineeringDraft,
-  useActiveDeployment,
-  selectSiteTree,
-} from "../../../hooks/useEngineeringDraft";
+import { useWorkingVersion, useActiveDeployment, selectSiteTree } from "../../../hooks/useWorkingVersion";
 import { findNodeById } from "../site-builder/utils/siteTreeUtils";
 import LegionHeroHeader from "../../../components/legion/LegionHeroHeader";
 import { engineeringRepository } from "../../../lib/data";
-import { createGraphicTemplate } from "../draft/draftModel";
+import { createGraphicTemplate } from "../working-version/workingVersionModel";
 import {
   cloneGraphicEditorState,
   countBoundTemplatePointBindings,
@@ -46,11 +42,11 @@ function readFileAsDataUrl(file) {
 
 /**
  * Downscale large raster images before converting to base64.
- * @param {{ preferJpegForDraftStorage?: boolean, jpegQuality?: number }} [encodeOpts]
- *        For site/building/floor layout backgrounds, prefer JPEG so localStorage drafts stay under quota.
+ * @param {{ preferJpegForLocalStorage?: boolean, jpegQuality?: number }} [encodeOpts]
+ *        For site/building/floor layout backgrounds, prefer JPEG so localStorage stays under quota.
  */
 function downscaleImageFileToDataUrl(file, maxCanvasW, maxCanvasH, encodeOpts = {}) {
-  const { preferJpegForDraftStorage = false, jpegQuality = 0.82 } = encodeOpts;
+  const { preferJpegForLocalStorage = false, jpegQuality = 0.82 } = encodeOpts;
   return new Promise((resolve, reject) => {
     try {
       const objectUrl = URL.createObjectURL(file);
@@ -76,7 +72,7 @@ function downscaleImageFileToDataUrl(file, maxCanvasW, maxCanvasH, encodeOpts = 
 
           const isJpeg =
             (file.type || "").toLowerCase().includes("jpeg") || (file.type || "").toLowerCase().includes("jpg");
-          const useJpeg = preferJpegForDraftStorage || isJpeg;
+          const useJpeg = preferJpegForLocalStorage || isJpeg;
           const dataUrl = canvas.toDataURL(useJpeg ? "image/jpeg" : "image/png", useJpeg ? jpegQuality : undefined);
 
           URL.revokeObjectURL(objectUrl);
@@ -124,12 +120,13 @@ export default function GraphicsManagerPage() {
   const location = useLocation();
   const history = useHistory();
   const { site } = useSite();
-  const { draft, actions } = useEngineeringDraft();
-  const activeDeployment = useActiveDeployment();
-  const siteTree = selectSiteTree(draft);
-  const draftEquipment = draft?.equipment ?? [];
-  const draftGraphics = draft?.graphics ?? {};
-  const draftSiteLayoutGraphics = draft?.siteLayoutGraphics ?? {};
+  const { workingVersion, workingState, actions } = useWorkingVersion();
+  const { deployment } = useActiveDeployment();
+  const activeReleaseData = deployment;
+  const siteTree = selectSiteTree(workingVersion);
+  const workingEquipment = workingState?.equipment ?? [];
+  const workingGraphics = workingState?.graphics ?? {};
+  const workingSiteLayoutGraphics = workingState?.siteLayoutGraphics ?? {};
   const [expandedIds, setExpandedIds] = useState(new Set());
   const [selectedEquipmentId, setSelectedEquipmentId] = useState(null);
   const [selectedLayoutNodeId, setSelectedLayoutNodeId] = useState(null);
@@ -138,7 +135,7 @@ export default function GraphicsManagerPage() {
   const [workingGraphic, setWorkingGraphic] = useState(() => ({
     id: "working-graphic",
     name: "Unassigned Graphic",
-    status: "DRAFT",
+    status: "WORKING",
     lastEdited: "Now",
     objects: [],
     canvasSize: { ...EQUIPMENT_GRAPHIC_CANVAS_DEFAULT },
@@ -157,15 +154,15 @@ export default function GraphicsManagerPage() {
   const importSvgInputRef = useRef(null);
 
   const isNewBuilding = engineeringRepository.isNewEngineeringBuildingFlow(site);
-  const hasNoSite = isNewBuilding && !draft?.site;
+  const hasNoSite = isNewBuilding && !workingState?.site;
 
   const equipmentList = useMemo(() => {
     return engineeringRepository.enrichEquipmentForEngineeringPointMapping(
-      draftEquipment,
+      workingEquipment,
       siteTree,
       site
     );
-  }, [draftEquipment, siteTree, site]);
+  }, [workingEquipment, siteTree, site]);
 
   const selectedEquipment = useMemo(
     () => equipmentList.find((e) => e.id === selectedEquipmentId) || null,
@@ -179,37 +176,37 @@ export default function GraphicsManagerPage() {
 
   const equipmentTemplateForGraphicAuthoring = useMemo(() => {
     if (!editingGraphicTemplateId) return null;
-    const gt = (draft.templates?.graphicTemplates || []).find((g) => g.id === editingGraphicTemplateId);
+    const gt = (workingState.templates?.graphicTemplates || []).find((g) => g.id === editingGraphicTemplateId);
     if (!gt?.equipmentTemplateId) return null;
-    return (draft.templates?.equipmentTemplates || []).find((e) => e.id === gt.equipmentTemplateId) || null;
-  }, [draft.templates?.graphicTemplates, draft.templates?.equipmentTemplates, editingGraphicTemplateId]);
+    return (workingState.templates?.equipmentTemplates || []).find((e) => e.id === gt.equipmentTemplateId) || null;
+  }, [workingState.templates?.graphicTemplates, workingState.templates?.equipmentTemplates, editingGraphicTemplateId]);
 
   const availablePoints = useMemo(() => {
     if (selectedEquipment) {
-      return engineeringRepository.getPointDisplayInfoForEquipment(selectedEquipment, draft?.templates);
+      return engineeringRepository.getPointDisplayInfoForEquipment(selectedEquipment, workingState?.templates);
     }
     if (equipmentTemplateForGraphicAuthoring) {
       return engineeringRepository.getPointDisplayInfoForEquipmentTemplate(equipmentTemplateForGraphicAuthoring);
     }
     return [];
-  }, [selectedEquipment, draft?.templates, equipmentTemplateForGraphicAuthoring]);
+  }, [selectedEquipment, workingState?.templates, equipmentTemplateForGraphicAuthoring]);
 
   const equipmentTemplateMatchingSelection = useMemo(() => {
     if (!selectedEquipment?.templateName) return null;
-    return (draft.templates?.equipmentTemplates || []).find(
+    return (workingState.templates?.equipmentTemplates || []).find(
       (t) => (t.name || "").toLowerCase() === (selectedEquipment.templateName || "").toLowerCase()
     );
-  }, [selectedEquipment, draft.templates?.equipmentTemplates]);
+  }, [selectedEquipment, workingState.templates?.equipmentTemplates]);
 
   const templateBeingEdited = useMemo(() => {
     if (!editingGraphicTemplateId) return null;
-    return (draft.templates?.graphicTemplates || []).find((g) => g.id === editingGraphicTemplateId) ?? null;
-  }, [draft.templates?.graphicTemplates, editingGraphicTemplateId]);
+    return (workingState.templates?.graphicTemplates || []).find((g) => g.id === editingGraphicTemplateId) ?? null;
+  }, [workingState.templates?.graphicTemplates, editingGraphicTemplateId]);
 
   // When a layout node (site/building/floor) is selected, use its layout graphic; otherwise equipment graphic.
   const selectedGraphic = useMemo(() => {
     if (selectedLayoutNodeId) {
-      const base = draftSiteLayoutGraphics[selectedLayoutNodeId] ?? null;
+      const base = workingSiteLayoutGraphics[selectedLayoutNodeId] ?? null;
       if (base)
         return {
           ...base,
@@ -221,13 +218,13 @@ export default function GraphicsManagerPage() {
         id: `layout-${selectedLayoutNodeId}`,
         nodeId: selectedLayoutNodeId,
         name: "Site Layout Graphic",
-        status: "DRAFT",
+        status: "WORKING",
         lastEdited: "Now",
         objects: [],
         canvasSize: { ...LAYOUT_GRAPHIC_CANVAS_DEFAULT },
       };
     }
-    const base = draftGraphics[selectedEquipmentId] ?? null;
+    const base = workingGraphics[selectedEquipmentId] ?? null;
     if (base)
       return {
         ...base,
@@ -240,13 +237,13 @@ export default function GraphicsManagerPage() {
         id: `g-new-${selectedEquipmentId}`,
         equipmentId: selectedEquipmentId,
         name: "New Graphic",
-        status: "DRAFT",
+        status: "WORKING",
         lastEdited: "Now",
         objects: [],
         canvasSize: { ...EQUIPMENT_GRAPHIC_CANVAS_DEFAULT },
       };
     return workingGraphic;
-  }, [selectedEquipmentId, selectedLayoutNodeId, draftGraphics, draftSiteLayoutGraphics, workingGraphic]);
+  }, [selectedEquipmentId, selectedLayoutNodeId, workingGraphics, workingSiteLayoutGraphics, workingGraphic]);
 
   const canvasWidth =
     selectedGraphic?.canvasSize?.width ??
@@ -266,8 +263,8 @@ export default function GraphicsManagerPage() {
   }, [siteTree, equipmentList]);
 
   // Stabilize effect: siteTree is a new object every render, so don't depend on it directly.
-  // Only run when site or presence of tree changes (draft?.site?.id).
-  const siteTreeKey = draft?.site?.id ?? "";
+  // Only run when site or presence of tree changes (workingState?.site?.id).
+  const siteTreeKey = workingState?.site?.id ?? "";
   useEffect(() => {
     if (hasNoSite) {
       setExpandedIds(new Set());
@@ -292,7 +289,7 @@ export default function GraphicsManagerPage() {
     const equipmentIdFromUrl = params.get("equipmentId");
 
     if (graphicTemplateIdFromUrl) {
-      const gt = (draft.templates?.graphicTemplates || []).find((g) => g.id === graphicTemplateIdFromUrl);
+      const gt = (workingState.templates?.graphicTemplates || []).find((g) => g.id === graphicTemplateIdFromUrl);
       if (gt) {
         setEditingGraphicTemplateId(gt.id);
         setSelectedEquipmentId(null);
@@ -302,7 +299,7 @@ export default function GraphicsManagerPage() {
         setWorkingGraphic({
           id: `template-edit-${gt.id}`,
           name: gt.name || "Graphic Template",
-          status: "DRAFT",
+          status: "WORKING",
           lastEdited: new Date().toISOString().slice(0, 10),
           objects: editor.objects ?? [],
           canvasSize: editor.canvasSize || { ...EQUIPMENT_GRAPHIC_CANVAS_DEFAULT },
@@ -316,12 +313,12 @@ export default function GraphicsManagerPage() {
 
     setEditingGraphicTemplateId(null);
 
-    if (equipmentIdFromUrl && draftEquipment.some((e) => e.id === equipmentIdFromUrl)) {
+    if (equipmentIdFromUrl && workingEquipment.some((e) => e.id === equipmentIdFromUrl)) {
       setSelectedEquipmentId(equipmentIdFromUrl);
       setSelectedLayoutNodeId(null);
       setSelectedObject(null);
     }
-  }, [location.search, draftEquipment, draft.templates?.graphicTemplates]);
+  }, [location.search, workingEquipment, workingState.templates?.graphicTemplates]);
 
   const toggleExpand = useCallback((id) => {
     setExpandedIds((prev) => {
@@ -371,7 +368,7 @@ export default function GraphicsManagerPage() {
   const handleUpdateObject = useCallback(
     (objectId, updates) => {
       if (selectedLayoutNodeId) {
-        const current = draftSiteLayoutGraphics[selectedLayoutNodeId] || { objects: [] };
+        const current = workingSiteLayoutGraphics[selectedLayoutNodeId] || { objects: [] };
         const objects = (current.objects || []).map((o) =>
           o.id === objectId ? { ...o, ...updates } : o
         );
@@ -386,7 +383,7 @@ export default function GraphicsManagerPage() {
             current || {
               id: "working-graphic",
               name: "Unassigned Graphic",
-              status: "DRAFT",
+              status: "WORKING",
               lastEdited: "Now",
               objects: [],
           canvasSize: { ...EQUIPMENT_GRAPHIC_CANVAS_DEFAULT },
@@ -397,14 +394,14 @@ export default function GraphicsManagerPage() {
         setSelectedObject((prev) => (prev?.id === objectId ? { ...prev, ...updates } : prev));
         return;
       }
-      const current = draftGraphics[selectedEquipmentId] || { objects: [] };
+      const current = workingGraphics[selectedEquipmentId] || { objects: [] };
       const objects = (current.objects || []).map((o) =>
         o.id === objectId ? { ...o, ...updates } : o
       );
       actions.setGraphicForEquipment(selectedEquipmentId, { ...current, objects });
       setSelectedObject((prev) => (prev?.id === objectId ? { ...prev, ...updates } : prev));
     },
-    [selectedEquipmentId, selectedLayoutNodeId, draftGraphics, draftSiteLayoutGraphics, actions]
+    [selectedEquipmentId, selectedLayoutNodeId, workingGraphics, workingSiteLayoutGraphics, actions]
   );
 
   const generateObjectId = useCallback(() => {
@@ -413,7 +410,7 @@ export default function GraphicsManagerPage() {
 
   const handleAddText = useCallback(() => {
     if (selectedLayoutNodeId) {
-      const current = draftSiteLayoutGraphics[selectedLayoutNodeId] || { objects: [] };
+      const current = workingSiteLayoutGraphics[selectedLayoutNodeId] || { objects: [] };
       const existingObjects = current.objects || [];
       const maxY = existingObjects.reduce((m, o) => Math.max(m, (o.y || 0) + (o.height || 24)), 0);
       const newObj = {
@@ -437,7 +434,7 @@ export default function GraphicsManagerPage() {
         const base = current || {
           id: "working-graphic",
           name: "Unassigned Graphic",
-          status: "DRAFT",
+          status: "WORKING",
           lastEdited: "Now",
           objects: [],
           canvasSize: { ...EQUIPMENT_GRAPHIC_CANVAS_DEFAULT },
@@ -461,7 +458,7 @@ export default function GraphicsManagerPage() {
       });
       return;
     }
-    const current = draftGraphics[selectedEquipmentId] || { objects: [] };
+    const current = workingGraphics[selectedEquipmentId] || { objects: [] };
     const existingObjects = current.objects || [];
     const maxY = existingObjects.reduce((m, o) => Math.max(m, (o.y || 0) + (o.height || 24)), 0);
     const newObj = {
@@ -478,11 +475,11 @@ export default function GraphicsManagerPage() {
       objects: [...existingObjects, newObj],
     });
     setSelectedObject(newObj);
-  }, [selectedEquipmentId, selectedLayoutNodeId, draftGraphics, draftSiteLayoutGraphics, actions, generateObjectId]);
+  }, [selectedEquipmentId, selectedLayoutNodeId, workingGraphics, workingSiteLayoutGraphics, actions, generateObjectId]);
 
   const handleAddValue = useCallback(() => {
     if (selectedLayoutNodeId) {
-      const current = draftSiteLayoutGraphics[selectedLayoutNodeId] || { objects: [] };
+      const current = workingSiteLayoutGraphics[selectedLayoutNodeId] || { objects: [] };
       const existingObjects = current.objects || [];
       const maxY = existingObjects.reduce((m, o) => Math.max(m, (o.y || 0) + (o.height || 24)), 0);
       const newObj = {
@@ -507,7 +504,7 @@ export default function GraphicsManagerPage() {
         const base = current || {
           id: "working-graphic",
           name: "Unassigned Graphic",
-          status: "DRAFT",
+          status: "WORKING",
           lastEdited: "Now",
           objects: [],
           canvasSize: { ...EQUIPMENT_GRAPHIC_CANVAS_DEFAULT },
@@ -532,7 +529,7 @@ export default function GraphicsManagerPage() {
       });
       return;
     }
-    const current = draftGraphics[selectedEquipmentId] || { objects: [] };
+    const current = workingGraphics[selectedEquipmentId] || { objects: [] };
     const existingObjects = current.objects || [];
     const maxY = existingObjects.reduce((m, o) => Math.max(m, (o.y || 0) + (o.height || 24)), 0);
     const newObj = {
@@ -550,7 +547,7 @@ export default function GraphicsManagerPage() {
       objects: [...existingObjects, newObj],
     });
     setSelectedObject(newObj);
-  }, [selectedEquipmentId, selectedLayoutNodeId, draftGraphics, draftSiteLayoutGraphics, actions, generateObjectId]);
+  }, [selectedEquipmentId, selectedLayoutNodeId, workingGraphics, workingSiteLayoutGraphics, actions, generateObjectId]);
 
   const handleAddLink = useCallback(() => {
     const newObj = {
@@ -564,7 +561,7 @@ export default function GraphicsManagerPage() {
       linkTarget: { type: "", id: "" },
     };
     if (selectedLayoutNodeId) {
-      const current = draftSiteLayoutGraphics[selectedLayoutNodeId] || { objects: [] };
+      const current = workingSiteLayoutGraphics[selectedLayoutNodeId] || { objects: [] };
       const existingObjects = current.objects || [];
       const maxY = existingObjects.reduce((m, o) => Math.max(m, (o.y || 0) + (o.height || 24)), 0);
       newObj.y = Math.max(80, maxY + 20);
@@ -580,7 +577,7 @@ export default function GraphicsManagerPage() {
         const base = current || {
           id: "working-graphic",
           name: "Unassigned Graphic",
-          status: "DRAFT",
+          status: "WORKING",
           lastEdited: "Now",
           objects: [],
           canvasSize: { ...EQUIPMENT_GRAPHIC_CANVAS_DEFAULT },
@@ -599,7 +596,7 @@ export default function GraphicsManagerPage() {
       });
       return;
     }
-    const current = draftGraphics[selectedEquipmentId] || { objects: [] };
+    const current = workingGraphics[selectedEquipmentId] || { objects: [] };
     const existingObjects = current.objects || [];
     const maxY = existingObjects.reduce((m, o) => Math.max(m, (o.y || 0) + (o.height || 24)), 0);
     newObj.y = Math.max(80, maxY + 20);
@@ -608,7 +605,7 @@ export default function GraphicsManagerPage() {
       objects: [...existingObjects, newObj],
     });
     setSelectedObject(newObj);
-  }, [selectedEquipmentId, selectedLayoutNodeId, draftGraphics, draftSiteLayoutGraphics, actions, generateObjectId]);
+  }, [selectedEquipmentId, selectedLayoutNodeId, workingGraphics, workingSiteLayoutGraphics, actions, generateObjectId]);
 
   const handleAddShape = useCallback(() => {
     const defaultOpt = SHAPE_COLOR_OPTIONS[DEFAULT_SHAPE_COLOR];
@@ -626,7 +623,7 @@ export default function GraphicsManagerPage() {
       opacity: 1,
     };
     if (selectedLayoutNodeId) {
-      const current = draftSiteLayoutGraphics[selectedLayoutNodeId] || { objects: [] };
+      const current = workingSiteLayoutGraphics[selectedLayoutNodeId] || { objects: [] };
       const existingObjects = current.objects || [];
       const maxY = existingObjects.reduce((m, o) => Math.max(m, (o.y || 0) + (o.height || 24)), 0);
       newObj.y = Math.max(80, maxY + 20);
@@ -642,7 +639,7 @@ export default function GraphicsManagerPage() {
         const base = current || {
           id: "working-graphic",
           name: "Unassigned Graphic",
-          status: "DRAFT",
+          status: "WORKING",
           lastEdited: "Now",
           objects: [],
           canvasSize: { ...EQUIPMENT_GRAPHIC_CANVAS_DEFAULT },
@@ -661,7 +658,7 @@ export default function GraphicsManagerPage() {
       });
       return;
     }
-    const current = draftGraphics[selectedEquipmentId] || { objects: [] };
+    const current = workingGraphics[selectedEquipmentId] || { objects: [] };
     const existingObjects = current.objects || [];
     const maxY = existingObjects.reduce((m, o) => Math.max(m, (o.y || 0) + (o.height || 24)), 0);
     newObj.y = Math.max(80, maxY + 20);
@@ -670,19 +667,19 @@ export default function GraphicsManagerPage() {
       objects: [...existingObjects, newObj],
     });
     setSelectedObject(newObj);
-  }, [selectedEquipmentId, selectedLayoutNodeId, draftGraphics, draftSiteLayoutGraphics, actions, generateObjectId]);
+  }, [selectedEquipmentId, selectedLayoutNodeId, workingGraphics, workingSiteLayoutGraphics, actions, generateObjectId]);
 
   const handleDeleteObject = useCallback(
     (objectId) => {
       if (selectedLayoutNodeId) {
-        const current = draftSiteLayoutGraphics[selectedLayoutNodeId] || { objects: [] };
+        const current = workingSiteLayoutGraphics[selectedLayoutNodeId] || { objects: [] };
         const objects = (current.objects || []).filter((o) => o.id !== objectId);
         actions.setGraphicForSiteLayout(selectedLayoutNodeId, { ...current, objects });
         if (selectedObject?.id === objectId) setSelectedObject(null);
         return;
       }
       if (selectedEquipmentId && objectId) {
-        const current = draftGraphics[selectedEquipmentId] || { objects: [] };
+        const current = workingGraphics[selectedEquipmentId] || { objects: [] };
         const objects = (current.objects || []).filter((o) => o.id !== objectId);
         actions.setGraphicForEquipment(selectedEquipmentId, { ...current, objects });
         if (selectedObject?.id === objectId) setSelectedObject(null);
@@ -697,7 +694,7 @@ export default function GraphicsManagerPage() {
         return { ...current, objects };
       });
     },
-    [selectedEquipmentId, selectedLayoutNodeId, selectedObject?.id, draftGraphics, draftSiteLayoutGraphics, actions]
+    [selectedEquipmentId, selectedLayoutNodeId, selectedObject?.id, workingGraphics, workingSiteLayoutGraphics, actions]
   );
 
   const handleDuplicateObject = useCallback(
@@ -707,7 +704,7 @@ export default function GraphicsManagerPage() {
       const cloneOffset = 12;
 
       if (selectedLayoutNodeId) {
-        const current = draftSiteLayoutGraphics[selectedLayoutNodeId] || { objects: [] };
+        const current = workingSiteLayoutGraphics[selectedLayoutNodeId] || { objects: [] };
         const objects = current.objects || [];
         const idx = objects.findIndex((o) => o.id === objectId);
         if (idx < 0) return;
@@ -728,7 +725,7 @@ export default function GraphicsManagerPage() {
             current || {
               id: "working-graphic",
               name: "Unassigned Graphic",
-              status: "DRAFT",
+              status: "WORKING",
               lastEdited: "Now",
               objects: [],
               canvasSize: { ...EQUIPMENT_GRAPHIC_CANVAS_DEFAULT },
@@ -748,7 +745,7 @@ export default function GraphicsManagerPage() {
         return;
       }
 
-      const current = draftGraphics[selectedEquipmentId] || { objects: [] };
+      const current = workingGraphics[selectedEquipmentId] || { objects: [] };
       const objects = current.objects || [];
       const idx = objects.findIndex((o) => o.id === objectId);
       if (idx < 0) return;
@@ -761,7 +758,7 @@ export default function GraphicsManagerPage() {
       actions.setGraphicForEquipment(selectedEquipmentId, { ...current, objects: nextObjects });
       setSelectedObject(clone);
     },
-    [selectedEquipmentId, selectedLayoutNodeId, draftGraphics, draftSiteLayoutGraphics, actions, generateObjectId]
+    [selectedEquipmentId, selectedLayoutNodeId, workingGraphics, workingSiteLayoutGraphics, actions, generateObjectId]
   );
 
   const handleReorderObject = useCallback(
@@ -770,7 +767,7 @@ export default function GraphicsManagerPage() {
       const step = direction === "forward" ? 1 : -1;
 
       if (selectedLayoutNodeId) {
-        const current = draftSiteLayoutGraphics[selectedLayoutNodeId] || { objects: [] };
+        const current = workingSiteLayoutGraphics[selectedLayoutNodeId] || { objects: [] };
         const objects = current.objects || [];
         const idx = objects.findIndex((o) => o.id === objectId);
         if (idx < 0) return;
@@ -807,7 +804,7 @@ export default function GraphicsManagerPage() {
         return;
       }
 
-      const current = draftGraphics[selectedEquipmentId] || { objects: [] };
+      const current = workingGraphics[selectedEquipmentId] || { objects: [] };
       const objects = current.objects || [];
       const idx = objects.findIndex((o) => o.id === objectId);
       if (idx < 0) return;
@@ -822,7 +819,7 @@ export default function GraphicsManagerPage() {
 
       actions.setGraphicForEquipment(selectedEquipmentId, { ...current, objects: nextObjects });
     },
-    [selectedEquipmentId, selectedLayoutNodeId, draftGraphics, draftSiteLayoutGraphics, actions]
+    [selectedEquipmentId, selectedLayoutNodeId, workingGraphics, workingSiteLayoutGraphics, actions]
   );
 
   const handleBringForwardObject = useCallback(
@@ -861,14 +858,14 @@ export default function GraphicsManagerPage() {
     ({ name, equipmentTemplateId }) => {
       if (!selectedGraphic) return;
       const eqTemplate = equipmentTemplateId
-        ? (draft.templates?.equipmentTemplates || []).find((e) => e.id === equipmentTemplateId)
+        ? (workingState.templates?.equipmentTemplates || []).find((e) => e.id === equipmentTemplateId)
         : null;
       const appliesTo = eqTemplate?.name || "—";
       const resolvedEquipmentTemplateId = eqTemplate?.id ?? null;
       const editorState = cloneGraphicEditorState(selectedGraphic);
       const boundPointCount = countBoundTemplatePointBindings(editorState.objects);
-      const prevEq = draft.templates?.equipmentTemplates || [];
-      const prevGfx = draft.templates?.graphicTemplates || [];
+      const prevEq = workingState.templates?.equipmentTemplates || [];
+      const prevGfx = workingState.templates?.graphicTemplates || [];
       const now = new Date().toISOString().slice(0, 10);
 
       if (editingGraphicTemplateId) {
@@ -890,7 +887,7 @@ export default function GraphicsManagerPage() {
           ...(w || {
             id: "working-graphic",
             name: "",
-            status: "DRAFT",
+            status: "WORKING",
             lastEdited: now,
             objects: [],
             canvasSize: { ...EQUIPMENT_GRAPHIC_CANVAS_DEFAULT },
@@ -922,8 +919,8 @@ export default function GraphicsManagerPage() {
       }
     },
     [
-      draft.templates?.equipmentTemplates,
-      draft.templates?.graphicTemplates,
+      workingState.templates?.equipmentTemplates,
+      workingState.templates?.graphicTemplates,
       selectedGraphic,
       editingGraphicTemplateId,
       actions,
@@ -937,7 +934,7 @@ export default function GraphicsManagerPage() {
           ...(current || {
             id: "working-graphic",
             name: "",
-            status: "DRAFT",
+            status: "WORKING",
             lastEdited: "Now",
             objects: [],
             canvasSize: { ...EQUIPMENT_GRAPHIC_CANVAS_DEFAULT },
@@ -987,7 +984,7 @@ export default function GraphicsManagerPage() {
         ...(current || {
           id: "working-graphic",
           name: "Unassigned Graphic",
-          status: "DRAFT",
+          status: "WORKING",
           lastEdited: "Now",
           objects: [],
           canvasSize: { ...EQUIPMENT_GRAPHIC_CANVAS_DEFAULT },
@@ -1076,7 +1073,7 @@ export default function GraphicsManagerPage() {
             ? LAYOUT_BACKGROUND_IMPORT_MAX.height
             : Math.max(1, canvasHeight);
           const { dataUrl, width: w, height: h } = await downscaleImageFileToDataUrl(file, maxW, maxH, {
-            preferJpegForDraftStorage: !!selectedLayoutNodeId,
+            preferJpegForLocalStorage: !!selectedLayoutNodeId,
             jpegQuality: 0.82,
           });
 
@@ -1234,14 +1231,14 @@ export default function GraphicsManagerPage() {
           </div>
           <div className="d-flex align-items-center gap-2">
             <span className="text-white-50 small">Site:</span>
-            <span className="text-white fw-semibold">{draft?.site?.name || site || "—"}</span>
-            {activeDeployment ? (
+            <span className="text-white fw-semibold">{workingState?.site?.name || site || "—"}</span>
+            {activeReleaseData ? (
               <span className="badge bg-success bg-opacity-25 text-success border border-success border-opacity-50">
-                Deployed {activeDeployment.version}
+                Active release {activeReleaseData.version}
               </span>
             ) : (
               <span className="badge bg-secondary bg-opacity-50 text-white-50 border border-secondary">
-                Draft
+                Working version
               </span>
             )}
           </div>
@@ -1437,7 +1434,7 @@ export default function GraphicsManagerPage() {
       <SaveGraphicTemplateModal
         show={showSaveTemplateModal}
         onHide={() => setShowSaveTemplateModal(false)}
-        equipmentTemplates={draft.templates?.equipmentTemplates ?? []}
+        equipmentTemplates={workingState.templates?.equipmentTemplates ?? []}
         initialName={
           (editingGraphicTemplateId && (selectedGraphic?.name || templateBeingEdited?.name || "")) ||
           templateBeingEdited?.name ||

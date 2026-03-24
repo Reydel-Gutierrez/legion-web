@@ -1,0 +1,32 @@
+{
+  "name": "legion-backend",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Legion Phase 1 API — hierarchy and user access foundation",
+  "main": "src/server.js",
+  "scripts": {
+    "dev": "node src/server.js",
+    "start": "node src/server.js",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev",
+    "prisma:studio": "prisma studio",
+    "db:seed": "prisma db seed"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  },
+  "prisma": {
+    "seed": "node prisma/seed.js"
+  },
+  "dependencies": {
+    "@prisma/client": "4.16.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "helmet": "^7.1.0",
+    "morgan": "^1.10.0"
+  },
+  "devDependencies": {
+    "prisma": "4.16.2"
+  }
+}

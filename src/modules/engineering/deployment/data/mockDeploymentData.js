@@ -12,7 +12,7 @@ export function getMockCurrentDeployment() {
   };
 }
 
-export function getMockPendingDraftChanges() {
+export function getMockPendingWorkingVersionChanges() {
   return {
     equipment: 3,
     pointMappings: 5,

@@ -1,4 +1,5 @@
-import { USE_MOCK_DATA } from "../config";
+import { USE_MOCK_DATA, USE_HIERARCHY_API } from "../config";
+import * as hierarchyRepository from "./hierarchyRepository";
 import {
   getSitesMock,
   getSiteByIdMock,
@@ -20,18 +21,31 @@ import {
   getTrendLiveSnapshotMock,
 } from "../adapters/mock/operatorAdapter";
 
-export { USE_MOCK_DATA };
+export { USE_MOCK_DATA, USE_HIERARCHY_API };
 
-// Sites
+// Sites — sync helpers remain mock-only; use fetchSites when USE_HIERARCHY_API is set.
 export function getSites() {
-  if (USE_MOCK_DATA) return getSitesMock();
-  // TODO: replace with real API adapter
   return getSitesMock();
 }
 
 export function getSiteById(siteId) {
-  if (USE_MOCK_DATA) return getSiteByIdMock(siteId);
   return getSiteByIdMock(siteId);
+}
+
+/** @returns {Promise<import("../contracts").Site[]>} */
+export async function fetchSites() {
+  if (USE_HIERARCHY_API) {
+    return hierarchyRepository.listSites();
+  }
+  return Promise.resolve(getSitesMock());
+}
+
+/** @returns {Promise<import("../contracts").Site | null>} */
+export async function fetchSiteById(siteId) {
+  if (USE_HIERARCHY_API) {
+    return hierarchyRepository.getSiteById(siteId);
+  }
+  return Promise.resolve(getSiteByIdMock(siteId));
 }
 
 // Dashboard
@@ -66,8 +80,15 @@ export function getAlarms(siteId) {
   return getAlarmsMock(siteId);
 }
 
-// Equipment workspace. options.activeDeployment: when set (operator), points derived from deployed snapshot.
-export function getWorkspacePointsForEquipment(equipmentId, equipmentName, status, options) {
+// Equipment workspace. options.activeRelease: when set (operator), points derived from active release snapshot.
+export function getWorkspacePointsForEquipment(equipmentId, equipmentName, status, options = {}) {
+  const releaseData = options.activeRelease ?? options.activeDeployment;
+  if (releaseData) {
+    return getWorkspacePointsForEquipmentMock(equipmentId, equipmentName, status, options);
+  }
+  if (USE_HIERARCHY_API) {
+    return [];
+  }
   if (USE_MOCK_DATA) return getWorkspacePointsForEquipmentMock(equipmentId, equipmentName, status, options);
   return getWorkspacePointsForEquipmentMock(equipmentId, equipmentName, status, options);
 }
@@ -130,5 +151,17 @@ export function getTrendPointCatalog(siteId, equipmentId) {
 export function getTrendEquipmentGroups(siteId) {
   if (USE_MOCK_DATA) return getTrendEquipmentGroupsMock(siteId);
   return getTrendEquipmentGroupsMock(siteId);
+}
+
+/**
+ * Active release for Operator Mode. When USE_HIERARCHY_API, calls GET .../active-release.
+ * Returns `{ versionNumber, status, data }` where `data` is the deployment payload, or null.
+ * When the hierarchy API is off, returns null — UI uses in-memory activeRelease from EngineeringVersionProvider.
+ */
+export async function fetchActiveRelease(siteId) {
+  if (USE_HIERARCHY_API) {
+    return hierarchyRepository.fetchActiveRelease(siteId);
+  }
+  return null;
 }
 

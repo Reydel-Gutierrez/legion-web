@@ -4,7 +4,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faEthernet, faPlus, faTrashAlt } from "@fortawesome/free-solid-svg-icons";
 
 import { useSite } from "../../../app/providers/SiteProvider";
-import { useEngineeringDraft, selectNetworkConfig } from "../../../hooks/useEngineeringDraft";
+import { useWorkingVersion, selectNetworkConfig } from "../../../hooks/useWorkingVersion";
 import { SCAN_MODES } from "../network/networkConfigModel";
 import NoSiteSelectedState from "../network-discovery/components/NoSiteSelectedState";
 import { engineeringRepository } from "../../../lib/data";
@@ -15,9 +15,9 @@ function nextId(prefix) {
 
 export default function NetworkConfigurationPage() {
   const { site } = useSite();
-  const { draft, actions } = useEngineeringDraft();
-  const networkConfig = selectNetworkConfig(draft);
-  const hasNoSite = engineeringRepository.isNewEngineeringBuildingFlow(site) && !draft?.site;
+  const { workingVersion, actions } = useWorkingVersion();
+  const networkConfig = selectNetworkConfig(workingVersion);
+  const hasNoSite = engineeringRepository.isNewEngineeringBuildingFlow(site) && !workingVersion?.data?.site;
 
   const pushConfig = useCallback(
     (next) => {

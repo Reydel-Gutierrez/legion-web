@@ -1,5 +1,5 @@
 import { getDashboardSummary, getRecentEvents, getDashboardAlarms, getEquipmentHealth, getWeather } from "../../mockDashboard";
-import { getWorkspaceRowsFromDeployment } from "../../../activeDeploymentUtils";
+import { getWorkspaceRowsFromRelease } from "../../../activeReleaseUtils";
 import { getTrendEquipmentLibraryForSite } from "../../../../modules/engineering/data/mockEngineeringData";
 
 // NOTE: This module is the only place in the operator stack that should
@@ -173,13 +173,17 @@ function workspaceRowId(equipmentId, pointId) {
 }
 
 /**
- * Get workspace points for equipment. When activeDeployment is provided (operator mode),
+ * Get workspace points for equipment. When activeRelease payload is provided (operator mode),
  * derives rows from deployed snapshot so sites without discovered devices still show logical points with Unbound status.
  */
 export function getWorkspacePointsForEquipmentMock(equipmentId, equipmentName, status, options = {}) {
-  const activeDeployment = options.activeDeployment;
-  if (activeDeployment) {
-    const rows = getWorkspaceRowsFromDeployment(activeDeployment, equipmentId, equipmentName);
+  const releaseData = options.activeRelease ?? options.activeDeployment;
+  if (releaseData) {
+    const eq = releaseData.equipment?.find((e) => String(e.id) === String(equipmentId));
+    if (eq?.livePoints && Array.isArray(eq.livePoints) && eq.livePoints.length > 0) {
+      return eq.livePoints;
+    }
+    const rows = getWorkspaceRowsFromRelease(releaseData, equipmentId, equipmentName);
     if (rows.length > 0) return rows;
   }
 

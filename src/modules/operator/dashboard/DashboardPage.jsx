@@ -1,10 +1,11 @@
 import React, { useMemo, useState, useEffect } from "react";
 import { useSite } from "../../../app/providers/SiteProvider";
-import { useActiveDeployment } from "../../../hooks/useEngineeringDraft";
+import { useSiteDisplayLabel } from "../../../hooks/useSiteDisplayLabel";
+import { useActiveDeployment } from "../../../hooks/useWorkingVersion";
 import {
-  getSummaryFromActiveDeployment,
-  getFloorCommunicationHealthFromDeployment,
-} from "../../../lib/activeDeploymentUtils";
+  getSummaryFromActiveRelease,
+  getFloorCommunicationHealthFromRelease,
+} from "../../../lib/activeReleaseUtils";
 import {
   computeInsightsSnapshot,
   mergeKFactors,
@@ -41,7 +42,7 @@ function LegionConnectedLoad({ kwBreakdown, totalKw, onOpenAssumptions }) {
   if (!kwBreakdown.length) {
     return (
       <div className="legion-connected-load">
-        <p className="small text-white-50 mb-0">No equipment in scope for connected load. Add deployment equipment or enable schedules.</p>
+        <p className="small text-white-50 mb-0">No equipment in scope for connected load. Add released equipment or enable schedules.</p>
       </div>
     );
   }
@@ -153,11 +154,13 @@ function CommRing({ pct, size = 72 }) {
 
 export default function DashboardPage() {
   const { site } = useSite();
-  const activeDeployment = useActiveDeployment();
+  const siteLabel = useSiteDisplayLabel();
+  const { deployment } = useActiveDeployment();
+  const activeReleaseData = deployment;
 
   const [kFactorOverrides, setKFactorOverrides] = useState(() => loadKFactorOverrides());
   const [showKModal, setShowKModal] = useState(false);
-  const [draftKFactors, setDraftKFactors] = useState({});
+  const [unsavedKFactors, setUnsavedKFactors] = useState({});
 
   useEffect(() => {
     setKFactorOverrides(loadKFactorOverrides());
@@ -166,12 +169,15 @@ export default function DashboardPage() {
   const mergedKFactors = useMemo(() => mergeKFactors(kFactorOverrides), [kFactorOverrides]);
 
   const summary = useMemo(
-    () => (activeDeployment ? getSummaryFromActiveDeployment(activeDeployment) : { equipmentCount: 0, activeAlarms: 0, unackedAlarms: 0, devicesOffline: 0, openTasks: 0, energyRuntime: null }),
-    [activeDeployment]
+    () =>
+      activeReleaseData
+        ? getSummaryFromActiveRelease(activeReleaseData)
+        : { equipmentCount: 0, activeAlarms: 0, unackedAlarms: 0, devicesOffline: 0, openTasks: 0, energyRuntime: null },
+    [activeReleaseData]
   );
   const insightsFootnote = useMemo(
     () =>
-      "Estimates use enabled schedules, deployment equipment, and your k-factors. Open Energy assumptions to tune load models.",
+      "Estimates use enabled schedules, equipment from the active release, and your k-factors. Open Energy assumptions to tune load models.",
     []
   );
 
@@ -186,8 +192,8 @@ export default function DashboardPage() {
     Math.min(99, 100 - summary.devicesOffline * 6 - summary.unackedAlarms * 2)
   );
   const floorCommRows = useMemo(
-    () => getFloorCommunicationHealthFromDeployment(activeDeployment),
-    [activeDeployment]
+    () => getFloorCommunicationHealthFromRelease(activeReleaseData),
+    [activeReleaseData]
   );
   const overallCommStats = useMemo(() => {
     if (!floorCommRows.length) {
@@ -212,12 +218,12 @@ export default function DashboardPage() {
     () =>
       computeInsightsSnapshot({
         siteId: site,
-        activeDeployment,
+        releaseSnapshot: activeReleaseData,
         schedules,
         mergedKFactors,
         summaryDevicesOffline: commOfflineCount,
       }),
-    [site, activeDeployment, schedules, mergedKFactors, commOfflineCount]
+    [site, activeReleaseData, schedules, mergedKFactors, commOfflineCount]
   );
 
   const {
@@ -249,11 +255,11 @@ export default function DashboardPage() {
   );
 
   const openKModal = () => {
-    setDraftKFactors({ ...mergedKFactors });
+    setUnsavedKFactors({ ...mergedKFactors });
     setShowKModal(true);
   };
   const saveKFactors = () => {
-    const next = { ...draftKFactors };
+    const next = { ...unsavedKFactors };
     saveKFactorOverrides(next);
     setKFactorOverrides(next);
     setShowKModal(false);
@@ -392,7 +398,7 @@ export default function DashboardPage() {
                   <div>
                     <div className="text-white fw-semibold fs-5">Energy performance</div>
                     <div className="text-white-50 small mt-1">
-                      {site} — usage trend vs baseline and connected load by equipment type
+                      {siteLabel} — usage trend vs baseline and connected load by equipment type
                     </div>
                   </div>
                   <div className="d-flex flex-wrap gap-3 align-items-center small text-white-50">
@@ -617,13 +623,13 @@ export default function DashboardPage() {
                   min="0"
                   className="bg-primary text-white border border-light border-opacity-10"
                   value={
-                    draftKFactors[key] !== undefined
-                      ? draftKFactors[key]
+                    unsavedKFactors[key] !== undefined
+                      ? unsavedKFactors[key]
                       : mergedKFactors[key] ?? DEFAULT_KW_BY_EQUIP_TYPE[key] ?? DEFAULT_KW_BY_EQUIP_TYPE.DEFAULT
                   }
                   onChange={(e) => {
                     const v = parseFloat(e.target.value, 10);
-                    setDraftKFactors((prev) => ({
+                    setUnsavedKFactors((prev) => ({
                       ...prev,
                       [key]: Number.isFinite(v) ? v : 0,
                     }));

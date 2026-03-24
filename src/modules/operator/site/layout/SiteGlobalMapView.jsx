@@ -30,18 +30,35 @@ function statusLabel(status) {
 }
 
 export default function SiteGlobalMapView({
-  activeDeployment,
+  activeReleaseData,
   siteDisplayName,
   selectedBuildingId,
   onSelectBuilding,
   onOpenBuilding,
 }) {
-  const deploymentSiteId =
-    activeDeployment && activeDeployment.site && activeDeployment.site.id ? activeDeployment.site.id : null;
+  const releaseSiteId =
+    activeReleaseData && activeReleaseData.site && activeReleaseData.site.id ? activeReleaseData.site.id : null;
+
+  /** Stable when deployment data is unchanged — avoids Leaflet init loop when parent passes new object refs each render. */
+  const activeLayoutFingerprint = useMemo(() => {
+    const site = activeReleaseData?.site;
+    if (!site?.buildings?.length) return `${releaseSiteId ?? ""}:empty`;
+    return JSON.stringify(
+      site.buildings.map((b) => ({
+        id: b.id,
+        lat: b.lat ?? null,
+        lng: b.lng ?? null,
+        name: b.name,
+        status: b.status,
+      }))
+    );
+  }, [activeReleaseData, releaseSiteId]);
 
   const panelBuildings = useMemo(
-    () => siteLayoutRepository.getSiteLayoutBuildingsList(activeDeployment),
-    [activeDeployment]
+    () => siteLayoutRepository.getSiteLayoutBuildingsList(activeReleaseData),
+    // Intentionally fingerprint only — avoids rebuilding when parent passes a new deployment object ref with identical site data.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [activeLayoutFingerprint]
   );
 
   const mapBuildings = useMemo(() => panelBuildings.filter((b) => b.hasGeo), [panelBuildings]);
@@ -68,7 +85,7 @@ export default function SiteGlobalMapView({
 
   const basemap = useMemo(() => getLeafletBasemapConfig(), []);
 
-  // Map + markers: runs whenever geo set or site changes. Always show basemap when the site has buildings.
+  // Map + markers: runs when layout fingerprint changes (not on every parent re-render).
   useEffect(() => {
     if (!mapElRef.current || panelBuildings.length === 0) return undefined;
 
@@ -140,7 +157,7 @@ export default function SiteGlobalMapView({
       mapRef.current = null;
       markerByIdRef.current = new Map();
     };
-  }, [mapBuildings, deploymentSiteId, panelBuildings.length]);
+  }, [activeLayoutFingerprint, releaseSiteId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Fly to selection or refit when selection cleared (geo buildings only).
   useEffect(() => {
@@ -166,7 +183,7 @@ export default function SiteGlobalMapView({
     map.whenReady(() => {
       setTimeout(run, 0);
     });
-  }, [mapBuildings, panelBuildings, selectedBuildingId]);
+  }, [activeLayoutFingerprint, selectedBuildingId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     markerByIdRef.current.forEach((m, id) => {

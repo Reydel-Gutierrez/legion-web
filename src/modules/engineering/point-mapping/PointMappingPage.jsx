@@ -5,10 +5,10 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faMapMarkerAlt } from "@fortawesome/free-solid-svg-icons";
 
 import { useSite } from "../../../app/providers/SiteProvider";
-import { useEngineeringDraft } from "../../../hooks/useEngineeringDraft";
+import { useWorkingVersion } from "../../../hooks/useWorkingVersion";
 import LegionHeroHeader from "../../../components/legion/LegionHeroHeader";
 import { engineeringRepository } from "../../../lib/data";
-import { selectSiteTree } from "../../../hooks/useEngineeringDraft";
+import { selectSiteTree } from "../../../hooks/useWorkingVersion";
 import MappingContextCard from "./components/MappingContextCard";
 import MappingSummaryBar from "./components/MappingSummaryBar";
 import MappingToolbar from "./components/MappingToolbar";
@@ -69,30 +69,30 @@ function parseEquipmentIdFromSearch(search) {
   return params.get("equipmentId") || null;
 }
 
-function getDiscoveredObjectsFromDraft(draft, controllerRef) {
-  if (!draft?.discoveredObjects || controllerRef == null) return [];
-  return draft.discoveredObjects[String(controllerRef)] || [];
+function getDiscoveredObjectsFromWorkingState(workingState, controllerRef) {
+  if (!workingState?.discoveredObjects || controllerRef == null) return [];
+  return workingState.discoveredObjects[String(controllerRef)] || [];
 }
 
 export default function PointMappingPage() {
   const { site } = useSite();
   const location = useLocation();
   const equipmentIdFromUrl = parseEquipmentIdFromSearch(location.search);
-  const { draft, actions } = useEngineeringDraft();
-  const siteTree = selectSiteTree(draft);
+  const { workingVersion, workingState, actions } = useWorkingVersion();
+  const siteTree = selectSiteTree(workingVersion);
   const equipmentList = useMemo(() => {
-    const raw = draft.equipment ?? [];
+    const raw = workingState.equipment ?? [];
     return engineeringRepository.enrichEquipmentForEngineeringPointMapping(
       raw,
       siteTree,
       site
     );
-  }, [draft.equipment, siteTree, site]);
+  }, [workingState.equipment, siteTree, site]);
 
   // Ref to avoid effect dependency on equipmentList (siteTree is new every render → equipmentList new → infinite loop)
   const equipmentListRef = useRef(equipmentList);
   equipmentListRef.current = equipmentList;
-  const equipmentListStableKey = `${site}-${(draft?.equipment?.length ?? 0)}`;
+  const equipmentListStableKey = `${site}-${(workingState?.equipment?.length ?? 0)}`;
 
   const [equipment, setEquipment] = useState(null);
   const [mappings, setMappings] = useState({});
@@ -102,13 +102,13 @@ export default function PointMappingPage() {
   const [filterValue, setFilterValue] = useState("all");
   const [unusedExpanded, setUnusedExpanded] = useState(false);
 
-  // Sync mappings from draft when equipment changes
+  // Sync mappings from working version when equipment changes
   useEffect(() => {
     if (equipment) {
-      const fromDraft = (draft.mappings || {})[equipment.id] ?? {};
-      setMappings(fromDraft);
+      const fromWorking = (workingState.mappings || {})[equipment.id] ?? {};
+      setMappings(fromWorking);
     }
-  }, [equipment?.id, draft.mappings]);
+  }, [equipment?.id, workingState.mappings]);
 
   // Initialize equipment from URL or pick first mappable. Use stable deps to avoid loop (equipmentList is new ref every render).
   useEffect(() => {
@@ -136,18 +136,18 @@ export default function PointMappingPage() {
   const handleSelectEquipment = useCallback((id) => {
     const found = equipmentList.find((eq) => eq.id === id);
     setEquipment(found || null);
-    setMappings(found ? (draft.mappings || {})[found.id] ?? {} : {});
+    setMappings(found ? (workingState.mappings || {})[found.id] ?? {} : {});
     setAutoMappedIds(new Set());
     setSelectedPointId(null);
-  }, [equipmentList, draft.mappings]);
+  }, [equipmentList, workingState.mappings]);
 
   const templatePoints = useMemo(
     () => engineeringRepository.getTemplatePoints(equipment?.templateName),
     [equipment?.templateName]
   );
   const discoveredObjects = useMemo(
-    () => getDiscoveredObjectsFromDraft(draft, equipment?.controllerRef),
-    [draft, equipment?.controllerRef]
+    () => getDiscoveredObjectsFromWorkingState(workingState, equipment?.controllerRef),
+    [workingState, equipment?.controllerRef]
   );
 
   const mappingStatuses = useMemo(() => {
@@ -231,7 +231,7 @@ export default function PointMappingPage() {
   }, []);
 
   const isNewBuilding = engineeringRepository.isNewEngineeringBuildingFlow(site);
-  const hasNoSite = isNewBuilding && !draft?.site;
+  const hasNoSite = isNewBuilding && !workingState?.site;
   const hasController = !!(equipment?.controllerRef && String(equipment.controllerRef).trim());
   const hasTemplate = !!(equipment?.templateName && String(equipment.templateName).trim());
   const hasDiscovered = (discoveredObjects || []).length > 0;
@@ -391,7 +391,7 @@ export default function PointMappingPage() {
           onAutoMap={handleAutoMap}
           onValidate={() => {}}
           onClearUnmapped={handleClearUnmapped}
-          onSaveDraft={() => {}}
+          onSaveWorkingVersion={() => {}}
           filterValue={filterValue}
           onFilterChange={setFilterValue}
           onShowUnused={() => setUnusedExpanded(true)}

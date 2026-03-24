@@ -1,7 +1,7 @@
 import React, { useMemo, useState, useEffect, useCallback } from "react";
 import { useHistory, useLocation } from "react-router-dom";
-import { useSite } from "../../../app/providers/SiteProvider";
-import { useActiveDeployment } from "../../../hooks/useEngineeringDraft";
+import { useSiteDisplayLabel } from "../../../hooks/useSiteDisplayLabel";
+import { useActiveDeployment } from "../../../hooks/useWorkingVersion";
 import { Container, Card, Button } from "@themesberg/react-bootstrap";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faChevronRight, faBoxOpen, faExclamationTriangle } from "@fortawesome/free-solid-svg-icons";
@@ -9,7 +9,7 @@ import LegionHeroHeader from "../../../components/legion/LegionHeroHeader";
 import DeployedGraphicPreview, { DEPLOYED_GRAPHIC_PRESENTATION } from "../equipment/DeployedGraphicPreview";
 import SiteGlobalMapView from "./layout/SiteGlobalMapView";
 import { Routes } from "../../../routes";
-import { getSummaryFromActiveDeployment } from "../../../lib/activeDeploymentUtils";
+import { getSummaryFromActiveRelease } from "../../../lib/activeReleaseUtils";
 
 /** Path segment for breadcrumb */
 function pathSegment(id, label) {
@@ -17,8 +17,8 @@ function pathSegment(id, label) {
 }
 
 /** Build layout levels (flat list) with breadcrumb path for each */
-function buildLayoutLevels(activeDeployment) {
-  const site = activeDeployment?.site;
+function buildLayoutLevels(releaseData) {
+  const site = releaseData?.site;
   if (!site) return [];
 
   const levels = [];
@@ -53,24 +53,26 @@ function buildLayoutLevels(activeDeployment) {
   return levels;
 }
 
-/** Get equipment on a floor from deployment */
-function getEquipmentOnFloor(activeDeployment, floorId) {
-  if (!activeDeployment?.equipment || !floorId) return [];
-  return activeDeployment.equipment.filter((e) => String(e.floorId) === String(floorId));
+/** Get equipment on a floor from active release payload */
+function getEquipmentOnFloor(releaseData, floorId) {
+  if (!releaseData?.equipment || !floorId) return [];
+  return releaseData.equipment.filter((e) => String(e.floorId) === String(floorId));
 }
 
 export default function SitePage() {
-  const { site } = useSite();
+  const siteLabel = useSiteDisplayLabel();
   const history = useHistory();
   const location = useLocation();
-  const activeDeployment = useActiveDeployment();
-  const layoutLevels = useMemo(() => buildLayoutLevels(activeDeployment), [activeDeployment]);
+  const { deployment, loading: releaseLoading, error: releaseError } = useActiveDeployment();
+  const activeReleaseData = deployment;
+  const siteDisplayName = activeReleaseData?.site?.name || siteLabel;
+  const layoutLevels = useMemo(() => buildLayoutLevels(activeReleaseData), [activeReleaseData]);
 
   const hasLevels = layoutLevels.length > 0;
   const [levelIndex, setLevelIndex] = useState(0);
   const [selectedBuildingId, setSelectedBuildingId] = useState(null);
 
-  const siteStorageKey = activeDeployment?.site?.id ? `legionSiteLayoutSelection:${activeDeployment.site.id}` : null;
+  const siteStorageKey = activeReleaseData?.site?.id ? `legionSiteLayoutSelection:${activeReleaseData.site.id}` : null;
 
   useEffect(() => {
     const targetId = location.state?.selectLayoutLevelId;
@@ -110,7 +112,7 @@ export default function SitePage() {
   const selectedLevel = hasLevels ? layoutLevels[levelIndex] : null;
   const selectedNodeId = selectedLevel?.id ?? null;
   const layoutGraphic = selectedNodeId
-    ? (activeDeployment?.siteLayoutGraphics ?? {})[selectedNodeId]
+    ? (activeReleaseData?.siteLayoutGraphics ?? {})[selectedNodeId]
     : null;
   const hasLayoutGraphic = layoutGraphic && (layoutGraphic?.objects?.length > 0 || layoutGraphic?.backgroundImage?.dataUrl);
 
@@ -118,13 +120,13 @@ export default function SitePage() {
   const levelLabel = selectedLevel?.label ?? (levelIndex === 0 ? "Overview" : `Level ${levelIndex}`);
 
   const equipmentOnFloor = useMemo(
-    () => (selectedLevel?.type === "floor" ? getEquipmentOnFloor(activeDeployment, selectedLevel.id) : []),
-    [activeDeployment, selectedLevel]
+    () => (selectedLevel?.type === "floor" ? getEquipmentOnFloor(activeReleaseData, selectedLevel.id) : []),
+    [activeReleaseData, selectedLevel]
   );
 
   const summary = useMemo(
-    () => (activeDeployment ? getSummaryFromActiveDeployment(activeDeployment) : { activeAlarms: 0, unackedAlarms: 0 }),
-    [activeDeployment]
+    () => (activeReleaseData ? getSummaryFromActiveRelease(activeReleaseData) : { activeAlarms: 0, unackedAlarms: 0 }),
+    [activeReleaseData]
   );
 
   const goToLevelByPathId = useCallback(
@@ -170,6 +172,14 @@ export default function SitePage() {
       </div>
 
       <div className="px-3 px-md-4 pb-4 mt-3 site-layout-page">
+        {releaseLoading && !activeReleaseData && (
+          <div className="text-white-50 small mb-3">Loading site layout from server…</div>
+        )}
+        {releaseError && (
+          <div className="alert alert-danger py-2 small mb-3" role="alert">
+            {releaseError}
+          </div>
+        )}
         {/* Breadcrumb — compact, single row */}
         <nav aria-label="Site location" className="d-flex align-items-center flex-wrap gap-1 text-white-50 small mb-3">
           <span className="text-white-50">Site Layout</span>
@@ -195,8 +205,8 @@ export default function SitePage() {
           {isGlobalSiteView ? (
             <>
               <SiteGlobalMapView
-                activeDeployment={activeDeployment}
-                siteDisplayName={site}
+                activeReleaseData={activeReleaseData}
+                siteDisplayName={siteDisplayName}
                 selectedBuildingId={selectedBuildingId}
                 onSelectBuilding={setSelectedBuildingId}
                 onOpenBuilding={openBuildingLayout}
@@ -237,7 +247,7 @@ export default function SitePage() {
                     </div>
                   )}
                   <div className="legion-map-badge">
-                    {site} • {levelLabel}
+                    {siteDisplayName} • {levelLabel}
                   </div>
 
                   {(summary.activeAlarms > 0 || summary.unackedAlarms > 0) && (

@@ -1,0 +1,192 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum EntityStatus {
+  ACTIVE
+  INACTIVE
+  ARCHIVED
+}
+
+enum SiteVersionStatus {
+  WORKING
+  RELEASED
+  ARCHIVED
+}
+
+model Site {
+  id        String       @id @default(uuid())
+  name      String
+  status    EntityStatus @default(ACTIVE)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  /// User who created the site (shown as project owner in UIs that filter by creator)
+  createdByUserId String?
+  createdByUser   User?   @relation("SitesCreatedByUser", fields: [createdByUserId], references: [id], onDelete: SetNull)
+
+  activeReleaseVersionId String? @unique
+  activeReleaseVersion   SiteVersion? @relation("ActiveRelease", fields: [activeReleaseVersionId], references: [id], onDelete: SetNull)
+
+  buildings      Building[]
+  equipment      Equipment[]
+  points         Point[]
+  userSiteAccess UserSiteAccess[]
+  siteVersions   SiteVersion[]
+}
+
+model SiteVersion {
+  id        String @id @default(uuid())
+  siteId    String
+  versionNumber Int
+  status    SiteVersionStatus
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy String?
+  deployedAt DateTime?
+  parentVersionId String?
+  notes     String?
+
+  site Site @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  parent SiteVersion? @relation("VersionHierarchy", fields: [parentVersionId], references: [id], onDelete: SetNull)
+  children SiteVersion[] @relation("VersionHierarchy")
+  payload SiteVersionPayload?
+  activeReleaseForSite Site? @relation("ActiveRelease")
+
+  @@unique([siteId, versionNumber])
+  @@index([siteId])
+  @@index([status])
+  @@index([siteId, status])
+}
+
+model SiteVersionPayload {
+  id            String @id @default(uuid())
+  siteVersionId String @unique
+  payloadJson   Json
+
+  siteVersion SiteVersion @relation(fields: [siteVersionId], references: [id], onDelete: Cascade)
+}
+
+model Building {
+  id           String       @id @default(uuid())
+  siteId       String
+  name         String
+  addressLine1 String
+  addressLine2 String?
+  city         String
+  state        String
+  postalCode   String
+  country      String
+  latitude     Float?
+  longitude    Float?
+  status       EntityStatus @default(ACTIVE)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  site      Site       @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  floors    Floor[]
+  equipment Equipment[]
+  points    Point[]
+
+  @@unique([siteId, name])
+}
+
+model Floor {
+  id         String       @id @default(uuid())
+  buildingId String
+  name       String
+  status     EntityStatus @default(ACTIVE)
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+
+  building  Building    @relation(fields: [buildingId], references: [id], onDelete: Cascade)
+  equipment Equipment[]
+  points    Point[]
+
+  @@unique([buildingId, name])
+}
+
+model Equipment {
+  id            String       @id @default(uuid())
+  siteId        String
+  buildingId    String
+  floorId       String
+  name          String
+  code          String
+  equipmentType String
+  status        EntityStatus @default(ACTIVE)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  site     Site     @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  building Building @relation(fields: [buildingId], references: [id], onDelete: Cascade)
+  floor    Floor    @relation(fields: [floorId], references: [id], onDelete: Cascade)
+  points   Point[]
+
+  @@unique([siteId, code])
+}
+
+model Point {
+  id           String       @id @default(uuid())
+  equipmentId  String
+  siteId       String
+  buildingId   String
+  floorId      String
+  pointName    String
+  pointCode    String
+  pointType    String
+  unit         String?
+  writable     Boolean      @default(false)
+  presentValue String?
+  status       EntityStatus @default(ACTIVE)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  equipment Equipment @relation(fields: [equipmentId], references: [id], onDelete: Cascade)
+  site      Site      @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  building  Building  @relation(fields: [buildingId], references: [id], onDelete: Cascade)
+  floor     Floor     @relation(fields: [floorId], references: [id], onDelete: Cascade)
+
+  @@unique([equipmentId, pointCode])
+}
+
+model User {
+  id        String       @id @default(uuid())
+  email     String       @unique
+  name      String?
+  status    EntityStatus @default(ACTIVE)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  sitesCreated  Site[]           @relation("SitesCreatedByUser")
+  userSiteAccess UserSiteAccess[]
+}
+
+model Role {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  userSiteAccess UserSiteAccess[]
+}
+
+model UserSiteAccess {
+  id        String   @id @default(uuid())
+  userId    String
+  siteId    String
+  roleId    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  site Site @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  role Role @relation(fields: [roleId], references: [id], onDelete: Restrict)
+
+  @@unique([userId, siteId])
+}

@@ -24,6 +24,7 @@ export default function MappingToolbar({
   onAutoMap,
   onValidate,
   onClearUnmapped,
+  onSaveWorkingVersion,
   onSaveDraft,
   filterValue,
   onFilterChange,
@@ -31,6 +32,7 @@ export default function MappingToolbar({
   onExpandAll,
   onCollapseAll,
 }) {
+  const handleSave = onSaveWorkingVersion ?? onSaveDraft;
   const filterOptions = [
     { value: "all", label: "All" },
     { value: "required", label: "Required Only" },
@@ -57,8 +59,8 @@ export default function MappingToolbar({
         </InputGroup>
       </Form.Group>
       <div className="site-builder-toolbar-divider" />
-      <Button size="sm" className="legion-hero-btn legion-hero-btn--primary" onClick={onSaveDraft}>
-        Save Draft
+      <Button size="sm" className="legion-hero-btn legion-hero-btn--primary" onClick={handleSave}>
+        Save
       </Button>
       <Button size="sm" className="legion-hero-btn legion-hero-btn--secondary" onClick={onAutoMap}>
         <FontAwesomeIcon icon={faMagic} className="me-1" />

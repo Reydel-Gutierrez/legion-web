@@ -1,12 +1,10 @@
 /**
- * Lightweight validation engine for the shared draft.
- * Inspects draft and produces: summary counts, readiness status, issue list.
- * Reusable by Validation Center, Deployment page, and header deploy behavior.
+ * Validation for the engineering working version (readiness before deploy).
  */
 
 import { SEVERITY, CATEGORY, READINESS_STATUS, ACTION_TARGET } from "../../../lib/data/repositories/engineeringRepository";
 import { engineeringRepository } from "../../../lib/data";
-import { getMappingsForEquipment } from "./draftModel";
+import { getMappingsForEquipment } from "./workingVersionModel";
 
 let issueIdCounter = 0;
 function nextId() {
@@ -14,17 +12,15 @@ function nextId() {
 }
 
 /**
- * Run validation on the draft. Returns issues, summary, readiness, message.
- * @param {object} draft - Central draft state
- * @returns {{ issues: array, summary: object, readiness: string, message: string, lastRunAt: string }}
+ * @param {object} workingData - Flat working-version fields (same shape as legacy engineering payload)
  */
-export function validateDraft(draft) {
+export function validateWorkingVersion(workingData) {
   const issues = [];
-  const equipment = draft?.equipment ?? [];
-  const discoveredDevices = draft?.discoveredDevices ?? [];
-  const discoveredObjects = draft?.discoveredObjects ?? {};
-  const mappings = draft?.mappings ?? {};
-  const graphics = draft?.graphics ?? {};
+  const equipment = workingData?.equipment ?? [];
+  const discoveredDevices = workingData?.discoveredDevices ?? [];
+  const discoveredObjects = workingData?.discoveredObjects ?? {};
+  const mappings = workingData?.mappings ?? {};
+  const graphics = workingData?.graphics ?? {};
 
   const deviceStatusByInstance = {};
   function collectDeviceStatus(nodes) {
@@ -37,7 +33,6 @@ export function validateDraft(draft) {
   }
   collectDeviceStatus(discoveredDevices);
 
-  // 1. Equipment missing controller
   equipment.forEach((eq) => {
     if (!eq.controllerRef || String(eq.controllerRef).trim() === "") {
       issues.push({
@@ -60,7 +55,6 @@ export function validateDraft(draft) {
     }
   });
 
-  // 2. Equipment missing template
   equipment.forEach((eq) => {
     if (eq.controllerRef && (!eq.templateName || String(eq.templateName).trim() === "")) {
       issues.push({
@@ -83,7 +77,6 @@ export function validateDraft(draft) {
     }
   });
 
-  // 3. Required points unmapped; optional unmapped (warning)
   equipment.forEach((eq) => {
     if (!eq.controllerRef || !eq.templateName) return;
     const templatePoints = engineeringRepository.getTemplatePoints(eq.templateName);
@@ -130,7 +123,6 @@ export function validateDraft(draft) {
     });
   });
 
-  // 4. Controller offline (assigned but device status offline)
   equipment.forEach((eq) => {
     if (!eq.controllerRef) return;
     const status = deviceStatusByInstance[String(eq.controllerRef)];
@@ -155,7 +147,6 @@ export function validateDraft(draft) {
     }
   });
 
-  // 5. No discovered objects for assigned controller
   equipment.forEach((eq) => {
     if (!eq.controllerRef) return;
     const objects = discoveredObjects[String(eq.controllerRef)] ?? [];
@@ -180,7 +171,6 @@ export function validateDraft(draft) {
     }
   });
 
-  // 6. Missing graphic (warning) — equipment with template but no graphic
   equipment.forEach((eq) => {
     if (!eq.templateName) return;
     const hasGraphic = graphics[eq.id] && graphics[eq.id].id;
@@ -211,11 +201,7 @@ export function validateDraft(draft) {
   issues.forEach((i) => {
     byCategory[i.category] = (byCategory[i.category] || 0) + 1;
   });
-  const summary = {
-    errors,
-    warnings,
-    byCategory,
-  };
+  const summary = { errors, warnings, byCategory };
   let readiness = READINESS_STATUS.READY;
   if (errors > 0) readiness = READINESS_STATUS.BLOCKED;
   else if (warnings > 0) readiness = READINESS_STATUS.WARNINGS;

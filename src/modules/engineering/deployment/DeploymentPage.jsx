@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from "react";
+import React, { useState, useCallback, useMemo, useEffect } from "react";
 import { useHistory } from "react-router-dom";
 import {
   Container,
@@ -20,38 +20,66 @@ import {
 import LegionHeroHeader from "../../../components/legion/LegionHeroHeader";
 import DeployAnywayModal from "../validation-center/components/DeployAnywayModal";
 import { useValidation } from "../../../app/providers/ValidationProvider";
-import { useEngineeringDraft } from "../../../hooks/useEngineeringDraft";
+import { useWorkingVersion } from "../../../hooks/useWorkingVersion";
 import { Routes } from "../../../routes";
-import { engineeringRepository, deploymentRepository } from "../../../lib/data";
+import { engineeringRepository, deploymentRepository, USE_HIERARCHY_API } from "../../../lib/data";
+import { useSite } from "../../../app/providers/SiteProvider";
+import { WORKING_VERSION_ACTIONS } from "../working-version/workingVersionReducer";
+import { isBackendSiteId } from "../../../lib/data/siteIdUtils";
 
 export default function DeploymentPage() {
   const history = useHistory();
+  const { site } = useSite();
   const { validationSnapshot } = useValidation();
-  const { draft, actions } = useEngineeringDraft();
+  const { workingState, actions, dispatch } = useWorkingVersion();
   const { summary } = validationSnapshot;
   const errors = summary?.errors ?? 0;
   const warnings = summary?.warnings ?? 0;
   const readiness = validationSnapshot.readiness;
 
-  const currentDeployment = draft.activeDeploymentSnapshot ?? {
+  const currentReleaseMeta = workingState.activeDeploymentSnapshot ?? {
     version: "v0",
     lastDeployedAt: null,
     deployedBy: null,
     systemStatus: "Unknown",
   };
-  const historyList = draft.deploymentHistory ?? [];
+  const historyList = workingState.deploymentHistory ?? [];
   const pendingChanges = useMemo(() => {
-    const eqCount = (draft.equipment || []).length;
-    const mappingCount = Object.values(draft.mappings || {}).reduce((acc, m) => acc + Object.keys(m || {}).length, 0);
-    const gfxCount = Object.keys(draft.graphics || {}).length;
-    const templateCount = (draft.templates?.equipmentTemplates?.length || 0) + (draft.templates?.graphicTemplates?.length || 0);
+    const eqCount = (workingState.equipment || []).length;
+    const mappingCount = Object.values(workingState.mappings || {}).reduce((acc, m) => acc + Object.keys(m || {}).length, 0);
+    const gfxCount = Object.keys(workingState.graphics || {}).length;
+    const templateCount =
+      (workingState.templates?.equipmentTemplates?.length || 0) + (workingState.templates?.graphicTemplates?.length || 0);
     return { equipment: eqCount, pointMappings: mappingCount, graphics: gfxCount, templates: templateCount };
-  }, [draft.equipment, draft.mappings, draft.graphics, draft.templates]);
+  }, [workingState.equipment, workingState.mappings, workingState.graphics, workingState.templates]);
 
   const [showOverrideModal, setShowOverrideModal] = useState(false);
   const [toastMessage, setToastMessage] = useState(null);
+  const useApiDeploy = USE_HIERARCHY_API && isBackendSiteId(site);
+  const [apiDeployLoading, setApiDeployLoading] = useState(false);
+  const [apiVersionSummary, setApiVersionSummary] = useState(null);
+  const [versionMetaTick, setVersionMetaTick] = useState(0);
 
   const hasPending = deploymentRepository.hasPendingChanges(pendingChanges);
+
+  useEffect(() => {
+    if (!useApiDeploy) {
+      setApiVersionSummary(null);
+      return undefined;
+    }
+    let cancelled = false;
+    engineeringRepository
+      .fetchSiteVersionSummary(site)
+      .then((data) => {
+        if (!cancelled) setApiVersionSummary(data);
+      })
+      .catch(() => {
+        if (!cancelled) setApiVersionSummary(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [useApiDeploy, site, versionMetaTick]);
   const readinessLabel =
     readiness === engineeringRepository.READINESS_STATUS.READY
       ? "Ready"
@@ -69,12 +97,60 @@ export default function DeploymentPage() {
       ? "warning"
       : "secondary";
 
-  const handleDeployConfiguration = useCallback(() => {
+  const applyApiDeploySuccess = useCallback(
+    (res) => {
+      const ar = res?.activeRelease;
+      const snap = ar?.payload;
+      if (!snap) return;
+      dispatch({
+        type: WORKING_VERSION_ACTIONS.SET_ACTIVE_RELEASE_METADATA,
+        payload: {
+          version: snap.version,
+          lastDeployedAt: snap.lastDeployedAt,
+          deployedBy: snap.deployedBy,
+          systemStatus: snap.systemStatus,
+        },
+      });
+      const now = new Date();
+      const entry = {
+        version: snap.version,
+        date: now.toISOString().slice(0, 10),
+        user: snap.deployedBy || "—",
+        result: "Success",
+        notes: ar?.notes ?? "",
+        timestamp: now.toISOString(),
+      };
+      dispatch({
+        type: WORKING_VERSION_ACTIONS.SET_RELEASE_HISTORY,
+        payload: [entry, ...(workingState.deploymentHistory || [])],
+      });
+    },
+    [dispatch, workingState.deploymentHistory]
+  );
+
+  const handleDeployConfiguration = useCallback(async () => {
     if (errors > 0) return;
+    if (useApiDeploy) {
+      setApiDeployLoading(true);
+      try {
+        const res = await engineeringRepository.postDeployWorkingVersion(site);
+        applyApiDeploySuccess(res);
+        engineeringRepository.notifyEngineeringHierarchyChanged(site);
+        setVersionMetaTick((t) => t + 1);
+        setToastMessage("Version deployed successfully");
+        setTimeout(() => setToastMessage(null), 3000);
+      } catch (e) {
+        setToastMessage(e?.message ? `Deploy failed: ${e.message}` : "Deploy failed");
+        setTimeout(() => setToastMessage(null), 5000);
+      } finally {
+        setApiDeployLoading(false);
+      }
+      return;
+    }
     setToastMessage("Deployment successful.");
     setTimeout(() => setToastMessage(null), 3000);
-    actions.deployDraftConfiguration();
-  }, [errors, actions]);
+    actions.deployWorkingVersion();
+  }, [errors, useApiDeploy, site, applyApiDeploySuccess, actions]);
 
   const handleDeployAnyway = useCallback(() => {
     if (errors > 0) {
@@ -85,14 +161,37 @@ export default function DeploymentPage() {
   }, [errors, handleDeployConfiguration]);
 
   const handleConfirmOverride = useCallback(
-    (reason) => {
+    async (reason) => {
       setShowOverrideModal(false);
+      const notes = reason || "Override activation";
+      if (useApiDeploy) {
+        setApiDeployLoading(true);
+        try {
+          const res = await engineeringRepository.postDeployWorkingVersion(site, notes);
+          applyApiDeploySuccess(res);
+          engineeringRepository.notifyEngineeringHierarchyChanged(site);
+          setVersionMetaTick((t) => t + 1);
+          setToastMessage("Version deployed successfully");
+          setTimeout(() => setToastMessage(null), 3000);
+        } catch (e) {
+          setToastMessage(e?.message ? `Deploy failed: ${e.message}` : "Deploy failed");
+          setTimeout(() => setToastMessage(null), 5000);
+        } finally {
+          setApiDeployLoading(false);
+        }
+        return;
+      }
       setToastMessage("Deployment successful.");
       setTimeout(() => setToastMessage(null), 3000);
-      actions.deployDraftConfiguration({ notes: reason || "Override deployment" });
+      actions.deployWorkingVersion({ notes });
     },
-    [actions]
+    [useApiDeploy, site, applyApiDeploySuccess, actions]
   );
+
+  const apiDeployBlocked =
+    useApiDeploy && (!hasPending || apiVersionSummary?.workingVersionNumber == null);
+  const primaryDeployDisabled = errors > 0 || apiDeployLoading || apiDeployBlocked;
+  const deployAnywayDisabled = apiDeployLoading || apiDeployBlocked;
 
   const formatDate = (isoDate) => {
     if (!isoDate) return "—";
@@ -127,43 +226,59 @@ export default function DeploymentPage() {
             Deployment
           </h5>
           <div className="text-white-50 small">
-            Execute deployments and view deployment history.
+            Activate working versions and view release history.
           </div>
         </div>
 
-        {/* Section 1 — Current Deployment Status */}
+        {/* Section 1 — Active release (last activated) */}
         <Card className="bg-primary border border-light border-opacity-10 shadow-sm mb-3">
           <Card.Header className="bg-transparent border-light border-opacity-10 text-white fw-bold">
-            Current Deployment
+            Active release
           </Card.Header>
           <Card.Body>
             <Row className="g-3">
               <Col xs={12} sm={6} md={3}>
                 <div className="text-white-50 small">Version</div>
-                <div className="text-white fw-bold">{currentDeployment.version}</div>
+                <div className="text-white fw-bold">{currentReleaseMeta.version}</div>
               </Col>
               <Col xs={12} sm={6} md={3}>
                 <div className="text-white-50 small">Last Deployed</div>
                 <div className="text-white">
-                  {formatDate(currentDeployment.lastDeployedAt)} {formatTime(currentDeployment.lastDeployedAt)}
+                  {formatDate(currentReleaseMeta.lastDeployedAt)} {formatTime(currentReleaseMeta.lastDeployedAt)}
                 </div>
               </Col>
               <Col xs={12} sm={6} md={3}>
                 <div className="text-white-50 small">Deployed By</div>
-                <div className="text-white">{currentDeployment.deployedBy}</div>
+                <div className="text-white">{currentReleaseMeta.deployedBy}</div>
               </Col>
               <Col xs={12} sm={6} md={3}>
                 <div className="text-white-50 small">System Status</div>
-                <div className="text-success">{currentDeployment.systemStatus}</div>
+                <div className="text-success">{currentReleaseMeta.systemStatus}</div>
               </Col>
             </Row>
+            {useApiDeploy && (
+              <Row className="g-3 mt-2 pt-2 border-top border-light border-opacity-10">
+                <Col xs={12} sm={6}>
+                  <div className="text-white-50 small">Active version (live)</div>
+                  <div className="text-white fw-bold">
+                    {apiVersionSummary?.activeVersionNumber != null ? `v${apiVersionSummary.activeVersionNumber}` : "—"}
+                  </div>
+                </Col>
+                <Col xs={12} sm={6}>
+                  <div className="text-white-50 small">Working version (draft)</div>
+                  <div className="text-white fw-bold">
+                    {apiVersionSummary?.workingVersionNumber != null ? `v${apiVersionSummary.workingVersionNumber}` : "—"}
+                  </div>
+                </Col>
+              </Row>
+            )}
           </Card.Body>
         </Card>
 
-        {/* Section 2 — Pending Draft Changes */}
+        {/* Section 2 — Working version scope */}
         <Card className="bg-primary border border-light border-opacity-10 shadow-sm mb-3">
           <Card.Header className="bg-transparent border-light border-opacity-10 text-white fw-bold">
-            Draft Changes Pending
+            Working version contents
           </Card.Header>
           <Card.Body>
             {hasPending ? (
@@ -234,14 +349,15 @@ export default function DeploymentPage() {
               <Button
                 size="sm"
                 className="legion-hero-btn legion-hero-btn--primary"
-                disabled={errors > 0}
+                disabled={primaryDeployDisabled}
                 onClick={handleDeployConfiguration}
               >
-                <FontAwesomeIcon icon={faCheckCircle} className="me-1" /> Deploy Configuration
+                <FontAwesomeIcon icon={faCheckCircle} className="me-1" /> Deploy version
               </Button>
               <Button
                 size="sm"
                 className="legion-hero-btn legion-hero-btn--secondary"
+                disabled={deployAnywayDisabled}
                 onClick={handleDeployAnyway}
               >
                 <FontAwesomeIcon icon={faExclamationTriangle} className="me-1" /> Deploy Anyway

@@ -1,6 +1,6 @@
 import React from "react";
 import { Card, Button } from '@themesberg/react-bootstrap';
-import { Link, useHistory } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { Routes } from "../../routes";
 import { useState } from "react";
 import { Modal } from '@themesberg/react-bootstrap';
@@ -8,15 +8,9 @@ import { useWorkspaceMode } from "../providers/WorkspaceModeProvider";
 
 export default function Footer({ controllers = 18, devices = "1.42", ...props }) {
   const { currentMode, setCurrentMode } = useWorkspaceMode();
-  const history = useHistory();
 
   const handleModeSwitch = (mode) => {
     setCurrentMode(mode);
-    if (mode === "engineering") {
-      history.push(Routes.EngineeringSiteBuilder.path);
-    } else {
-      history.push(Routes.LegionSite.path);
-    }
   };
   const [showDefault, setShowDefault] = useState(false);
   const handleClose = () => setShowDefault(false);

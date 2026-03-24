@@ -1,7 +1,6 @@
 import React, { useCallback, useMemo, useState, useEffect, useRef } from "react";
-import { useSite } from "../../../app/providers/SiteProvider";
-import { useActiveDeployment } from "../../../hooks/useEngineeringDraft";
-import { activeDeploymentToEquipmentTree } from "../../../lib/activeDeploymentUtils";
+import { useActiveDeployment } from "../../../hooks/useWorkingVersion";
+import { activeReleaseDataToEquipmentTree } from "../../../lib/activeReleaseUtils";
 import { Container, Row, Col, Card, Button, Form, Table, Modal, Toast } from "@themesberg/react-bootstrap";
 import { useHistory } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -134,9 +133,12 @@ function WorkspacePanel({
   handleDragStart,
   onRemove,
   showRemove,
-  activeDeployment,
+  activeReleaseData,
 }) {
-  const pointsOptions = useMemo(() => (activeDeployment ? { activeDeployment } : undefined), [activeDeployment]);
+  const pointsOptions = useMemo(
+    () => (activeReleaseData ? { activeRelease: activeReleaseData } : undefined),
+    [activeReleaseData]
+  );
   const tableRef = useRef(null);
   const [lastClickedIndex, setLastClickedIndex] = useState(null);
   const [showCommandModal, setShowCommandModal] = useState(false);
@@ -872,14 +874,14 @@ function WorkspacePanel({
 
 export default function EquipmentPage() {
   const history = useHistory();
-  const { site } = useSite();
-  const activeDeployment = useActiveDeployment();
+  const { deployment, loading: releaseLoading, error: releaseError } = useActiveDeployment();
+  const activeReleaseData = deployment;
   const goToEquipment = (node) =>
     history.push(`/legion/equipment/${node.instanceNumber ? encodeURIComponent(node.instanceNumber) : node.id}`);
 
   const treeData = useMemo(
-    () => activeDeploymentToEquipmentTree(activeDeployment),
-    [activeDeployment]
+    () => activeReleaseDataToEquipmentTree(activeReleaseData),
+    [activeReleaseData]
   );
 
   const [treeSearch, setTreeSearch] = useState("");
@@ -968,6 +970,14 @@ export default function EquipmentPage() {
       </div>
 
       <div className="legion-equipment-page px-3 px-md-4 pb-4 mt-3">
+        {releaseLoading && !activeReleaseData && (
+          <div className="text-white-50 small mb-2">Loading equipment tree from server…</div>
+        )}
+        {releaseError ? (
+          <div className="alert alert-danger py-2 small mb-3" role="alert">
+            {releaseError}
+          </div>
+        ) : null}
         <Row className="g-3 align-items-start">
           <Col xs={12} lg={4} xl={3}>
             <Card className="legion-equipment-sidebar-card bg-primary border border-light border-opacity-10 shadow-sm">
@@ -1033,7 +1043,7 @@ export default function EquipmentPage() {
                   setDropActive={setDropActive}
                   treeData={treeData}
                   handleDragStart={handleDragStart}
-                  activeDeployment={activeDeployment}
+                  activeReleaseData={activeReleaseData}
                 />
 
                 {showSecondaryWorkspace ? (
@@ -1047,7 +1057,7 @@ export default function EquipmentPage() {
                       handleDragStart={handleDragStart}
                       onRemove={() => setShowSecondaryWorkspace(false)}
                       showRemove
-                      activeDeployment={activeDeployment}
+                      activeReleaseData={activeReleaseData}
                     />
                   </div>
                 ) : (

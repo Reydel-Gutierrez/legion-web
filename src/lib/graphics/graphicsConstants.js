@@ -11,7 +11,7 @@ export const LAYOUT_GRAPHIC_CANVAS_DEFAULT = { width: 1920, height: 1080 };
 
 /**
  * Max raster size when importing a background image for layout graphics (before base64).
- * Must stay small enough that drafts (JSON + base64) fit in localStorage (~5MB total per origin).
+ * Must stay small enough that persisted working versions (JSON + base64) fit in localStorage (~5MB per origin).
  * Matches the default layout canvas so imports align with the authoring surface.
  */
 export const LAYOUT_BACKGROUND_IMPORT_MAX = { width: 1920, height: 1080 };

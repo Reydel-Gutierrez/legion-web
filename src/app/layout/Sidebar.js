@@ -14,25 +14,24 @@ import ReactHero from "../../assets/img/technologies/react-hero-logo.svg";
 import LegionLogo from "../../assets/img/legionlogo.png";
 import { useSite } from "../providers/SiteProvider";
 import { useWorkspaceMode } from "../providers/WorkspaceModeProvider";
-import { useDraftContext } from "../providers/EngineeringDraftProvider";
+import { useEngineeringVersionContext } from "../providers/EngineeringVersionProvider";
 import { SITE_IDS } from "../../lib/sites";
-import { getPersistedDraftSiteNames } from "../../lib/data/persistence/draftPersistence";
+import { USE_HIERARCHY_API } from "../../lib/data/config";
+import { useSiteDisplayLabel } from "../../hooks/useSiteDisplayLabel";
+import { getPersistedWorkingVersionSiteNames } from "../../lib/data/persistence/engineeringVersionPersistence";
 import EngineeringSidebarTreeGroup from "./EngineeringSidebarTreeGroup";
 import { getEngineeringSidebarGroups } from "./engineeringSidebarConfig";
 import { getOperatorSidebarGroups } from "./operatorSidebarConfig";
 
 export default function Sidebar() {
-  const { site, setSite } = useSite();
+  const { setSite, apiSites, sitesLoading, sitesError } = useSite();
+  const displaySiteName = useSiteDisplayLabel();
   const { currentMode } = useWorkspaceMode();
-  const { draft, activeDeploymentBySite } = useDraftContext();
-  const draftSiteName = draft?.site?.name;
-  const isBuiltInSite =
-    site === SITE_IDS.MIAMI_HQ || site === SITE_IDS.BRIGHTLINE || site === SITE_IDS.NEW_SITE || site === "New Building";
-  const displaySiteName = !isBuiltInSite ? site : (site === SITE_IDS.NEW_SITE && draftSiteName ? draftSiteName : site);
-  const persistedDraftSites = getPersistedDraftSiteNames();
-  const deployedSiteNames = Object.keys(activeDeploymentBySite || {}).filter(
-    (k) => activeDeploymentBySite[k] != null
-  );
+  const { workingVersion, activeReleaseBySite } = useEngineeringVersionContext();
+  const workingSiteName = workingVersion?.data?.site?.name;
+  const apiModeWithSites = USE_HIERARCHY_API && apiSites.length > 0;
+  const persistedWorkingSites = getPersistedWorkingVersionSiteNames();
+  const deployedSiteNames = Object.keys(activeReleaseBySite || {}).filter((k) => activeReleaseBySite[k] != null);
   const location = useLocation();
   const { pathname } = location;
   const [show, setShow] = useState(false);
@@ -129,32 +128,63 @@ export default function Sidebar() {
                 <Dropdown.Menu className="w-100 legion-dropdown-menu">
                   {currentMode === "engineering" ? (
                     <>
+                      {USE_HIERARCHY_API && sitesLoading && apiSites.length === 0 ? (
+                        <div className="px-3 py-2 small text-white-50">Loading sites…</div>
+                      ) : null}
+                      {USE_HIERARCHY_API && sitesError ? (
+                        <div className="px-3 py-2 small text-warning">{sitesError}</div>
+                      ) : null}
+                      {USE_HIERARCHY_API && !sitesLoading && !sitesError && apiSites.length === 0 ? (
+                        <div className="px-3 py-2 small text-white-50">No sites from API.</div>
+                      ) : null}
+                      {apiSites.length > 0 && (
+                        <>
+                          {apiSites.map((s) => (
+                            <Dropdown.Item key={s.id} onClick={() => setSite(s.id)}>
+                              {s.name}
+                              {!(activeReleaseBySite && activeReleaseBySite[s.id]) && (
+                                <span className="text-white-50 small ms-1">(no release)</span>
+                              )}
+                            </Dropdown.Item>
+                          ))}
+                        </>
+                      )}
+                      {apiModeWithSites ? (
+                        <>
+                          <Dropdown.Divider className="border-light border-opacity-10" />
+                          <div className="px-3 py-1 small text-white-50 text-uppercase" style={{ fontSize: 10, letterSpacing: "0.06em" }}>
+                            Local demos
+                          </div>
+                        </>
+                      ) : null}
                       <Dropdown.Item onClick={() => setSite(SITE_IDS.MIAMI_HQ)}>
                         {SITE_IDS.MIAMI_HQ}
-                        {!(activeDeploymentBySite && activeDeploymentBySite[SITE_IDS.MIAMI_HQ]) && (
-                          <span className="text-white-50 small ms-1">(draft)</span>
+                        {!(activeReleaseBySite && activeReleaseBySite[SITE_IDS.MIAMI_HQ]) && (
+                          <span className="text-white-50 small ms-1">(no release)</span>
                         )}
                       </Dropdown.Item>
                       <Dropdown.Item onClick={() => setSite(SITE_IDS.BRIGHTLINE)}>
                         {SITE_IDS.BRIGHTLINE}
-                        {!(activeDeploymentBySite && activeDeploymentBySite[SITE_IDS.BRIGHTLINE]) && (
-                          <span className="text-white-50 small ms-1">(draft)</span>
+                        {!(activeReleaseBySite && activeReleaseBySite[SITE_IDS.BRIGHTLINE]) && (
+                          <span className="text-white-50 small ms-1">(no release)</span>
                         )}
                       </Dropdown.Item>
                       {[
                         ...new Set([
-                          ...persistedDraftSites.filter(
+                          ...persistedWorkingSites.filter(
                             (n) => n !== SITE_IDS.MIAMI_HQ && n !== SITE_IDS.NEW_SITE && n !== "New Building"
                           ),
-                          ...(draftSiteName && draftSiteName !== SITE_IDS.MIAMI_HQ && draftSiteName !== SITE_IDS.NEW_SITE ? [draftSiteName] : []),
+                          ...(workingSiteName && workingSiteName !== SITE_IDS.MIAMI_HQ && workingSiteName !== SITE_IDS.NEW_SITE
+                            ? [workingSiteName]
+                            : []),
                         ]),
                       ]
                         .sort((a, b) => a.localeCompare(b))
                         .map((name) => (
                           <Dropdown.Item key={name} onClick={() => setSite(name)}>
                             {name}
-                            {!(activeDeploymentBySite && activeDeploymentBySite[name]) && (
-                              <span className="text-white-50 small ms-1">(draft)</span>
+                            {!(activeReleaseBySite && activeReleaseBySite[name]) && (
+                              <span className="text-white-50 small ms-1">(no release)</span>
                             )}
                           </Dropdown.Item>
                         ))}
@@ -165,18 +195,38 @@ export default function Sidebar() {
                     </>
                   ) : (
                     <>
-                      {deployedSiteNames.length > 0 ? (
-                        deployedSiteNames.map((name) => (
-                          <Dropdown.Item key={name} onClick={() => setSite(name)}>
-                            {name}
-                          </Dropdown.Item>
-                        ))
-                      ) : (
+                      {USE_HIERARCHY_API && sitesLoading && apiSites.length === 0 ? (
+                        <div className="px-3 py-2 small text-white-50">Loading sites…</div>
+                      ) : null}
+                      {USE_HIERARCHY_API && sitesError ? (
+                        <div className="px-3 py-2 small text-warning">{sitesError}</div>
+                      ) : null}
+                      {USE_HIERARCHY_API && !sitesLoading && !sitesError && apiSites.length === 0 ? (
+                        <div className="px-3 py-2 small text-white-50">No sites from API.</div>
+                      ) : null}
+                      {apiSites.length > 0 && (
+                        <>
+                          {apiSites.map((s) => (
+                            <Dropdown.Item key={s.id} onClick={() => setSite(s.id)}>
+                              {s.name}
+                            </Dropdown.Item>
+                          ))}
+                          <Dropdown.Divider className="border-light border-opacity-10" />
+                        </>
+                      )}
+                      {!apiModeWithSites && deployedSiteNames.length > 0
+                        ? deployedSiteNames.map((name) => (
+                            <Dropdown.Item key={name} onClick={() => setSite(name)}>
+                              {name}
+                            </Dropdown.Item>
+                          ))
+                        : null}
+                      {!apiModeWithSites && deployedSiteNames.length === 0 ? (
                         <>
                           <Dropdown.Item onClick={() => setSite("Miami HQ")}>Miami HQ</Dropdown.Item>
                           <Dropdown.Item onClick={() => setSite("New Site")}>New Site</Dropdown.Item>
                         </>
-                      )}
+                      ) : null}
                     </>
                   )}
                 </Dropdown.Menu>

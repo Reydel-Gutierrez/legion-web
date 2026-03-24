@@ -10,7 +10,7 @@ import { engineeringRepository } from "../../../../lib/data";
 
 /**
  * Right panel: Edit selected equipment.
- * Template dropdown uses only the current site's templates (draft.templates.equipmentTemplates).
+ * Template dropdown uses only the current site's templates (working version templates).
  * If no templates have been imported or created for the site, only "Select template" is shown.
  */
 /**

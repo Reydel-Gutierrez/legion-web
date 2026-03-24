@@ -5,13 +5,14 @@
 
 import { ROLES, getRoleName, ROLE_KEYS } from "../../../../lib/access/roles";
 import { USER_STATUS } from "../../../../lib/access/types";
-import { SITE_IDS } from "../../../../lib/sites";
+import { SITE_IDS, DEMO_CAMPUS_SITE_ID } from "../../../../lib/sites";
 
 /** Sites available for site membership assignment */
 export function getSitesForAccessMock() {
   return [
     { siteId: "miami-hq", siteName: SITE_IDS.MIAMI_HQ },
     { siteId: "new-site", siteName: SITE_IDS.NEW_SITE },
+    { siteId: DEMO_CAMPUS_SITE_ID, siteName: "Demo Campus" },
   ];
 }
 
@@ -26,7 +27,7 @@ let users = [
     status: USER_STATUS.ACTIVE,
     roleKey: ROLE_KEYS.SUPER_ADMIN,
     roleName: "Super Admin",
-    siteCount: 3,
+    siteCount: 4,
     lastSeenAt: "2026-03-14T14:00:00.000Z",
     createdAt: "2026-02-01T09:12:00.000Z",
     updatedAt: now(),
@@ -73,6 +74,7 @@ let siteMemberships = [
   { id: "mem-1", userId: "usr-1", siteId: "miami-hq", siteName: SITE_IDS.MIAMI_HQ, canAccessEngineering: true, canAccessOperator: true, roleOverrideKey: null, membershipStatus: "active", createdAt: "2026-02-01T09:12:00.000Z", updatedAt: now() },
   { id: "mem-2", userId: "usr-1", siteId: "new-site", siteName: SITE_IDS.NEW_SITE, canAccessEngineering: true, canAccessOperator: true, roleOverrideKey: null, membershipStatus: "active", createdAt: "2026-02-01T09:12:00.000Z", updatedAt: now() },
   { id: "mem-7", userId: "usr-1", siteId: "home-lab-3", siteName: "Home Lab 3", canAccessEngineering: true, canAccessOperator: true, roleOverrideKey: null, membershipStatus: "active", createdAt: now(), updatedAt: now() },
+  { id: "mem-8", userId: "usr-1", siteId: DEMO_CAMPUS_SITE_ID, siteName: "Demo Campus", canAccessEngineering: true, canAccessOperator: true, roleOverrideKey: null, membershipStatus: "active", createdAt: now(), updatedAt: now() },
   { id: "mem-3", userId: "usr-2", siteId: "miami-hq", siteName: SITE_IDS.MIAMI_HQ, canAccessEngineering: true, canAccessOperator: true, roleOverrideKey: null, membershipStatus: "active", createdAt: "2026-02-10T15:41:00.000Z", updatedAt: now() },
   { id: "mem-4", userId: "usr-3", siteId: "miami-hq", siteName: SITE_IDS.MIAMI_HQ, canAccessEngineering: true, canAccessOperator: true, roleOverrideKey: null, membershipStatus: "active", createdAt: "2026-01-18T10:00:00.000Z", updatedAt: now() },
   { id: "mem-5", userId: "usr-3", siteId: "new-site", siteName: SITE_IDS.NEW_SITE, canAccessEngineering: true, canAccessOperator: true, roleOverrideKey: null, membershipStatus: "active", createdAt: "2026-01-18T10:00:00.000Z", updatedAt: now() },

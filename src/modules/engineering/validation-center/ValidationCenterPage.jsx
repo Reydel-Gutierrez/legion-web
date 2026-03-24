@@ -26,13 +26,13 @@ import LegionHeroHeader from "../../../components/legion/LegionHeroHeader";
 import LegionDrawer from "../../../components/legion/LegionDrawer";
 import { engineeringRepository } from "../../../lib/data";
 import { CATEGORY, SEVERITY, READINESS_STATUS } from "../../../lib/data/repositories/engineeringRepository";
-import { validateDraft } from "../draft/validateDraft";
+import { validateWorkingVersion } from "../working-version/validateWorkingVersion";
 import ValidationSummaryCards from "./components/ValidationSummaryCards";
 import ValidationIssuesTable from "./components/ValidationIssuesTable";
 import ValidationIssueDetailPanel from "./components/ValidationIssueDetailPanel";
 import DeployAnywayModal from "./components/DeployAnywayModal";
 import { useValidation } from "../../../app/providers/ValidationProvider";
-import { useEngineeringDraft } from "../../../hooks/useEngineeringDraft";
+import { useWorkingVersion } from "../../../hooks/useWorkingVersion";
 
 // Route paths for navigation placeholders
 const ROUTE_PATHS = {
@@ -60,7 +60,7 @@ export default function ValidationCenterPage() {
   const history = useHistory();
   const location = useLocation();
   const { setValidationState: syncValidationToContext } = useValidation();
-  const { draft, actions } = useEngineeringDraft();
+  const { workingState, actions } = useWorkingVersion();
   const [validationState, setValidationState] = useState(() =>
     engineeringRepository.getEmptyValidationState()
   );
@@ -87,7 +87,7 @@ export default function ValidationCenterPage() {
   const { issues, summary, readiness, message } = validationState;
 
   const handleRunValidation = useCallback(() => {
-    const result = validateDraft(draft);
+    const result = validateWorkingVersion(workingState);
     setValidationState({
       issues: result.issues,
       summary: result.summary,
@@ -102,7 +102,7 @@ export default function ValidationCenterPage() {
       lastRunAt: result.lastRunAt,
     });
     setSelectedIssueId(null);
-  }, [draft, actions, syncValidationToContext]);
+  }, [workingState, actions, syncValidationToContext]);
 
   const handleExportReport = useCallback(() => {
     console.log("Export Report (placeholder)");
@@ -127,7 +127,7 @@ export default function ValidationCenterPage() {
   const handleConfirmDeployOverride = useCallback(
     (reason) => {
       setShowDeployModal(false);
-      actions.deployDraftConfiguration({ notes: reason || "Override deployment" });
+      actions.deployWorkingVersion({ notes: reason || "Override activation" });
       setToastMessage("Deployment successful.");
       setTimeout(() => setToastMessage(null), 3000);
       history.push(ROUTE_PATHS.deployment);

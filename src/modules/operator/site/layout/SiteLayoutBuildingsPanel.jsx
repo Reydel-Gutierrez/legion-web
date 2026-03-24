@@ -58,11 +58,18 @@ export default function SiteLayoutBuildingsPanel({
             buildings.map((b) => {
               const active = selectedBuildingId === b.id;
               return (
-                <button
+                <div
                   key={b.id}
-                  type="button"
+                  role="button"
+                  tabIndex={0}
                   className={`site-layout-building-row w-100 text-start ${active ? "site-layout-building-row--active" : ""}`}
                   onClick={() => onSelectBuilding(b.id)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      onSelectBuilding(b.id);
+                    }
+                  }}
                 >
                   <div className="d-flex align-items-start justify-content-between gap-2">
                     <div className="min-w-0">
@@ -86,7 +93,7 @@ export default function SiteLayoutBuildingsPanel({
                       <FontAwesomeIcon icon={faChevronRight} className="ms-1 fa-xs" />
                     </button>
                   </div>
-                </button>
+                </div>
               );
             })
           )}

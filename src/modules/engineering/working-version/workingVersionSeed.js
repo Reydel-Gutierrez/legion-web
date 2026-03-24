@@ -1,14 +1,11 @@
 /**
- * Seed data for the central engineering draft.
- * Miami HQ world: site, templates, equipment, discovery, mappings, graphics, deployment history.
- * Used to initialize shared state when site is Miami HQ (or Parkline).
+ * Seed data for the engineering working version (Miami HQ, Brightline, empty sites).
  */
 
-import { createSite, createEquipment, createEquipmentTemplate, createGraphicTemplate } from "./draftModel";
+import { createSite, createEquipment, createEquipmentTemplate, createGraphicTemplate } from "./workingVersionModel";
 import { engineeringRepository } from "../../../lib/data";
 import { createEmptyNetworkConfig, createMiamiHqNetworkConfig } from "../network/networkConfigModel";
 
-/** Build draft site from site tree (from getMockSiteTree) */
 function buildSiteFromTree(siteTree) {
   if (!siteTree) return null;
   const buildings = (siteTree.children || []).map((b) => ({
@@ -35,7 +32,7 @@ function buildSiteFromTree(siteTree) {
   return createSite({
     id: siteTree.id,
     name: siteTree.name,
-    mode: "draft",
+    mode: "working",
     status: "editing",
     siteType: siteTree.siteType,
     address: siteTree.address,
@@ -44,7 +41,6 @@ function buildSiteFromTree(siteTree) {
   });
 }
 
-/** Build equipment list from mock; ensure required fields */
 function buildEquipmentFromMock(mockList, siteId) {
   if (!Array.isArray(mockList)) return [];
   return mockList.map((e) =>
@@ -66,7 +62,6 @@ function buildEquipmentFromMock(mockList, siteId) {
   );
 }
 
-/** Build discovery devices from mock — keep tree structure (array of root nodes with children) */
 function buildDiscoveredDevicesFromMock(mockDiscovery) {
   if (!Array.isArray(mockDiscovery)) return [];
   return mockDiscovery.map((n) => ({
@@ -88,7 +83,6 @@ function buildDiscoveredDevicesFromMock(mockDiscovery) {
   }));
 }
 
-/** discoveredObjects: map deviceInstance (string) -> array of objects */
 function buildDiscoveredObjectsFromMock(discoveredObjectsByDevice) {
   const out = {};
   if (!discoveredObjectsByDevice || typeof discoveredObjectsByDevice !== "object") return out;
@@ -98,7 +92,6 @@ function buildDiscoveredObjectsFromMock(discoveredObjectsByDevice) {
   return out;
 }
 
-/** Equipment templates from template library mock */
 function buildEquipmentTemplatesFromMock(siteName) {
   const { equipment = [] } = engineeringRepository.getSiteTemplates(siteName || "Miami HQ", true);
   return equipment.map((t) =>
@@ -116,13 +109,10 @@ function buildEquipmentTemplatesFromMock(siteName) {
   );
 }
 
-/** Graphic templates from template library mock */
 function buildGraphicTemplatesFromMock(siteName) {
   const { graphic = [], equipment = [] } = engineeringRepository.getSiteTemplates(siteName || "Miami HQ", true);
   return graphic.map((g) => {
-    const eq = equipment.find(
-      (e) => (e.name || "").toLowerCase() === (g.appliesTo || "").toLowerCase()
-    );
+    const eq = equipment.find((e) => (e.name || "").toLowerCase() === (g.appliesTo || "").toLowerCase());
     return createGraphicTemplate({
       id: g.id,
       name: g.name,
@@ -135,7 +125,6 @@ function buildGraphicTemplatesFromMock(siteName) {
   });
 }
 
-/** Template points by template name (from mockPointMappingData) */
 function getTemplatePointIdsForTemplate(templateName) {
   try {
     const { TEMPLATE_POINTS } = require("../data/mockPointMappingData");
@@ -146,7 +135,6 @@ function getTemplatePointIdsForTemplate(templateName) {
   }
 }
 
-/** Initial mappings: some mapped, some missing (by equipment id). */
 function buildInitialMappings(equipmentList, discoveredObjectsByDevice) {
   const mappings = {};
   equipmentList.forEach((eq) => {
@@ -168,7 +156,6 @@ function buildInitialMappings(equipmentList, discoveredObjectsByDevice) {
   return mappings;
 }
 
-/** Graphics by equipment id (from mock graphics data) */
 function buildGraphicsFromMock(siteName) {
   const { getGraphicForEquipment } = require("../data/mockGraphicsData");
   const graphics = {};
@@ -183,8 +170,7 @@ function buildGraphicsFromMock(siteName) {
   return graphics;
 }
 
-/** Deployment history: v10, v11, v12 */
-function buildDeploymentHistory() {
+function buildReleaseHistorySeed() {
   return [
     { version: "v12", date: "2026-03-09", user: "Reydel", result: "Success", notes: "", timestamp: "2026-03-09T21:45:00.000Z" },
     { version: "v11", date: "2026-03-08", user: "Reydel", result: "Success", notes: "", timestamp: "2026-03-08T18:00:00.000Z" },
@@ -192,8 +178,7 @@ function buildDeploymentHistory() {
   ];
 }
 
-/** Active deployment snapshot (current live version) */
-function buildActiveDeploymentSnapshot() {
+function buildActiveReleaseMetadataSeed() {
   return {
     version: "v12",
     lastDeployedAt: "2026-03-09T21:45:00.000Z",
@@ -203,15 +188,11 @@ function buildActiveDeploymentSnapshot() {
 }
 
 /**
- * Create full draft seed for a site.
  * @param {string} siteName - "Miami HQ" | "New Site" | "New Building"
- * @returns {object} Draft state
+ * @returns {object} Flat working-version state (persisted as JSON)
  */
-export function createSeedDraft(siteName) {
-  const isEmpty =
-    siteName === "New Building" ||
-    siteName === "New Site" ||
-    !siteName;
+export function createSeedWorkingVersion(siteName) {
+  const isEmpty = siteName === "New Building" || siteName === "New Site" || !siteName;
   if (isEmpty) {
     return {
       site: null,
@@ -254,7 +235,7 @@ export function createSeedDraft(siteName) {
     siteLayoutGraphics: {},
     networkConfig: createMiamiHqNetworkConfig(),
     validation: null,
-    deploymentHistory: buildDeploymentHistory(),
-    activeDeploymentSnapshot: buildActiveDeploymentSnapshot(),
+    deploymentHistory: buildReleaseHistorySeed(),
+    activeDeploymentSnapshot: buildActiveReleaseMetadataSeed(),
   };
 }

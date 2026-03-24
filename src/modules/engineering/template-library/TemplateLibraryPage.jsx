@@ -19,7 +19,7 @@ import {
 
 import { useHistory } from "react-router-dom";
 import { useSite } from "../../../app/providers/SiteProvider";
-import { useEngineeringDraft } from "../../../hooks/useEngineeringDraft";
+import { useWorkingVersion } from "../../../hooks/useWorkingVersion";
 import LegionHeroHeader from "../../../components/legion/LegionHeroHeader";
 import { engineeringRepository } from "../../../lib/data";
 import { Routes } from "../../../routes";
@@ -79,7 +79,7 @@ function globalGraphicToSite(globalRow, equipmentTemplates) {
 export default function TemplateLibraryPage() {
   const history = useHistory();
   const { site } = useSite();
-  const { draft, actions } = useEngineeringDraft();
+  const { workingState, actions } = useWorkingVersion();
   const [activeTab, setActiveTab] = useState("equipment");
   const [showImportModal, setShowImportModal] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -92,8 +92,8 @@ export default function TemplateLibraryPage() {
   const [bindGraphicTemplateRow, setBindGraphicTemplateRow] = useState(null);
 
   const siteTemplates = {
-    equipment: draft.templates?.equipmentTemplates ?? [],
-    graphic: draft.templates?.graphicTemplates ?? [],
+    equipment: workingState.templates?.equipmentTemplates ?? [],
+    graphic: workingState.templates?.graphicTemplates ?? [],
   };
 
   // Combined graphic list: template library + user-created equipment graphics (from Graphics Manager)
@@ -106,8 +106,8 @@ export default function TemplateLibraryPage() {
           ? countBoundTemplatePointBindings(g.graphicEditorState.objects)
           : g.boundPointCount ?? 0,
     }));
-    const equipmentList = draft?.equipment ?? [];
-    const graphics = draft?.graphics ?? {};
+    const equipmentList = workingState?.equipment ?? [];
+    const graphics = workingState?.graphics ?? {};
     const fromEquipment = Object.entries(graphics)
       .filter(([, g]) => g && (g.name || "").trim())
       .map(([equipmentId, g]) => {
@@ -125,12 +125,12 @@ export default function TemplateLibraryPage() {
         };
       });
     return [...fromTemplates, ...fromEquipment];
-  }, [siteTemplates.graphic, draft?.equipment, draft?.graphics]);
+  }, [siteTemplates.graphic, workingState?.equipment, workingState?.graphics]);
 
   const hasEquipment = (siteTemplates.equipment || []).length > 0;
   const hasGraphic =
     (siteTemplates.graphic || []).length > 0 ||
-    Object.values(draft?.graphics ?? {}).some((g) => g && (g.name || "").trim());
+    Object.values(workingState?.graphics ?? {}).some((g) => g && (g.name || "").trim());
   const isEmpty = !hasEquipment && !hasGraphic;
 
   const existingEquipmentNames = (siteTemplates.equipment || []).map((e) => e.name);
@@ -138,8 +138,8 @@ export default function TemplateLibraryPage() {
 
   const handleImportFromGlobal = useCallback((payload) => {
     const { equipment: eqList, graphic: gfxList } = payload || {};
-    const prevEq = draft.templates?.equipmentTemplates ?? [];
-    const prevGfx = draft.templates?.graphicTemplates ?? [];
+    const prevEq = workingState.templates?.equipmentTemplates ?? [];
+    const prevGfx = workingState.templates?.graphicTemplates ?? [];
     const nextEq = [...prevEq];
     (eqList || []).forEach((g) => {
       if (!nextEq.some((e) => e.name === g.name)) {
@@ -153,12 +153,12 @@ export default function TemplateLibraryPage() {
       }
     });
     actions.setTemplates({ equipmentTemplates: nextEq, graphicTemplates: nextGfx });
-  }, [draft.templates, actions]);
+  }, [workingState.templates, actions]);
 
   const handleRemoveEquipment = useCallback((row) => {
-    const nextEq = (draft.templates?.equipmentTemplates ?? []).filter((e) => e.id !== row.id);
-    actions.setTemplates({ equipmentTemplates: nextEq, graphicTemplates: draft.templates?.graphicTemplates ?? [] });
-  }, [draft.templates, actions]);
+    const nextEq = (workingState.templates?.equipmentTemplates ?? []).filter((e) => e.id !== row.id);
+    actions.setTemplates({ equipmentTemplates: nextEq, graphicTemplates: workingState.templates?.graphicTemplates ?? [] });
+  }, [workingState.templates, actions]);
 
   const handleRemoveGraphic = useCallback(
     (row) => {
@@ -166,10 +166,10 @@ export default function TemplateLibraryPage() {
         actions.setGraphicForEquipment(row.equipmentId, null);
         return;
       }
-      const nextGfx = (draft.templates?.graphicTemplates ?? []).filter((g) => g.id !== row.id);
-      actions.setTemplates({ equipmentTemplates: draft.templates?.equipmentTemplates ?? [], graphicTemplates: nextGfx });
+      const nextGfx = (workingState.templates?.graphicTemplates ?? []).filter((g) => g.id !== row.id);
+      actions.setTemplates({ equipmentTemplates: workingState.templates?.equipmentTemplates ?? [], graphicTemplates: nextGfx });
     },
-    [draft.templates, actions]
+    [workingState.templates, actions]
   );
 
   const handleViewEquipment = useCallback((row) => {
@@ -194,8 +194,8 @@ export default function TemplateLibraryPage() {
       points: payload.points || [],
       lastUpdated: new Date().toISOString().slice(0, 10),
     };
-    const prevEq = draft.templates?.equipmentTemplates ?? [];
-    const prevGfx = draft.templates?.graphicTemplates ?? [];
+    const prevEq = workingState.templates?.equipmentTemplates ?? [];
+    const prevGfx = workingState.templates?.graphicTemplates ?? [];
     if (payload.id) {
       const nextEq = prevEq.map((e) =>
         e.id === payload.id ? { ...e, ...templateData } : e
@@ -211,7 +211,7 @@ export default function TemplateLibraryPage() {
     }
     setShowEquipmentEditorDrawer(false);
     setEquipmentEditorContext({ template: null, mode: "create" });
-  }, [draft.templates, actions]);
+  }, [workingState.templates, actions]);
   const handleCloseEquipmentEditor = useCallback(() => {
     setShowEquipmentEditorDrawer(false);
     setEquipmentEditorContext({ template: null, mode: "create" });
@@ -232,11 +232,11 @@ export default function TemplateLibraryPage() {
       source: engineeringRepository.SOURCE.SITE_CUSTOM,
       lastUpdated: new Date().toISOString().slice(0, 10),
     };
-    const prevEq = draft.templates?.equipmentTemplates ?? [];
-    actions.setTemplates({ equipmentTemplates: [...prevEq, newTemplate], graphicTemplates: draft.templates?.graphicTemplates ?? [] });
+    const prevEq = workingState.templates?.equipmentTemplates ?? [];
+    actions.setTemplates({ equipmentTemplates: [...prevEq, newTemplate], graphicTemplates: workingState.templates?.graphicTemplates ?? [] });
     setShowEquipmentEditorDrawer(false);
     setEquipmentEditorContext({ template: null, mode: "create" });
-  }, [draft.templates, actions]);
+  }, [workingState.templates, actions]);
   const handleDuplicateEquipment = useCallback((row) => {
     const pointCount = (row.points && row.points.length) || row.pointCount || 0;
     const newTemplate = {
@@ -251,9 +251,9 @@ export default function TemplateLibraryPage() {
       source: engineeringRepository.SOURCE.SITE_CUSTOM,
       lastUpdated: new Date().toISOString().slice(0, 10),
     };
-    const prevEq = draft.templates?.equipmentTemplates ?? [];
-    actions.setTemplates({ equipmentTemplates: [...prevEq, newTemplate], graphicTemplates: draft.templates?.graphicTemplates ?? [] });
-  }, [draft.templates, actions]);
+    const prevEq = workingState.templates?.equipmentTemplates ?? [];
+    actions.setTemplates({ equipmentTemplates: [...prevEq, newTemplate], graphicTemplates: workingState.templates?.graphicTemplates ?? [] });
+  }, [workingState.templates, actions]);
 
   const handleViewGraphic = useCallback(
     (row) => {
@@ -266,8 +266,8 @@ export default function TemplateLibraryPage() {
       const equipmentId =
         row._origin === "equipment"
           ? row.equipmentId
-          : (draft?.equipment ?? []).find(
-              (e) => e.graphicTemplateId === row.id || (draft?.graphics?.[e.id]?.graphicTemplateId === row.id)
+          : (workingState?.equipment ?? []).find(
+              (e) => e.graphicTemplateId === row.id || (workingState?.graphics?.[e.id]?.graphicTemplateId === row.id)
             )?.id;
       if (equipmentId) {
         history.push(`${Routes.EngineeringGraphicsManager.path}?equipmentId=${encodeURIComponent(equipmentId)}`);
@@ -277,7 +277,7 @@ export default function TemplateLibraryPage() {
         history.push(Routes.EngineeringGraphicsManager.path);
       }
     },
-    [draft?.equipment, draft?.graphics, history]
+    [workingState?.equipment, workingState?.graphics, history]
   );
 
   const handleEditGraphic = useCallback(
@@ -291,8 +291,8 @@ export default function TemplateLibraryPage() {
       const equipmentId =
         row._origin === "equipment"
           ? row.equipmentId
-          : (draft?.equipment ?? []).find(
-              (e) => e.graphicTemplateId === row.id || (draft?.graphics?.[e.id]?.graphicTemplateId === row.id)
+          : (workingState?.equipment ?? []).find(
+              (e) => e.graphicTemplateId === row.id || (workingState?.graphics?.[e.id]?.graphicTemplateId === row.id)
             )?.id;
       if (equipmentId) {
         history.push(`${Routes.EngineeringGraphicsManager.path}?equipmentId=${encodeURIComponent(equipmentId)}`);
@@ -302,7 +302,7 @@ export default function TemplateLibraryPage() {
         history.push(Routes.EngineeringGraphicsManager.path);
       }
     },
-    [draft?.equipment, draft?.graphics, history]
+    [workingState?.equipment, workingState?.graphics, history]
   );
 
   const handleDuplicateGraphic = useCallback((row) => {
@@ -318,9 +318,9 @@ export default function TemplateLibraryPage() {
         ? JSON.parse(JSON.stringify(row.graphicEditorState))
         : row.graphicEditorState,
     };
-    const prevGfx = draft.templates?.graphicTemplates ?? [];
-    actions.setTemplates({ equipmentTemplates: draft.templates?.equipmentTemplates ?? [], graphicTemplates: [...prevGfx, newGfx] });
-  }, [draft.templates, actions]);
+    const prevGfx = workingState.templates?.graphicTemplates ?? [];
+    actions.setTemplates({ equipmentTemplates: workingState.templates?.equipmentTemplates ?? [], graphicTemplates: [...prevGfx, newGfx] });
+  }, [workingState.templates, actions]);
 
   const handleOpenBindGraphicTemplate = useCallback((row) => {
     if (row._origin !== "template") return;
@@ -332,10 +332,10 @@ export default function TemplateLibraryPage() {
     ({ equipmentTemplateId }) => {
       const row = bindGraphicTemplateRow;
       if (!row || row._origin !== "template" || !equipmentTemplateId) return;
-      const eq = (draft.templates?.equipmentTemplates || []).find((e) => e.id === equipmentTemplateId);
+      const eq = (workingState.templates?.equipmentTemplates || []).find((e) => e.id === equipmentTemplateId);
       if (!eq) return;
-      const prevGfx = draft.templates?.graphicTemplates || [];
-      const prevEq = draft.templates?.equipmentTemplates || [];
+      const prevGfx = workingState.templates?.graphicTemplates || [];
+      const prevEq = workingState.templates?.equipmentTemplates || [];
       const now = new Date().toISOString().slice(0, 10);
       const nextGfx = prevGfx.map((g) =>
         g.id === row.id
@@ -351,7 +351,7 @@ export default function TemplateLibraryPage() {
       setShowBindGraphicTemplateModal(false);
       setBindGraphicTemplateRow(null);
     },
-    [bindGraphicTemplateRow, draft.templates?.equipmentTemplates, draft.templates?.graphicTemplates, actions]
+    [bindGraphicTemplateRow, workingState.templates?.equipmentTemplates, workingState.templates?.graphicTemplates, actions]
   );
 
   const handleCloseBindGraphicTemplateModal = useCallback(() => {

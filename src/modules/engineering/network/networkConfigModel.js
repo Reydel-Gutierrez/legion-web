@@ -93,18 +93,18 @@ export function createMiamiHqNetworkConfig() {
   };
 }
 
-export function ensureNetworkConfig(draft) {
-  if (draft?.networkConfig && typeof draft.networkConfig === "object") return draft.networkConfig;
+export function ensureNetworkConfig(workingData) {
+  if (workingData?.networkConfig && typeof workingData.networkConfig === "object") return workingData.networkConfig;
   return createEmptyNetworkConfig();
 }
 
-/** Merge defaults when loading persisted drafts that predate `networkConfig`. */
-export function normalizeDraftNetworkConfig(draft, siteName) {
-  if (!draft || draft.networkConfig) return draft;
+/** Merge defaults when loading persisted working versions that predate `networkConfig`. */
+export function normalizeWorkingVersionNetworkConfig(workingData, siteName) {
+  if (!workingData || workingData.networkConfig) return workingData;
   const isMiamiSeed =
-    siteName === SITE_IDS.MIAMI_HQ || draft?.site?.name === SITE_IDS.MIAMI_HQ;
+    siteName === SITE_IDS.MIAMI_HQ || workingData?.site?.name === SITE_IDS.MIAMI_HQ;
   return {
-    ...draft,
+    ...workingData,
     networkConfig: isMiamiSeed ? createMiamiHqNetworkConfig() : createEmptyNetworkConfig(),
   };
 }

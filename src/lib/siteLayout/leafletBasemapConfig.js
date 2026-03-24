@@ -10,7 +10,10 @@
 const MAPBOX_PUBLIC_STYLE = "mapbox/streets-v12";
 
 function readMapboxToken() {
-  const raw = process.env.REACT_APP_MAPBOX_TOKEN;
+  const raw =
+    typeof process !== "undefined" && process.env && process.env.REACT_APP_MAPBOX_TOKEN
+      ? process.env.REACT_APP_MAPBOX_TOKEN
+      : null;
   if (raw == null || String(raw).trim() === "") return null;
   return String(raw).trim();
 }

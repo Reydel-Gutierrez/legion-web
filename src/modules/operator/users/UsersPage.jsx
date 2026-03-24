@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from "react";
 import { useSite } from "../../../app/providers/SiteProvider";
+import { useSiteDisplayLabel } from "../../../hooks/useSiteDisplayLabel";
 import {
   Container,
   Row,
@@ -18,6 +19,7 @@ import { operatorRepository } from "../../../lib/data";
 
 export default function UsersPage() {
   const { site } = useSite();
+  const siteLabel = useSiteDisplayLabel();
 
   // Filters
   const [search, setSearch] = useState("");
@@ -162,7 +164,7 @@ export default function UsersPage() {
               <Card.Body>
                 <div className="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
                   <div className="text-white fw-semibold">
-                    Search Directory — {site}
+                    Search Directory — {siteLabel}
                   </div>
                   <div className="text-white fw-semibold">Showing {total === 0 ? "0" : `${startIndex + 1}–${endIndex}`} of {total}</div>
                 </div>
