@@ -8,5 +8,9 @@ router.patch(
   '/:id',
   asyncHandler((req, res) => equipmentController.update(req, res))
 );
+router.delete(
+  '/:id',
+  asyncHandler((req, res) => equipmentController.remove(req, res))
+);
 
 module.exports = router;

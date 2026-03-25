@@ -18,6 +18,7 @@ import {
 import { buildFullDeploymentSnapshot } from "../../modules/engineering/working-version/deploymentSnapshot";
 import { toWorkingVersion } from "../../modules/engineering/working-version/workingVersionTransforms";
 import { SITE_IDS } from "../../lib/sites";
+import { isBackendSiteId } from "../../lib/data/siteIdUtils";
 import {
   loadAllActiveReleases,
   saveWorkingVersionForSite,
@@ -90,6 +91,25 @@ export function EngineeringVersionProvider({ children }) {
         type: WORKING_VERSION_ACTIONS.RESET_WORKING_VERSION,
         payload: normalizeWorkingVersionNetworkConfig(raw, site),
       });
+    } else if (isBackendSiteId(site)) {
+      const emptyPayload = {
+        site: null,
+        templates: { equipmentTemplates: [], graphicTemplates: [] },
+        equipment: [],
+        discoveredDevices: [],
+        discoveredObjects: {},
+        mappings: {},
+        graphics: {},
+        siteLayoutGraphics: {},
+        networkConfig: createEmptyNetworkConfig(),
+        validation: null,
+        deploymentHistory: [],
+        activeDeploymentSnapshot: null,
+      };
+      dispatch({
+        type: WORKING_VERSION_ACTIONS.RESET_WORKING_VERSION,
+        payload: normalizeWorkingVersionNetworkConfig(emptyPayload, site),
+      });
     } else {
       const stored = loadWorkingVersionForSite(site);
       const currentSiteName = workingState?.site?.name;
@@ -124,6 +144,7 @@ export function EngineeringVersionProvider({ children }) {
 
   useEffect(() => {
     if (!site) return;
+    if (isBackendSiteId(site)) return;
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
     saveTimeoutRef.current = setTimeout(() => {
       saveTimeoutRef.current = null;

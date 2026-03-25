@@ -76,6 +76,7 @@ export function normalizeEquipment(api) {
     name: api.name,
     code: api.code,
     equipmentType: api.equipmentType,
+    templateName: api.templateName ?? null,
     status: api.status,
     engineeringStatus: mapEquipmentEngineeringStatus(api.status),
   };
@@ -176,6 +177,12 @@ export async function updateBuilding(buildingId, payload) {
   return normalizeBuilding(raw);
 }
 
+export async function deleteBuilding(buildingId) {
+  await apiFetch(`/api/buildings/${encodeURIComponent(buildingId)}`, {
+    method: "DELETE",
+  });
+}
+
 // --- Floors
 
 export async function listFloorsByBuilding(buildingId) {
@@ -189,6 +196,20 @@ export async function createFloor(buildingId, payload) {
     body: payload,
   });
   return normalizeFloor(raw);
+}
+
+export async function updateFloor(floorId, payload) {
+  const raw = await apiFetch(`/api/floors/${encodeURIComponent(floorId)}`, {
+    method: "PATCH",
+    body: payload,
+  });
+  return normalizeFloor(raw);
+}
+
+export async function deleteFloor(floorId) {
+  await apiFetch(`/api/floors/${encodeURIComponent(floorId)}`, {
+    method: "DELETE",
+  });
 }
 
 // --- Equipment
@@ -212,6 +233,12 @@ export async function updateEquipment(equipmentId, payload) {
     body: payload,
   });
   return normalizeEquipment(raw);
+}
+
+export async function deleteEquipment(equipmentId) {
+  await apiFetch(`/api/equipment/${encodeURIComponent(equipmentId)}`, {
+    method: "DELETE",
+  });
 }
 
 // --- Points

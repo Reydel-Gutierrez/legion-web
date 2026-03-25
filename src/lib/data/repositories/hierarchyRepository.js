@@ -60,6 +60,22 @@ export async function updateEquipment(equipmentId, payload) {
   return api.updateEquipment(equipmentId, payload);
 }
 
+export async function deleteBuilding(buildingId) {
+  return api.deleteBuilding(buildingId);
+}
+
+export async function updateFloor(floorId, payload) {
+  return api.updateFloor(floorId, payload);
+}
+
+export async function deleteFloor(floorId) {
+  return api.deleteFloor(floorId);
+}
+
+export async function deleteEquipment(equipmentId) {
+  return api.deleteEquipment(equipmentId);
+}
+
 export async function listPointsByEquipment(equipmentId) {
   return api.listPointsByEquipment(equipmentId);
 }
@@ -105,7 +121,7 @@ export async function buildOperatorDeploymentSnapshot(siteId) {
           locationLabel: "",
           controllerRef: null,
           protocol: "API",
-          templateName: null,
+          templateName: eq.templateName ?? null,
           pointsDefined: points.length,
           status: eq.engineeringStatus || "CONTROLLER_ASSIGNED",
           notes: "",
@@ -218,17 +234,26 @@ export async function fetchWorkingVersionForEngineering(siteId) {
 }
 
 /**
- * Active release from `GET .../api/sites/:siteId/active-release` (null if none).
- * @returns {Promise<{ versionNumber: number, status: string, data: object } | null>}
+ * Active release from `GET .../api/sites/:siteId/active-release`.
+ * If no deployed release exists, builds a live snapshot from the relational hierarchy so Operator UI stays consistent.
+ * @returns {Promise<{ versionNumber: number|null, status: string, data: object } | null>}
  */
 export async function fetchActiveRelease(siteId) {
   const raw = await api.getActiveRelease(siteId);
   const ar = raw?.activeRelease;
-  if (!ar?.payload) return null;
+  if (ar?.payload != null && typeof ar.payload === "object") {
+    return {
+      versionNumber: ar.versionNumber ?? null,
+      status: ar.status,
+      data: ar.payload,
+    };
+  }
+  const live = await buildOperatorDeploymentSnapshot(siteId);
+  if (!live) return null;
   return {
-    versionNumber: ar.versionNumber,
-    status: ar.status,
-    data: ar.payload,
+    versionNumber: ar?.versionNumber ?? 0,
+    status: ar?.status || "LIVE",
+    data: live,
   };
 }
 

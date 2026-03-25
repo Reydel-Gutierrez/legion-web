@@ -106,9 +106,17 @@ async function updateBuilding(id, data) {
   });
 }
 
+async function deleteBuilding(id) {
+  await getBuildingById(id);
+  return prisma.building.delete({
+    where: { id },
+  });
+}
+
 module.exports = {
   listBuildingsBySite,
   getBuildingById,
   createBuilding,
   updateBuilding,
+  deleteBuilding,
 };

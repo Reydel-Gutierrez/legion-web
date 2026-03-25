@@ -26,6 +26,7 @@ import { USE_HIERARCHY_API } from "../../../lib/data/config";
 import { isBackendSiteId } from "../../../lib/data/siteIdUtils";
 import * as hierarchyRepository from "../../../lib/data/repositories/hierarchyRepository";
 import { selectSiteTree, siteTreeToWorkingSite } from "../../../hooks/useWorkingVersion";
+import { WORKING_VERSION_ACTIONS } from "../working-version/workingVersionReducer";
 
 // ---------------------------------------------------------------------------
 // Data helpers: build nested tree from flat structure
@@ -160,7 +161,7 @@ function validateStructure(siteTree) {
 // ---------------------------------------------------------------------------
 export default function SiteBuilderPage() {
   const { site, setSite } = useSite();
-  const { workingVersion, workingState, actions } = useWorkingVersion();
+  const { workingVersion, workingState, actions, dispatch } = useWorkingVersion();
   const siteTree = selectSiteTree(workingVersion);
   const equipmentList = workingState.equipment ?? [];
 
@@ -188,8 +189,10 @@ export default function SiteBuilderPage() {
       .fetchWorkingVersion(site)
       .then((payload) => {
         if (cancelled || !payload) return;
-        actions.setSite(payload.site);
-        actions.setEquipment(payload.equipment);
+        // Use dispatch, not actions — actions is recreated when workingState changes (deployWorkingVersion
+        // deps), which would retrigger this effect and spam GET /working-version.
+        dispatch({ type: WORKING_VERSION_ACTIONS.SET_SITE, payload: payload.site });
+        dispatch({ type: WORKING_VERSION_ACTIONS.SET_EQUIPMENT, payload: payload.equipment });
       })
       .catch((e) => {
         if (!cancelled) setHierarchyError(e?.message || String(e));
@@ -200,7 +203,7 @@ export default function SiteBuilderPage() {
     return () => {
       cancelled = true;
     };
-  }, [site, actions]);
+  }, [site, dispatch]);
 
   // Expand all and set selected when working version has a site
   useEffect(() => {
@@ -340,12 +343,17 @@ export default function SiteBuilderPage() {
         return Number.isFinite(n) ? n : null;
       };
       const node = findNodeById(siteTree, id);
-      if (USE_HIERARCHY_API && isBackendSiteId(site) && node && (node.type === "site" || node.type === "building")) {
+      if (
+        USE_HIERARCHY_API &&
+        isBackendSiteId(site) &&
+        node &&
+        (node.type === "site" || node.type === "building" || node.type === "floor")
+      ) {
         setHierarchyError(null);
         try {
           if (node.type === "site") {
             await hierarchyRepository.updateSite(site, { name: form.name });
-          } else {
+          } else if (node.type === "building") {
             await hierarchyRepository.updateBuilding(id, {
               name: form.name,
               addressLine1: form.address || "TBD",
@@ -356,6 +364,8 @@ export default function SiteBuilderPage() {
               latitude: parseCoord(form.lat),
               longitude: parseCoord(form.lng),
             });
+          } else {
+            await hierarchyRepository.updateFloor(id, { name: form.name });
           }
           const payload = await engineeringRepository.fetchWorkingVersion(site);
           if (payload) {
@@ -394,20 +404,44 @@ export default function SiteBuilderPage() {
     [siteTree, actions, site]
   );
 
-  const handleDeleteNode = useCallback((id) => {
-    if (!siteTree) return;
-    const node = findNodeById(siteTree, id);
-    const deletedFloorIds = node ? collectFloorIdsUnder(node) : [];
-    const newTree = deleteNodeFromTree(siteTree, id);
-    const newSite = newTree ? siteTreeToWorkingSite(newTree) : null;
-    if (newSite) actions.setSite(newSite);
-    if (deletedFloorIds.length > 0) {
-      const newEquipment = (workingState.equipment || []).filter((e) => !deletedFloorIds.includes(e.floorId));
-      actions.setEquipment(newEquipment);
-    }
-    if (selectedId === id) setSelectedId(null);
-    setDeleteConfirmNode(null);
-  }, [siteTree, workingState.equipment, selectedId, actions]);
+  const handleDeleteNode = useCallback(
+    async (id) => {
+      if (!siteTree) return;
+      const node = findNodeById(siteTree, id);
+      if (USE_HIERARCHY_API && isBackendSiteId(site) && node && node.type !== "site") {
+        setHierarchyError(null);
+        try {
+          if (node.type === "building") {
+            await hierarchyRepository.deleteBuilding(id);
+          } else if (node.type === "floor") {
+            await hierarchyRepository.deleteFloor(id);
+          }
+          const payload = await engineeringRepository.fetchWorkingVersion(site);
+          if (payload) {
+            actions.setSite(payload.site);
+            actions.setEquipment(payload.equipment);
+          }
+          engineeringRepository.notifyEngineeringHierarchyChanged();
+          if (selectedId === id) setSelectedId(null);
+          setDeleteConfirmNode(null);
+        } catch (e) {
+          setHierarchyError(e?.message || String(e));
+        }
+        return;
+      }
+      const deletedFloorIds = node ? collectFloorIdsUnder(node) : [];
+      const newTree = deleteNodeFromTree(siteTree, id);
+      const newSite = newTree ? siteTreeToWorkingSite(newTree) : null;
+      if (newSite) actions.setSite(newSite);
+      if (deletedFloorIds.length > 0) {
+        const newEquipment = (workingState.equipment || []).filter((e) => !deletedFloorIds.includes(e.floorId));
+        actions.setEquipment(newEquipment);
+      }
+      if (selectedId === id) setSelectedId(null);
+      setDeleteConfirmNode(null);
+    },
+    [siteTree, workingState.equipment, selectedId, actions, site]
+  );
 
   const handleDeleteConfirm = useCallback((node) => {
     setDeleteConfirmNode(node);
@@ -439,10 +473,12 @@ export default function SiteBuilderPage() {
       if (USE_HIERARCHY_API && isBackendSiteId(site)) {
         setHierarchyError(null);
         try {
+          const tmpl = form.templateName != null && String(form.templateName).trim() ? String(form.templateName).trim() : null;
           await hierarchyRepository.updateEquipment(id, {
             name: form.name,
             code: (form.displayLabel && String(form.displayLabel).trim()) || form.name,
             equipmentType: form.equipmentType,
+            templateName: tmpl,
           });
           const payload = await engineeringRepository.fetchWorkingVersion(site);
           if (payload) {
@@ -513,11 +549,30 @@ export default function SiteBuilderPage() {
     [workingState.equipment, workingState.graphics, actions]
   );
 
-  const handleDeleteEquipment = useCallback((id) => {
-    const next = (workingState.equipment || []).filter((e) => e.id !== id);
-    actions.setEquipment(next);
-    setSelectedEquipmentId(null);
-  }, [workingState.equipment, actions]);
+  const handleDeleteEquipment = useCallback(
+    async (id) => {
+      if (USE_HIERARCHY_API && isBackendSiteId(site)) {
+        setHierarchyError(null);
+        try {
+          await hierarchyRepository.deleteEquipment(id);
+          const payload = await engineeringRepository.fetchWorkingVersion(site);
+          if (payload) {
+            actions.setSite(payload.site);
+            actions.setEquipment(payload.equipment);
+          }
+          engineeringRepository.notifyEngineeringHierarchyChanged();
+          setSelectedEquipmentId(null);
+        } catch (e) {
+          setHierarchyError(e?.message || String(e));
+        }
+        return;
+      }
+      const next = (workingState.equipment || []).filter((e) => e.id !== id);
+      actions.setEquipment(next);
+      setSelectedEquipmentId(null);
+    },
+    [workingState.equipment, actions, site]
+  );
 
   const handleAddChild = useCallback(
     async (node) => {
@@ -580,6 +635,7 @@ export default function SiteBuilderPage() {
             name: data.name,
             code,
             equipmentType: data.equipmentType || "CUSTOM",
+            ...(data.templateName ? { templateName: data.templateName } : {}),
           });
           const payload = await engineeringRepository.fetchWorkingVersion(site);
           if (payload) {

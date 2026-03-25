@@ -12,5 +12,9 @@ router.patch(
   '/:id',
   asyncHandler((req, res) => buildingController.update(req, res))
 );
+router.delete(
+  '/:id',
+  asyncHandler((req, res) => buildingController.remove(req, res))
+);
 
 module.exports = router;

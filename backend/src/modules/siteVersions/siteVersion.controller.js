@@ -2,7 +2,8 @@ const siteVersionService = require('./siteVersion.service');
 
 async function getWorking(req, res) {
   const { siteId } = req.params;
-  const version = await siteVersionService.getOrCreateWorkingVersion(siteId);
+  await siteVersionService.getOrCreateWorkingVersion(siteId);
+  const version = await siteVersionService.syncWorkingPayloadFromDb(siteId);
   res.json({
     workingVersion: siteVersionService.serializeVersionRow(version, true),
   });

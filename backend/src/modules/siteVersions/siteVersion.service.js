@@ -8,6 +8,7 @@ const {
   validateWorkingPayloadForDeploy,
   isPlainObject,
 } = require('./siteVersion.payload');
+const { buildWorkingSiteEquipmentFromDb } = require('../siteHierarchy/siteHierarchy.service');
 
 const versionInclude = {
   payload: true,
@@ -111,6 +112,33 @@ async function getOrCreateWorkingVersion(siteId) {
 }
 
 /**
+ * Merge relational hierarchy into the WORKING payload so Site Builder and deploy see DB truth.
+ * Preserves templates, mappings, graphics, networkConfig, etc.
+ */
+async function syncWorkingPayloadFromDb(siteId) {
+  await assertSiteExists(siteId);
+  let working = await prisma.siteVersion.findFirst({
+    where: { siteId, status: 'WORKING' },
+    include: versionInclude,
+  });
+  if (!working) {
+    working = await getOrCreateWorkingVersion(siteId);
+  }
+  const payloadJson = working.payload?.payloadJson || createDefaultWorkingPayload();
+  const { site, equipment } = await buildWorkingSiteEquipmentFromDb(siteId);
+  const merged = { ...cloneJson(payloadJson), site, equipment };
+  return prisma.siteVersion.update({
+    where: { id: working.id },
+    data: {
+      payload: {
+        update: { payloadJson: merged },
+      },
+    },
+    include: versionInclude,
+  });
+}
+
+/**
  * PUT body: { payload: object, notes?: string }
  */
 async function putWorkingVersion(siteId, body) {
@@ -131,7 +159,7 @@ async function putWorkingVersion(siteId, body) {
     working = await getOrCreateWorkingVersion(siteId);
   }
 
-  const updated = await prisma.siteVersion.update({
+  await prisma.siteVersion.update({
     where: { id: working.id },
     data: {
       ...(notes !== undefined ? { notes } : {}),
@@ -144,7 +172,7 @@ async function putWorkingVersion(siteId, body) {
     include: versionInclude,
   });
 
-  return updated;
+  return syncWorkingPayloadFromDb(siteId);
 }
 
 async function getActiveRelease(siteId) {
@@ -165,6 +193,8 @@ async function getActiveRelease(siteId) {
 
 async function deployWorkingVersion(siteId) {
   await assertSiteExists(siteId);
+
+  await syncWorkingPayloadFromDb(siteId);
 
   const working = await prisma.siteVersion.findFirst({
     where: { siteId, status: 'WORKING' },
@@ -239,6 +269,7 @@ async function listVersionHistory(siteId) {
 
 module.exports = {
   getOrCreateWorkingVersion,
+  syncWorkingPayloadFromDb,
   putWorkingVersion,
   getActiveRelease,
   deployWorkingVersion,

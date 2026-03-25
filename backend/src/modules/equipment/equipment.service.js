@@ -26,10 +26,15 @@ async function createEquipment(floorId, data) {
   const siteId = floor.building.siteId;
   const buildingId = floor.buildingId;
 
-  const { name, code, equipmentType, status } = data;
+  const { name, code, equipmentType, status, templateName } = data;
   if (!name || !code || !equipmentType) {
     throw new HttpError(400, 'name, code, and equipmentType are required');
   }
+
+  const template =
+    templateName != null && String(templateName).trim() !== ''
+      ? String(templateName).trim()
+      : null;
 
   return prisma.equipment.create({
     data: {
@@ -39,6 +44,7 @@ async function createEquipment(floorId, data) {
       name: String(name).trim(),
       code: String(code).trim(),
       equipmentType: String(equipmentType).trim(),
+      ...(template ? { templateName: template } : {}),
       ...(status ? { status } : {}),
     },
   });
@@ -61,12 +67,18 @@ async function getEquipmentById(id) {
 
 async function updateEquipment(id, data) {
   await getEquipmentById(id);
-  const allowed = ['name', 'code', 'equipmentType', 'status'];
+  const allowed = ['name', 'code', 'equipmentType', 'status', 'templateName'];
   const update = {};
   for (const key of allowed) {
     if (data[key] !== undefined) {
-      update[key] =
-        typeof data[key] === 'string' ? data[key].trim() : data[key];
+      if (key === 'templateName') {
+        const v = data[key];
+        update[key] =
+          v === null || v === '' ? null : typeof v === 'string' ? v.trim() : v;
+      } else {
+        update[key] =
+          typeof data[key] === 'string' ? data[key].trim() : data[key];
+      }
     }
   }
   if (Object.keys(update).length === 0) {
@@ -78,9 +90,18 @@ async function updateEquipment(id, data) {
   });
 }
 
+async function deleteEquipment(id) {
+  const existing = await getEquipmentById(id);
+  await prisma.equipment.delete({
+    where: { id },
+  });
+  return existing;
+}
+
 module.exports = {
   listEquipmentByFloor,
   createEquipment,
   getEquipmentById,
   updateEquipment,
+  deleteEquipment,
 };
