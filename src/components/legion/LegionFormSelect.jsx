@@ -14,6 +14,8 @@ export default function LegionFormSelect({
   size = "sm",
   className = "",
   disabled = false,
+  /** Popper strategy: "fixed" escapes overflow:auto/hidden ancestors (tables, drawers). */
+  menuPopperStrategy = "fixed",
 }) {
   const [show, setShow] = useState(false);
   const containerRef = useRef(null);
@@ -63,7 +65,12 @@ export default function LegionFormSelect({
           </span>
           <span className="legion-form-select-chevron">▾</span>
         </Dropdown.Toggle>
-        <Dropdown.Menu className="legion-form-select-menu">
+        <Dropdown.Menu
+          className="legion-form-select-menu"
+          popperConfig={{
+            strategy: menuPopperStrategy,
+          }}
+        >
           {options.map((opt) => (
             <Dropdown.Item
               key={opt.value}

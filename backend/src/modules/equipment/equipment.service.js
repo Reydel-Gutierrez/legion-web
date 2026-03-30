@@ -26,7 +26,7 @@ async function createEquipment(floorId, data) {
   const siteId = floor.building.siteId;
   const buildingId = floor.buildingId;
 
-  const { name, code, equipmentType, status, templateName } = data;
+  const { name, code, equipmentType, status, templateName, address } = data;
   if (!name || !code || !equipmentType) {
     throw new HttpError(400, 'name, code, and equipmentType are required');
   }
@@ -46,6 +46,9 @@ async function createEquipment(floorId, data) {
       equipmentType: String(equipmentType).trim(),
       ...(template ? { templateName: template } : {}),
       ...(status ? { status } : {}),
+      ...(address != null && String(address).trim() !== ''
+        ? { address: String(address).trim() }
+        : {}),
     },
   });
 }
@@ -67,11 +70,11 @@ async function getEquipmentById(id) {
 
 async function updateEquipment(id, data) {
   await getEquipmentById(id);
-  const allowed = ['name', 'code', 'equipmentType', 'status', 'templateName'];
+  const allowed = ['name', 'code', 'equipmentType', 'status', 'templateName', 'address'];
   const update = {};
   for (const key of allowed) {
     if (data[key] !== undefined) {
-      if (key === 'templateName') {
+      if (key === 'templateName' || key === 'address') {
         const v = data[key];
         update[key] =
           v === null || v === '' ? null : typeof v === 'string' ? v.trim() : v;

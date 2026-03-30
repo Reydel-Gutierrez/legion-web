@@ -9,7 +9,7 @@ import { useSite } from "../../../app/providers/SiteProvider";
 import { useWorkingVersion, useActiveDeployment, selectSiteTree } from "../../../hooks/useWorkingVersion";
 import { findNodeById } from "../site-builder/utils/siteTreeUtils";
 import LegionHeroHeader from "../../../components/legion/LegionHeroHeader";
-import { engineeringRepository } from "../../../lib/data";
+import { engineeringRepository, USE_HIERARCHY_API } from "../../../lib/data";
 import { createGraphicTemplate } from "../working-version/workingVersionModel";
 import {
   cloneGraphicEditorState,
@@ -18,7 +18,6 @@ import {
 } from "./graphicTemplateUtils";
 import GraphicsToolbar from "./components/GraphicsToolbar";
 import SaveGraphicTemplateModal from "./components/SaveGraphicTemplateModal";
-import { SHAPE_COLOR_OPTIONS, DEFAULT_SHAPE_COLOR } from "./shapeColorConstants";
 import GraphicsExplorer from "./components/GraphicsExplorer";
 import GraphicsCanvas from "./components/GraphicsCanvas";
 import GraphicsInspector from "./components/GraphicsInspector";
@@ -27,6 +26,13 @@ import {
   LAYOUT_GRAPHIC_CANVAS_DEFAULT,
   LAYOUT_BACKGROUND_IMPORT_MAX,
 } from "../../../lib/graphics/graphicsConstants";
+import ZoneConfigurationModal from "./components/ZoneConfigurationModal";
+import {
+  createDefaultZoneConfig,
+  mergeZoneConfig,
+  createDefaultStateColors,
+  isZoneShape,
+} from "./floorZoneModel";
 
 // ---------------------------------------------------------------------------
 // File import helpers
@@ -150,6 +156,13 @@ export default function GraphicsManagerPage() {
   const [showSaveToast, setShowSaveToast] = useState(false);
   const [showSaveTemplateModal, setShowSaveTemplateModal] = useState(false);
   const [editingGraphicTemplateId, setEditingGraphicTemplateId] = useState(null);
+  /** Authoring a new library graphic from Template Library (URL: newGraphicTemplate=1 & equipmentTemplateId=). */
+  const [graphicAuthoringEquipmentTemplateId, setGraphicAuthoringEquipmentTemplateId] = useState(null);
+  const [globalLibraryToast, setGlobalLibraryToast] = useState(null);
+  const [publishingGraphicToGlobal, setPublishingGraphicToGlobal] = useState(false);
+  const [liveZonePreview, setLiveZonePreview] = useState(false);
+  const [zoneModalOpen, setZoneModalOpen] = useState(false);
+  const [zoneModalInitialTab, setZoneModalInitialTab] = useState("general");
   const importImageInputRef = useRef(null);
   const importSvgInputRef = useRef(null);
 
@@ -175,11 +188,23 @@ export default function GraphicsManagerPage() {
   );
 
   const equipmentTemplateForGraphicAuthoring = useMemo(() => {
-    if (!editingGraphicTemplateId) return null;
-    const gt = (workingState.templates?.graphicTemplates || []).find((g) => g.id === editingGraphicTemplateId);
-    if (!gt?.equipmentTemplateId) return null;
-    return (workingState.templates?.equipmentTemplates || []).find((e) => e.id === gt.equipmentTemplateId) || null;
-  }, [workingState.templates?.graphicTemplates, workingState.templates?.equipmentTemplates, editingGraphicTemplateId]);
+    const eqTemplates = workingState.templates?.equipmentTemplates || [];
+    if (editingGraphicTemplateId) {
+      const gt = (workingState.templates?.graphicTemplates || []).find((g) => g.id === editingGraphicTemplateId);
+      if (gt?.equipmentTemplateId) {
+        return eqTemplates.find((e) => e.id === gt.equipmentTemplateId) || null;
+      }
+    }
+    if (graphicAuthoringEquipmentTemplateId) {
+      return eqTemplates.find((e) => e.id === graphicAuthoringEquipmentTemplateId) || null;
+    }
+    return null;
+  }, [
+    workingState.templates?.graphicTemplates,
+    workingState.templates?.equipmentTemplates,
+    editingGraphicTemplateId,
+    graphicAuthoringEquipmentTemplateId,
+  ]);
 
   const availablePoints = useMemo(() => {
     if (selectedEquipment) {
@@ -282,13 +307,16 @@ export default function GraphicsManagerPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [site, hasNoSite, siteTreeKey]);
 
-  // Deep-link: ?graphicTemplateId= (Template Library) or ?equipmentId=
+  // Deep-link: ?graphicTemplateId= | ?equipmentId= | ?newGraphicTemplate=1&equipmentTemplateId=
   useEffect(() => {
     const params = new URLSearchParams(location.search || "");
     const graphicTemplateIdFromUrl = params.get("graphicTemplateId");
     const equipmentIdFromUrl = params.get("equipmentId");
+    const newGraphicTemplate = params.get("newGraphicTemplate");
+    const equipmentTemplateIdFromUrl = params.get("equipmentTemplateId");
 
     if (graphicTemplateIdFromUrl) {
+      setGraphicAuthoringEquipmentTemplateId(null);
       const gt = (workingState.templates?.graphicTemplates || []).find((g) => g.id === graphicTemplateIdFromUrl);
       if (gt) {
         setEditingGraphicTemplateId(gt.id);
@@ -311,14 +339,44 @@ export default function GraphicsManagerPage() {
       return;
     }
 
+    if (newGraphicTemplate === "1" && equipmentTemplateIdFromUrl) {
+      const eqList = workingState.templates?.equipmentTemplates || [];
+      const eq = eqList.find((e) => e.id === equipmentTemplateIdFromUrl);
+      if (eq) {
+        setEditingGraphicTemplateId(null);
+        setGraphicAuthoringEquipmentTemplateId(equipmentTemplateIdFromUrl);
+        setSelectedEquipmentId(null);
+        setSelectedLayoutNodeId(null);
+        setSelectedObject(null);
+        setWorkingGraphic({
+          id: "working-graphic",
+          name: "New Graphic Template",
+          status: "WORKING",
+          lastEdited: new Date().toISOString().slice(0, 10),
+          objects: [],
+          canvasSize: { ...EQUIPMENT_GRAPHIC_CANVAS_DEFAULT },
+        });
+        history.replace({ pathname: location.pathname, search: "" });
+      }
+      return;
+    }
+
     setEditingGraphicTemplateId(null);
 
     if (equipmentIdFromUrl && workingEquipment.some((e) => e.id === equipmentIdFromUrl)) {
+      setGraphicAuthoringEquipmentTemplateId(null);
       setSelectedEquipmentId(equipmentIdFromUrl);
       setSelectedLayoutNodeId(null);
       setSelectedObject(null);
     }
-  }, [location.search, workingEquipment, workingState.templates?.graphicTemplates]);
+  }, [
+    location.search,
+    workingEquipment,
+    workingState.templates?.graphicTemplates,
+    workingState.templates?.equipmentTemplates,
+    history,
+    location.pathname,
+  ]);
 
   const toggleExpand = useCallback((id) => {
     setExpandedIds((prev) => {
@@ -608,7 +666,6 @@ export default function GraphicsManagerPage() {
   }, [selectedEquipmentId, selectedLayoutNodeId, workingGraphics, workingSiteLayoutGraphics, actions, generateObjectId]);
 
   const handleAddShape = useCallback(() => {
-    const defaultOpt = SHAPE_COLOR_OPTIONS[DEFAULT_SHAPE_COLOR];
     const newObj = {
       id: generateObjectId(),
       type: "shape",
@@ -617,9 +674,9 @@ export default function GraphicsManagerPage() {
       y: 100,
       width: 80,
       height: 80,
-      shapeColor: DEFAULT_SHAPE_COLOR,
-      fill: defaultOpt.fill,
-      stroke: defaultOpt.stroke,
+      shapeColor: "default_grey",
+      fill: "rgba(130, 135, 145, 0.38)",
+      stroke: "rgba(165, 170, 180, 0.7)",
       opacity: 1,
     };
     if (selectedLayoutNodeId) {
@@ -848,6 +905,90 @@ export default function GraphicsManagerPage() {
     [history]
   );
 
+  const patchGraphicMeta = useCallback(
+    (patch) => {
+      if (editingGraphicTemplateId || graphicAuthoringEquipmentTemplateId) {
+        setWorkingGraphic((w) => ({ ...(w || {}), ...patch }));
+        return;
+      }
+      if (selectedLayoutNodeId) {
+        const cur = workingSiteLayoutGraphics[selectedLayoutNodeId] || {};
+        actions.setGraphicForSiteLayout(selectedLayoutNodeId, { ...cur, ...patch });
+      } else if (selectedEquipmentId) {
+        const cur = workingGraphics[selectedEquipmentId] || {};
+        actions.setGraphicForEquipment(selectedEquipmentId, { ...cur, ...patch });
+      } else {
+        setWorkingGraphic((w) => ({ ...(w || {}), ...patch }));
+      }
+    },
+    [
+      editingGraphicTemplateId,
+      graphicAuthoringEquipmentTemplateId,
+      selectedLayoutNodeId,
+      selectedEquipmentId,
+      workingGraphics,
+      workingSiteLayoutGraphics,
+      actions,
+    ]
+  );
+
+  const handleAddZone = useCallback(() => {
+    if (!selectedObject || selectedObject.type !== "shape") return;
+    const zc = createDefaultZoneConfig();
+    handleUpdateObject(selectedObject.id, {
+      ...selectedObject,
+      graphicElementType: "zone",
+      zoneConfig: zc,
+    });
+    setZoneModalInitialTab("general");
+    setZoneModalOpen(true);
+  }, [selectedObject, handleUpdateObject]);
+
+  const handleOpenZoneSettings = useCallback(
+    (tab) => {
+      if (!selectedObject || !isZoneShape(selectedObject)) return;
+      setZoneModalInitialTab(tab || "general");
+      setZoneModalOpen(true);
+    },
+    [selectedObject]
+  );
+
+  const handleOpenBindingMap = useCallback(() => {
+    if (!selectedObject || !isZoneShape(selectedObject)) return;
+    setZoneModalInitialTab("bindings");
+    setZoneModalOpen(true);
+  }, [selectedObject]);
+
+  const handleResetZoneStyle = useCallback(() => {
+    if (!selectedObject || !isZoneShape(selectedObject)) return;
+    handleUpdateObject(selectedObject.id, {
+      ...selectedObject,
+      zoneConfig: mergeZoneConfig(selectedObject.zoneConfig, { stateColors: createDefaultStateColors() }),
+    });
+  }, [selectedObject, handleUpdateObject]);
+
+  const handleDuplicateZoneConfig = useCallback(() => {
+    if (!selectedObject || !isZoneShape(selectedObject)) return;
+    handleDuplicateObject(selectedObject.id);
+  }, [selectedObject, handleDuplicateObject]);
+
+  const resolveEquipmentLabelForCanvas = useCallback(
+    (equipmentId) => {
+      if (!equipmentId) return "";
+      const row = equipmentList.find((e) => e.id === equipmentId);
+      return row?.displayLabel || row?.name || equipmentId;
+    },
+    [equipmentList]
+  );
+
+  const handleOpenEquipmentDetailFromZone = useCallback(
+    (equipmentId) => {
+      if (!equipmentId) return;
+      history.push(Routes.LegionEquipmentDetail.path.replace(":equipmentId", encodeURIComponent(equipmentId)));
+    },
+    [history]
+  );
+
   const hasSelection = !!selectedEquipmentId || !!selectedLayoutNodeId;
 
   const handleSaveAsTemplateClick = useCallback(() => {
@@ -857,6 +998,7 @@ export default function GraphicsManagerPage() {
   const handleConfirmSaveGraphicTemplate = useCallback(
     ({ name, equipmentTemplateId }) => {
       if (!selectedGraphic) return;
+      setGraphicAuthoringEquipmentTemplateId(null);
       const eqTemplate = equipmentTemplateId
         ? (workingState.templates?.equipmentTemplates || []).find((e) => e.id === equipmentTemplateId)
         : null;
@@ -910,6 +1052,7 @@ export default function GraphicsManagerPage() {
           source: engineeringRepository.SOURCE.SITE_CUSTOM,
         });
         actions.setTemplates({ equipmentTemplates: prevEq, graphicTemplates: [...prevGfx, newT] });
+        setEditingGraphicTemplateId(id);
       }
 
       setShowSaveTemplateModal(false);
@@ -926,6 +1069,54 @@ export default function GraphicsManagerPage() {
       actions,
     ]
   );
+
+  const handlePublishGraphicTemplateToGlobal = useCallback(async () => {
+    if (!editingGraphicTemplateId || !templateBeingEdited || !selectedGraphic) return;
+    if (!USE_HIERARCHY_API) {
+      setGlobalLibraryToast({
+        variant: "warning",
+        message: "Configure REACT_APP_API_BASE_URL to publish to the Global Template Library.",
+      });
+      return;
+    }
+    setPublishingGraphicToGlobal(true);
+    setGlobalLibraryToast(null);
+    try {
+      const editorState = cloneGraphicEditorState(selectedGraphic);
+      const boundPointCount = countBoundTemplatePointBindings(editorState.objects);
+      const payload = {
+        ...templateBeingEdited,
+        name: (selectedGraphic.name || templateBeingEdited.name || "").trim() || templateBeingEdited.name,
+        graphicEditorState: editorState,
+        boundPointCount,
+      };
+      const eqSummary = (workingState.templates?.equipmentTemplates || []).map((e) => ({
+        id: e.id,
+        name: e.name,
+        equipmentType: e.equipmentType,
+      }));
+      await engineeringRepository.pushGraphicTemplateToGlobal(payload, eqSummary);
+      setGlobalLibraryToast({
+        variant: "success",
+        message: "Graphic template saved to Global Template Library. Other projects can import it from Template Library.",
+      });
+      if (typeof window !== "undefined" && window.setTimeout) {
+        window.setTimeout(() => setGlobalLibraryToast(null), 5000);
+      }
+    } catch (err) {
+      setGlobalLibraryToast({
+        variant: "danger",
+        message: err?.message || "Failed to publish graphic template to global library.",
+      });
+    } finally {
+      setPublishingGraphicToGlobal(false);
+    }
+  }, [
+    editingGraphicTemplateId,
+    templateBeingEdited,
+    selectedGraphic,
+    workingState.templates?.equipmentTemplates,
+  ]);
 
   const handleGraphicNameChange = useCallback(
     (name) => {
@@ -1244,7 +1435,7 @@ export default function GraphicsManagerPage() {
           </div>
         </div>
 
-        {(selectedEquipmentId || editingGraphicTemplateId) && (
+        {(selectedEquipmentId || editingGraphicTemplateId || graphicAuthoringEquipmentTemplateId) && (
           <Card className="bg-primary border border-light border-opacity-10 shadow-sm mt-2">
             <Card.Body className="py-2">
               <div className="d-flex align-items-center gap-2 flex-wrap">
@@ -1256,7 +1447,7 @@ export default function GraphicsManagerPage() {
                   value={selectedGraphic?.name ?? ""}
                   onChange={(e) => handleGraphicNameChange(e.target.value)}
                   placeholder={
-                    editingGraphicTemplateId
+                    editingGraphicTemplateId || graphicAuthoringEquipmentTemplateId
                       ? "Template name (also set in Save As Template)"
                       : "Name this graphic (shown in Site Builder)"
                   }
@@ -1264,11 +1455,35 @@ export default function GraphicsManagerPage() {
                 <span className="text-white-50 small">
                   {editingGraphicTemplateId
                     ? "Editing a Template Library graphic template."
-                    : "Shown in Site Builder → Edit Equipment → Graphic."}
+                    : graphicAuthoringEquipmentTemplateId
+                      ? "New graphic template — bind objects to template points, then Save As Template."
+                      : "Shown in Site Builder → Edit Equipment → Graphic."}
                 </span>
               </div>
             </Card.Body>
           </Card>
+        )}
+
+        {globalLibraryToast && (
+          <div
+            className={`mb-3 p-3 rounded border small ${
+              globalLibraryToast.variant === "success"
+                ? "border-success border-opacity-50 bg-success bg-opacity-10 text-success"
+                : globalLibraryToast.variant === "warning"
+                  ? "border-warning border-opacity-50 bg-warning bg-opacity-10 text-warning"
+                  : "border-danger border-opacity-50 bg-danger bg-opacity-10 text-danger"
+            }`}
+          >
+            <div className="fw-semibold">{globalLibraryToast.message}</div>
+            <Button
+              size="sm"
+              variant="link"
+              className="text-white-50 p-0 mt-2"
+              onClick={() => setGlobalLibraryToast(null)}
+            >
+              Dismiss
+            </Button>
+          </div>
         )}
 
         {showValidationToast && validationResult && (
@@ -1340,10 +1555,33 @@ export default function GraphicsManagerPage() {
           onPreview={handlePreview}
           onValidate={handleValidate}
           hasSelection={!!selectedEquipmentId || !!selectedLayoutNodeId}
+          canPublishGraphicToGlobal={!!editingGraphicTemplateId && USE_HIERARCHY_API}
+          publishingGraphicToGlobal={publishingGraphicToGlobal}
+          onPublishGraphicToGlobal={handlePublishGraphicTemplateToGlobal}
+          selectedObjectIsShape={selectedObject?.type === "shape"}
+          selectedZoneEnabled={isZoneShape(selectedObject)}
+          onAddZone={handleAddZone}
+          onOpenZoneSettings={handleOpenZoneSettings}
+          liveZonePreview={liveZonePreview}
+          onToggleLiveZonePreview={() => setLiveZonePreview((v) => !v)}
+          onResetZoneStyle={handleResetZoneStyle}
+          onDuplicateZoneConfig={handleDuplicateZoneConfig}
+          onOpenBindingMap={handleOpenBindingMap}
+          onArchiveGraphic={() => patchGraphicMeta({ lifecycleStatus: "archived" })}
+          onRestoreGraphic={() => patchGraphicMeta({ lifecycleStatus: "active" })}
+          lifecycleStatus={selectedGraphic?.lifecycleStatus ?? "draft"}
+          graphicsCategory={
+            selectedGraphic?.graphicsCategory ?? (selectedLayoutNodeId ? "floor" : "equipment")
+          }
+          onGraphicsCategoryChange={(v) => patchGraphicMeta({ graphicsCategory: v })}
         />
 
         <div className="graphics-manager-editor-surface">
-          <div className="graphics-manager-workspace-stack">
+          <div
+            className={`graphics-manager-workspace-stack${
+              selectedObject?.type === "shape" ? " graphics-manager-workspace-stack--shape-no-inspector" : ""
+            }`}
+          >
             <GraphicsCanvas
               graphic={selectedGraphic}
               selectedObjectId={selectedObject?.id}
@@ -1363,20 +1601,25 @@ export default function GraphicsManagerPage() {
               canvasWidth={canvasWidth}
               canvasHeight={canvasHeight}
               emptyMessage="Start building your graphic by adding shapes, text, values, and a background image. You can assign it to a site, floor, building, or equipment later."
+              liveZonePreview={liveZonePreview}
+              onOpenEquipmentDetail={handleOpenEquipmentDetailFromZone}
+              resolveEquipmentLabel={resolveEquipmentLabelForCanvas}
             />
-            <GraphicsInspector
-              selectedObject={selectedObject}
-              availablePoints={availablePoints}
-              equipmentName={selectedEquipment?.name}
-              linkTargets={linkTargets}
-              backgroundImage={selectedGraphic?.backgroundImage}
-              onUpdateObject={handleUpdateObject}
-              onDeleteObject={handleDeleteObject}
-              onOpenLink={handleOpenLink}
-              onDuplicateObject={handleDuplicateObject}
-              onBringForwardObject={handleBringForwardObject}
-              onSendBackwardObject={handleSendBackwardObject}
-            />
+            {selectedObject?.type !== "shape" && (
+              <GraphicsInspector
+                selectedObject={selectedObject}
+                availablePoints={availablePoints}
+                equipmentName={selectedEquipment?.name}
+                linkTargets={linkTargets}
+                backgroundImage={selectedGraphic?.backgroundImage}
+                onUpdateObject={handleUpdateObject}
+                onDeleteObject={handleDeleteObject}
+                onOpenLink={handleOpenLink}
+                onDuplicateObject={handleDuplicateObject}
+                onBringForwardObject={handleBringForwardObject}
+                onSendBackwardObject={handleSendBackwardObject}
+              />
+            )}
           </div>
         </div>
       </div>
@@ -1431,6 +1674,23 @@ export default function GraphicsManagerPage() {
         </Modal.Footer>
       </Modal>
 
+      <ZoneConfigurationModal
+        show={zoneModalOpen}
+        onHide={() => setZoneModalOpen(false)}
+        zoneConfig={selectedObject?.zoneConfig || createDefaultZoneConfig()}
+        onSave={(cfg) => {
+          if (!selectedObject) return;
+          handleUpdateObject(selectedObject.id, {
+            ...selectedObject,
+            zoneConfig: cfg,
+            graphicElementType: "zone",
+          });
+        }}
+        availablePoints={availablePoints}
+        equipmentList={equipmentList}
+        initialTab={zoneModalInitialTab}
+      />
+
       <SaveGraphicTemplateModal
         show={showSaveTemplateModal}
         onHide={() => setShowSaveTemplateModal(false)}
@@ -1447,7 +1707,10 @@ export default function GraphicsManagerPage() {
           ""
         }
         initialEquipmentTemplateId={
-          templateBeingEdited?.equipmentTemplateId || equipmentTemplateMatchingSelection?.id || ""
+          templateBeingEdited?.equipmentTemplateId ||
+          graphicAuthoringEquipmentTemplateId ||
+          equipmentTemplateMatchingSelection?.id ||
+          ""
         }
         isUpdate={!!editingGraphicTemplateId}
         onSave={handleConfirmSaveGraphicTemplate}

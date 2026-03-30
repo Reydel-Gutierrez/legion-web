@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import {
   Modal,
   Button,
@@ -6,14 +6,15 @@ import {
   InputGroup,
   Table,
   Nav,
+  Spinner,
 } from "@themesberg/react-bootstrap";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faSearch, faCloudUploadAlt } from "@fortawesome/free-solid-svg-icons";
 import { engineeringRepository } from "../../../../lib/data";
+import { USE_HIERARCHY_API } from "../../../../lib/data/config";
 
 /**
- * Modal for saving site templates to the Legion Global Template Library.
- * User selects which equipment and/or graphic templates to publish to the company-wide library.
+ * Publish site templates to the Global Template Library (API).
  */
 export default function SaveToGlobalModal({
   show,
@@ -28,6 +29,15 @@ export default function SaveToGlobalModal({
   const [selectedGraphicIds, setSelectedGraphicIds] = useState(new Set());
   const [activeTab, setActiveTab] = useState("equipment");
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState(null);
+
+  useEffect(() => {
+    if (show) {
+      setSaveError(null);
+      setSelectedEquipmentIds(new Set());
+      setSelectedGraphicIds(new Set());
+    }
+  }, [show]);
 
   const filteredEquipment = useMemo(() => {
     const q = (searchEquipment || "").toLowerCase().trim();
@@ -85,30 +95,57 @@ export default function SaveToGlobalModal({
     });
   };
 
-  const handleSaveToGlobal = () => {
+  const handleSaveToGlobal = async () => {
+    if (!USE_HIERARCHY_API) {
+      setSaveError("Set REACT_APP_API_BASE_URL to publish to the Global Template Library.");
+      return;
+    }
     const equipmentToSave = equipmentTemplates.filter((t) => selectedEquipmentIds.has(t.id));
     const graphicToSave = graphicTemplates.filter((t) => selectedGraphicIds.has(t.id));
     if (equipmentToSave.length === 0 && graphicToSave.length === 0) return;
     setSaving(true);
+    setSaveError(null);
     try {
-      equipmentToSave.forEach((t) => engineeringRepository.addEquipmentTemplateToGlobal(t));
-      graphicToSave.forEach((t) =>
-        engineeringRepository.addGraphicTemplateToGlobal(t, equipmentTemplates)
-      );
+      const siteEquipmentIdToGlobalId = new Map();
+      for (const t of equipmentToSave) {
+        const created = await engineeringRepository.pushEquipmentTemplateToGlobal(t);
+        if (created?.id && t.id) siteEquipmentIdToGlobalId.set(t.id, created.id);
+      }
+      const eqSummary = equipmentTemplates.map((e) => ({
+        id: e.id,
+        name: e.name,
+        equipmentType: e.equipmentType,
+      }));
+      for (const t of graphicToSave) {
+        const linkedGlobalEq = t.equipmentTemplateId
+          ? siteEquipmentIdToGlobalId.get(t.equipmentTemplateId)
+          : null;
+        const templatePayload =
+          linkedGlobalEq != null ? { ...t, globalEquipmentTemplateId: linkedGlobalEq } : t;
+        await engineeringRepository.pushGraphicTemplateToGlobal(templatePayload, eqSummary);
+      }
       const total = equipmentToSave.length + graphicToSave.length;
-      if (typeof onSaved === "function") onSaved({ equipment: equipmentToSave.length, graphic: graphicToSave.length, total });
+      if (typeof onSaved === "function") {
+        onSaved({
+          equipment: equipmentToSave.length,
+          graphic: graphicToSave.length,
+          total,
+        });
+      }
       setSelectedEquipmentIds(new Set());
       setSelectedGraphicIds(new Set());
       setSearchEquipment("");
       setSearchGraphic("");
       onHide();
+    } catch (e) {
+      setSaveError(e?.message || "Save to global library failed.");
     } finally {
       setSaving(false);
     }
   };
 
   const totalSelected = selectedEquipmentIds.size + selectedGraphicIds.size;
-  const canSave = totalSelected > 0 && !saving;
+  const canSave = totalSelected > 0 && !saving && USE_HIERARCHY_API;
 
   return (
     <Modal
@@ -129,8 +166,19 @@ export default function SaveToGlobalModal({
       </Modal.Header>
       <Modal.Body className="d-flex flex-column overflow-hidden" style={{ minHeight: 360 }}>
         <p className="text-white-50 small mb-3">
-          Select equipment and graphic templates from this site to publish to the company-wide Legion Global Template Library. They will then be available for import on other projects.
+          Publish copies of selected templates to the company-wide library. Other projects can import them; this site keeps
+          its own editable copies.
         </p>
+
+        {!USE_HIERARCHY_API && (
+          <div className="alert alert-warning bg-warning bg-opacity-10 border-warning text-warning small mb-3">
+            Configure <code className="text-reset">REACT_APP_API_BASE_URL</code> to publish templates.
+          </div>
+        )}
+
+        {saveError && (
+          <div className="alert alert-danger bg-danger bg-opacity-10 border-danger text-danger small mb-3">{saveError}</div>
+        )}
 
         <Nav variant="tabs" className="mb-3 legion-tabs">
           <Nav.Item>
@@ -173,6 +221,7 @@ export default function SaveToGlobalModal({
                 variant="outline-light"
                 className="legion-hero-btn legion-hero-btn--secondary"
                 onClick={selectAllEquipment}
+                disabled={!USE_HIERARCHY_API || filteredEquipment.length === 0}
               >
                 Select all
               </Button>
@@ -202,6 +251,7 @@ export default function SaveToGlobalModal({
                             checked={selectedEquipmentIds.has(t.id)}
                             onChange={() => toggleEquipment(t.id)}
                             className="text-white-50"
+                            disabled={!USE_HIERARCHY_API}
                           />
                         </td>
                         <td className="fw-semibold text-white">{t.name}</td>
@@ -237,6 +287,7 @@ export default function SaveToGlobalModal({
                 variant="outline-light"
                 className="legion-hero-btn legion-hero-btn--secondary"
                 onClick={selectAllGraphic}
+                disabled={!USE_HIERARCHY_API || filteredGraphic.length === 0}
               >
                 Select all
               </Button>
@@ -266,6 +317,7 @@ export default function SaveToGlobalModal({
                             checked={selectedGraphicIds.has(t.id)}
                             onChange={() => toggleGraphic(t.id)}
                             className="text-white-50"
+                            disabled={!USE_HIERARCHY_API}
                           />
                         </td>
                         <td className="fw-semibold text-white">{t.name}</td>
@@ -301,8 +353,17 @@ export default function SaveToGlobalModal({
               disabled={!canSave}
               onClick={handleSaveToGlobal}
             >
-              <FontAwesomeIcon icon={faCloudUploadAlt} className="me-1" />
-              {saving ? "Saving…" : "Save to Global Library"}
+              {saving ? (
+                <>
+                  <Spinner animation="border" size="sm" className="me-1" />
+                  Saving…
+                </>
+              ) : (
+                <>
+                  <FontAwesomeIcon icon={faCloudUploadAlt} className="me-1" />
+                  Save to Global Library
+                </>
+              )}
             </Button>
           </div>
         </div>

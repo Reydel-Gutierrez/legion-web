@@ -67,17 +67,23 @@ export default function PointDetailsPanel({
           <div className="text-white small fw-semibold mb-2">Template Point</div>
           <div className="bg-dark bg-opacity-25 rounded p-3 border border-light border-opacity-10">
             <div className="mb-2">
-              <span className="text-white-50 small">Display Name</span>
+              <span className="text-white-50 small">Point</span>
+              <div className="text-white font-monospace">{templatePoint.key}</div>
+            </div>
+            <div className="mb-2">
+              <span className="text-white-50 small">Point description</span>
               <div className="text-white">{templatePoint.displayName}</div>
             </div>
             <div className="mb-2">
-              <span className="text-white-50 small">Key</span>
-              <div className="text-white">{templatePoint.key}</div>
+              <span className="text-white-50 small">Command type</span>
+              <div className="text-white">{templatePoint.commandType || "none"}</div>
             </div>
-            <div className="mb-2">
-              <span className="text-white-50 small">Required</span>
-              <div className="text-white">{templatePoint.required ? "Yes" : "No"}</div>
-            </div>
+            {templatePoint.mappingHint ? (
+              <div className="mb-2">
+                <span className="text-white-50 small">Mapping hint</span>
+                <div className="text-white font-monospace small">{templatePoint.mappingHint}</div>
+              </div>
+            ) : null}
             <div className="mb-2">
               <span className="text-white-50 small">Expected Object Type</span>
               <div className="text-white">{templatePoint.expectedObjectType}</div>

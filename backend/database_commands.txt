@@ -1,0 +1,8 @@
+cd backend
+
+npx prisma generate
+npx prisma migrate dev --name your_change_name
+npm run db:seed
+
+example: 
+npx prisma migrate dev --name add_global_templates

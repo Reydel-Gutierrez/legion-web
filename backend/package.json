@@ -5,6 +5,7 @@
   "description": "Legion Phase 1 API — hierarchy and user access foundation",
   "main": "src/server.js",
   "scripts": {
+    "postinstall": "prisma generate",
     "dev": "node src/server.js",
     "start": "node src/server.js",
     "prisma:generate": "prisma generate",

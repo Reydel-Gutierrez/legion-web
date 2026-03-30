@@ -9,6 +9,7 @@ const {
   isPlainObject,
 } = require('./siteVersion.payload');
 const { buildWorkingSiteEquipmentFromDb } = require('../siteHierarchy/siteHierarchy.service');
+const { mergeStarterEquipmentTemplatesIfEmpty } = require('../../lib/legionStarterEquipmentTemplates');
 
 const versionInclude = {
   payload: true,
@@ -80,6 +81,20 @@ async function getOrCreateWorkingVersion(siteId) {
     parentVersionId = site.activeReleaseVersion.id;
   }
 
+  initialPayload.templates =
+    initialPayload.templates && typeof initialPayload.templates === 'object'
+      ? initialPayload.templates
+      : { equipmentTemplates: [], graphicTemplates: [] };
+  initialPayload.templates.equipmentTemplates = Array.isArray(initialPayload.templates.equipmentTemplates)
+    ? initialPayload.templates.equipmentTemplates
+    : [];
+  initialPayload.templates.graphicTemplates = Array.isArray(initialPayload.templates.graphicTemplates)
+    ? initialPayload.templates.graphicTemplates
+    : [];
+  initialPayload.templates.equipmentTemplates = mergeStarterEquipmentTemplatesIfEmpty(
+    initialPayload.templates.equipmentTemplates
+  );
+
   try {
     return await prisma.$transaction(async (tx) => {
       const created = await tx.siteVersion.create({
@@ -127,6 +142,19 @@ async function syncWorkingPayloadFromDb(siteId) {
   const payloadJson = working.payload?.payloadJson || createDefaultWorkingPayload();
   const { site, equipment } = await buildWorkingSiteEquipmentFromDb(siteId);
   const merged = { ...cloneJson(payloadJson), site, equipment };
+  merged.templates =
+    merged.templates && typeof merged.templates === 'object'
+      ? merged.templates
+      : { equipmentTemplates: [], graphicTemplates: [] };
+  merged.templates.equipmentTemplates = Array.isArray(merged.templates.equipmentTemplates)
+    ? merged.templates.equipmentTemplates
+    : [];
+  merged.templates.graphicTemplates = Array.isArray(merged.templates.graphicTemplates)
+    ? merged.templates.graphicTemplates
+    : [];
+  merged.templates.equipmentTemplates = mergeStarterEquipmentTemplatesIfEmpty(
+    merged.templates.equipmentTemplates
+  );
   return prisma.siteVersion.update({
     where: { id: working.id },
     data: {

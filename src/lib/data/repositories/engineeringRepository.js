@@ -57,16 +57,14 @@ import {
   EXPECTED_POINT_TYPES,
   getSiteTemplates,
   getStarterPointsForEquipmentType,
-  GLOBAL_EQUIPMENT_TEMPLATES,
-  GLOBAL_GRAPHIC_TEMPLATES,
-  addEquipmentTemplateToGlobal,
-  addGraphicTemplateToGlobal,
 } from "../../../modules/engineering/data/mockTemplateLibraryData";
+
+import * as globalTemplateLibraryRepository from "./globalTemplateLibraryRepository";
 
 export const USE_MOCK_ENGINEERING_DATA = true;
 export { EQUIPMENT_GROUPS, EQUIPMENT_STATUSES, USE_HIERARCHY_API };
 
-/** Load working-version site + equipment from the API (when configured). */
+/** Load full working-version flat state from the API (GET syncs hierarchy from DB). */
 export async function fetchWorkingVersion(siteId) {
   if (!USE_HIERARCHY_API) return null;
   return hierarchyRepository.fetchWorkingVersionForEngineering(siteId);
@@ -96,6 +94,78 @@ export async function postDeployWorkingVersion(siteId, notes) {
 
 export function notifyEngineeringHierarchyChanged(siteId) {
   hierarchyRepository.notifyHierarchyChanged(siteId);
+}
+
+// --- Global Template Library (database-backed; requires USE_HIERARCHY_API)
+
+export async function fetchGlobalEquipmentTemplatesList() {
+  if (!USE_HIERARCHY_API) {
+    throw new Error("Global Template Library requires REACT_APP_API_BASE_URL");
+  }
+  return globalTemplateLibraryRepository.listGlobalEquipmentTemplates();
+}
+
+export async function fetchGlobalEquipmentTemplateById(id) {
+  if (!USE_HIERARCHY_API) {
+    throw new Error("Global Template Library requires REACT_APP_API_BASE_URL");
+  }
+  return globalTemplateLibraryRepository.getGlobalEquipmentTemplate(id);
+}
+
+export async function fetchGlobalGraphicTemplatesList() {
+  if (!USE_HIERARCHY_API) {
+    throw new Error("Global Template Library requires REACT_APP_API_BASE_URL");
+  }
+  return globalTemplateLibraryRepository.listGlobalGraphicTemplates();
+}
+
+export async function fetchGlobalGraphicTemplateById(id) {
+  if (!USE_HIERARCHY_API) {
+    throw new Error("Global Template Library requires REACT_APP_API_BASE_URL");
+  }
+  return globalTemplateLibraryRepository.getGlobalGraphicTemplate(id);
+}
+
+export async function pushEquipmentTemplateToGlobal(siteTemplate) {
+  if (!USE_HIERARCHY_API) {
+    throw new Error("Global Template Library requires REACT_APP_API_BASE_URL");
+  }
+  return globalTemplateLibraryRepository.pushGlobalEquipmentTemplate(siteTemplate);
+}
+
+export async function pushGraphicTemplateToGlobal(siteTemplate, equipmentTemplates) {
+  if (!USE_HIERARCHY_API) {
+    throw new Error("Global Template Library requires REACT_APP_API_BASE_URL");
+  }
+  return globalTemplateLibraryRepository.pushGlobalGraphicTemplate(siteTemplate, equipmentTemplates);
+}
+
+export async function patchGlobalEquipmentTemplateName(id, payload) {
+  if (!USE_HIERARCHY_API) {
+    throw new Error("Global Template Library requires REACT_APP_API_BASE_URL");
+  }
+  return globalTemplateLibraryRepository.patchGlobalEquipmentTemplate(id, payload);
+}
+
+export async function deleteGlobalEquipmentTemplate(id) {
+  if (!USE_HIERARCHY_API) {
+    throw new Error("Global Template Library requires REACT_APP_API_BASE_URL");
+  }
+  return globalTemplateLibraryRepository.deleteGlobalEquipmentTemplate(id);
+}
+
+export async function patchGlobalGraphicTemplateName(id, payload) {
+  if (!USE_HIERARCHY_API) {
+    throw new Error("Global Template Library requires REACT_APP_API_BASE_URL");
+  }
+  return globalTemplateLibraryRepository.patchGlobalGraphicTemplate(id, payload);
+}
+
+export async function deleteGlobalGraphicTemplate(id) {
+  if (!USE_HIERARCHY_API) {
+    throw new Error("Global Template Library requires REACT_APP_API_BASE_URL");
+  }
+  return globalTemplateLibraryRepository.deleteGlobalGraphicTemplate(id);
 }
 
 /** @returns {Promise<{ activeVersionNumber: number|null, workingVersionNumber: number|null, workingStatus: string|null } | null>} */
@@ -173,10 +243,6 @@ export {
   EXPECTED_POINT_TYPES,
   getSiteTemplates,
   getStarterPointsForEquipmentType,
-  GLOBAL_EQUIPMENT_TEMPLATES,
-  GLOBAL_GRAPHIC_TEMPLATES,
-  addEquipmentTemplateToGlobal,
-  addGraphicTemplateToGlobal,
 };
 
 // Validation

@@ -38,6 +38,9 @@ export default function SiteTreeNode({
   onEdit,
   onDelete,
   compactEquipment = false,
+  onReorderEquipment,
+  onSortFloorEquipment,
+  onDuplicateEquipment,
 }) {
   const { id, type, name, children = [], equipmentCount = 0, equipmentPreview = [] } = node;
   const hasEquipmentPreview = type === "floor" && equipmentPreview?.length > 0;
@@ -181,14 +184,21 @@ export default function SiteTreeNode({
               onEdit={onEdit}
               onDelete={onDelete}
               compactEquipment={compactEquipment}
+              onReorderEquipment={onReorderEquipment}
+              onSortFloorEquipment={onSortFloorEquipment}
+              onDuplicateEquipment={onDuplicateEquipment}
             />
           ))}
           {hasEquipmentPreview && isExpanded && type === "floor" && (
             <HierarchyEquipmentSection
+              floorId={id}
               equipment={equipmentPreview}
               selectedEquipmentId={selectedEquipmentId}
               onSelectEquipment={onSelectEquipment}
               compact={compactEquipment}
+              onReorderEquipment={onReorderEquipment}
+              onSortFloorEquipment={onSortFloorEquipment}
+              onDuplicateEquipment={onDuplicateEquipment}
             />
           )}
         </div>

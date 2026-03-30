@@ -121,6 +121,8 @@ model Equipment {
   equipmentType String
   /// Optional template label from Template Library (engineering)
   templateName  String?
+  /// BACnet / controller-style address for mapping (user-entered in Site Builder)
+  address       String?
   status        EntityStatus @default(ACTIVE)
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt
@@ -191,4 +193,40 @@ model UserSiteAccess {
   role Role @relation(fields: [roleId], references: [id], onDelete: Restrict)
 
   @@unique([userId, siteId])
+}
+
+/// Company-wide equipment template definitions (import creates a site-local copy in working version).
+model GlobalEquipmentTemplate {
+  id                 String       @id @default(uuid())
+  name               String
+  equipmentType      String
+  description        String       @default("")
+  defaultGraphicName String?
+  pointsJson         Json         @default("[]")
+  status             EntityStatus @default(ACTIVE)
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+
+  graphicTemplates GlobalGraphicTemplate[]
+
+  @@index([equipmentType])
+  @@index([status])
+}
+
+model GlobalGraphicTemplate {
+  id                        String       @id @default(uuid())
+  name                      String
+  appliesToEquipmentType    String
+  globalEquipmentTemplateId String?
+  equipmentTemplateName     String?
+  graphicEditorStateJson    Json?
+  boundPointCount           Int          @default(0)
+  status                    EntityStatus @default(ACTIVE)
+  createdAt                 DateTime     @default(now())
+  updatedAt                 DateTime     @updatedAt
+
+  globalEquipmentTemplate GlobalEquipmentTemplate? @relation(fields: [globalEquipmentTemplateId], references: [id], onDelete: SetNull)
+
+  @@index([appliesToEquipmentType])
+  @@index([status])
 }

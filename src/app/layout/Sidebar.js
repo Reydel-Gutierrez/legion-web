@@ -18,6 +18,7 @@ import { useEngineeringVersionContext } from "../providers/EngineeringVersionPro
 import { SITE_IDS } from "../../lib/sites";
 import { USE_HIERARCHY_API } from "../../lib/data/config";
 import { useSiteDisplayLabel } from "../../hooks/useSiteDisplayLabel";
+import { formatSiteNameForDisplay } from "../../lib/siteDisplayLabel";
 import { getPersistedWorkingVersionSiteNames } from "../../lib/data/persistence/engineeringVersionPersistence";
 import EngineeringSidebarTreeGroup from "./EngineeringSidebarTreeGroup";
 import { getEngineeringSidebarGroups } from "./engineeringSidebarConfig";
@@ -38,6 +39,14 @@ export default function Sidebar() {
   const showClass = show ? "show" : "";
 
   const onCollapse = () => setShow(!show);
+
+  /** Truncates in CSS; label is also shortened when UUID / very long (see formatSiteNameForDisplay). */
+  const SiteMenuRow = ({ label, onSelect, showNoRelease }) => (
+    <Dropdown.Item onClick={onSelect} className="legion-sidebar-site-option">
+      <span className="legion-sidebar-site-option__label">{label}</span>
+      {showNoRelease ? <span className="text-white-50 small flex-shrink-0">(no release)</span> : null}
+    </Dropdown.Item>
+  );
 
   const NavItem = (props) => {
     const {
@@ -116,16 +125,16 @@ export default function Sidebar() {
                 <Dropdown.Toggle
                   variant="link"
                   size="sm"
-                  className="w-100 d-flex align-items-center justify-content-between legion-sidebar-site text-decoration-none"
+                  className="w-100 d-flex align-items-center justify-content-between legion-sidebar-site text-decoration-none min-w-0"
                 >
-                  <span className="d-flex align-items-center">
-                    <FontAwesomeIcon icon={faMapPin} className="me-2" />
-                    <span className="fw-semibold">{displaySiteName}</span>
+                  <span className="d-flex align-items-center min-w-0 flex-grow-1 overflow-hidden me-1">
+                    <FontAwesomeIcon icon={faMapPin} className="me-2 flex-shrink-0" />
+                    <span className="fw-semibold text-truncate">{displaySiteName}</span>
                   </span>
-                  <span className="ms-2">▾</span>
+                  <span className="flex-shrink-0">▾</span>
                 </Dropdown.Toggle>
 
-                <Dropdown.Menu className="w-100 legion-dropdown-menu">
+                <Dropdown.Menu className="w-100 legion-dropdown-menu legion-sidebar-site-menu">
                   {currentMode === "engineering" ? (
                     <>
                       {USE_HIERARCHY_API && sitesLoading && apiSites.length === 0 ? (
@@ -140,12 +149,12 @@ export default function Sidebar() {
                       {apiSites.length > 0 && (
                         <>
                           {apiSites.map((s) => (
-                            <Dropdown.Item key={s.id} onClick={() => setSite(s.id)}>
-                              {s.name}
-                              {!(activeReleaseBySite && activeReleaseBySite[s.id]) && (
-                                <span className="text-white-50 small ms-1">(no release)</span>
-                              )}
-                            </Dropdown.Item>
+                            <SiteMenuRow
+                              key={s.id}
+                              label={formatSiteNameForDisplay(s.name)}
+                              onSelect={() => setSite(s.id)}
+                              showNoRelease={!(activeReleaseBySite && activeReleaseBySite[s.id])}
+                            />
                           ))}
                         </>
                       )}
@@ -157,18 +166,16 @@ export default function Sidebar() {
                           </div>
                         </>
                       ) : null}
-                      <Dropdown.Item onClick={() => setSite(SITE_IDS.MIAMI_HQ)}>
-                        {SITE_IDS.MIAMI_HQ}
-                        {!(activeReleaseBySite && activeReleaseBySite[SITE_IDS.MIAMI_HQ]) && (
-                          <span className="text-white-50 small ms-1">(no release)</span>
-                        )}
-                      </Dropdown.Item>
-                      <Dropdown.Item onClick={() => setSite(SITE_IDS.BRIGHTLINE)}>
-                        {SITE_IDS.BRIGHTLINE}
-                        {!(activeReleaseBySite && activeReleaseBySite[SITE_IDS.BRIGHTLINE]) && (
-                          <span className="text-white-50 small ms-1">(no release)</span>
-                        )}
-                      </Dropdown.Item>
+                      <SiteMenuRow
+                        label={formatSiteNameForDisplay(SITE_IDS.MIAMI_HQ)}
+                        onSelect={() => setSite(SITE_IDS.MIAMI_HQ)}
+                        showNoRelease={!(activeReleaseBySite && activeReleaseBySite[SITE_IDS.MIAMI_HQ])}
+                      />
+                      <SiteMenuRow
+                        label={formatSiteNameForDisplay(SITE_IDS.BRIGHTLINE)}
+                        onSelect={() => setSite(SITE_IDS.BRIGHTLINE)}
+                        showNoRelease={!(activeReleaseBySite && activeReleaseBySite[SITE_IDS.BRIGHTLINE])}
+                      />
                       {[
                         ...new Set([
                           ...persistedWorkingSites.filter(
@@ -181,12 +188,12 @@ export default function Sidebar() {
                       ]
                         .sort((a, b) => a.localeCompare(b))
                         .map((name) => (
-                          <Dropdown.Item key={name} onClick={() => setSite(name)}>
-                            {name}
-                            {!(activeReleaseBySite && activeReleaseBySite[name]) && (
-                              <span className="text-white-50 small ms-1">(no release)</span>
-                            )}
-                          </Dropdown.Item>
+                          <SiteMenuRow
+                            key={name}
+                            label={formatSiteNameForDisplay(name)}
+                            onSelect={() => setSite(name)}
+                            showNoRelease={!(activeReleaseBySite && activeReleaseBySite[name])}
+                          />
                         ))}
                       <Dropdown.Divider className="border-light border-opacity-10" />
                       <Dropdown.Item onClick={() => setSite(SITE_IDS.NEW_SITE)} className="legion-dropdown-new-site">
@@ -207,18 +214,24 @@ export default function Sidebar() {
                       {apiSites.length > 0 && (
                         <>
                           {apiSites.map((s) => (
-                            <Dropdown.Item key={s.id} onClick={() => setSite(s.id)}>
-                              {s.name}
-                            </Dropdown.Item>
+                            <SiteMenuRow
+                              key={s.id}
+                              label={formatSiteNameForDisplay(s.name)}
+                              onSelect={() => setSite(s.id)}
+                              showNoRelease={false}
+                            />
                           ))}
                           <Dropdown.Divider className="border-light border-opacity-10" />
                         </>
                       )}
                       {!apiModeWithSites && deployedSiteNames.length > 0
                         ? deployedSiteNames.map((name) => (
-                            <Dropdown.Item key={name} onClick={() => setSite(name)}>
-                              {name}
-                            </Dropdown.Item>
+                            <SiteMenuRow
+                              key={name}
+                              label={formatSiteNameForDisplay(name)}
+                              onSelect={() => setSite(name)}
+                              showNoRelease={false}
+                            />
                           ))
                         : null}
                       {!apiModeWithSites && deployedSiteNames.length === 0 ? (

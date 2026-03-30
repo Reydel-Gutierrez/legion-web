@@ -51,6 +51,7 @@ const STATUS_MAP = {
   offline: { label: "OFFLINE", dotModifier: DOT_RED, variant: "danger", dotClass: "bg-danger", chipClass: "legion-chip--stat-offline" },
   down: { label: "OFFLINE", dotModifier: DOT_RED, variant: "danger", dotClass: "bg-danger", chipClass: "legion-chip--stat-offline" },
   disabled: { label: "DISABLED", dotModifier: DOT_RED, variant: "danger", dotClass: "bg-danger", chipClass: "legion-chip--stat-offline" },
+  unbound: { label: "UNBOUND", dotModifier: DOT_YELLOW, variant: "warning", dotClass: "bg-warning", chipClass: "legion-chip--stat-warn" },
   unacked: { label: "UNACKED", dotModifier: DOT_RED, variant: "danger", dotClass: "bg-danger", chipClass: "legion-chip--ack-unacked" },
 };
 
@@ -61,6 +62,7 @@ export function getStatusMap(value) {
   if (s === "warn" || s === "warning" || s === "major") return STATUS_MAP.warn;
   if (s === "alarm" || s === "fault" || s === "critical") return STATUS_MAP.alarm;
   if (s === "offline" || s === "down" || s === "disabled") return STATUS_MAP.offline;
+  if (s === "unbound") return STATUS_MAP.unbound;
   if (s === "unacked") return STATUS_MAP.unacked;
   return STATUS_MAP.offline;
 }

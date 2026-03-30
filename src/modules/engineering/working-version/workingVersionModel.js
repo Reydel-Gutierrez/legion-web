@@ -55,10 +55,14 @@ export function createEquipment(overrides = {}) {
     graphicInstanceId: null,
     pointsDefined: 0,
     status: "MISSING_CONTROLLER",
+    /** Controller / BACnet address for mapping (shown in Site Builder table). */
+    address: null,
     locationLabel: null,
     notes: "",
     equipmentGroup: null,
     protocol: "BACnet/IP",
+    /** Per-floor display order in Site Builder (0 = first). */
+    sortOrder: null,
     ...overrides,
   };
 }
@@ -78,6 +82,8 @@ export function createDiscoveredDevice(overrides = {}) {
     protocol: "BACnet/IP",
     isExpandable: false,
     assignedEquipmentId: null,
+    /** Optional user-entered address # (aligns with equipment mapping). */
+    address: null,
     children: [],
     ...overrides,
   };

@@ -156,6 +156,15 @@ export default function SitePage() {
     history.push(path);
   };
 
+  const resolveEquipmentLabelForLayout = useCallback(
+    (equipmentId) => {
+      if (!equipmentId) return "";
+      const row = activeReleaseData?.equipment?.find((e) => e.id === equipmentId);
+      return row?.displayLabel || row?.name || equipmentId;
+    },
+    [activeReleaseData]
+  );
+
   const handleGraphicLinkClick = (linkTarget) => {
     if (!linkTarget?.type) return;
     if (linkTarget.type === "layout" && linkTarget.id) goToLevelByPathId(linkTarget.id);
@@ -240,6 +249,8 @@ export default function SitePage() {
                       points={[]}
                       onLinkClick={handleGraphicLinkClick}
                       presentation={DEPLOYED_GRAPHIC_PRESENTATION.layout}
+                      onOpenEquipmentDetail={goToEquipmentDetail}
+                      resolveEquipmentLabel={resolveEquipmentLabelForLayout}
                     />
                   ) : (
                     <div className="legion-map-image d-flex align-items-center justify-content-center text-white-50 small">

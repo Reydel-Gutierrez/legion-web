@@ -49,6 +49,7 @@ function buildEquipmentFromMock(mockList, siteId) {
       siteId: e.siteId || siteId,
       buildingId: e.buildingId || null,
       displayLabel: e.displayLabel || e.name,
+      address: e.address ?? null,
       locationLabel: e.locationLabel || "",
       controllerRef: e.controllerRef ?? null,
       deviceInstance: e.deviceInstance ?? null,
@@ -79,6 +80,7 @@ function buildDiscoveredDevicesFromMock(mockDiscovery) {
     protocol: n.protocol || "BACnet/IP",
     isExpandable: n.isExpandable ?? false,
     assignedEquipmentId: n.assignedEquipmentId ?? null,
+    address: n.address ?? null,
     children: buildDiscoveredDevicesFromMock(n.children || []),
   }));
 }

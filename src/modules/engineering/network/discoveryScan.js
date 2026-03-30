@@ -123,3 +123,17 @@ export function flattenDeviceCount(roots) {
   walk(Array.isArray(roots) ? roots : []);
   return n;
 }
+
+/** Flatten discovery tree to a list (same order as Network Discovery table walk). */
+export function flattenDiscoveryTree(roots) {
+  const out = [];
+  function walk(nodes) {
+    if (!nodes || !nodes.length) return;
+    nodes.forEach((node) => {
+      if (node?.id) out.push({ ...node, children: undefined });
+      walk(node?.children);
+    });
+  }
+  walk(Array.isArray(roots) ? roots : []);
+  return out;
+}

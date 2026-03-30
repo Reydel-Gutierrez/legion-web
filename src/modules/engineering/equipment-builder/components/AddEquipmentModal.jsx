@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Modal, Button, Form } from "@themesberg/react-bootstrap";
 import LegionFormSelect from "../../../../components/legion/LegionFormSelect";
+import { USE_HIERARCHY_API } from "../../../../lib/data/config";
 
 const EQUIPMENT_TYPES = [
   { value: "AHU", label: "Air Handling Unit" },
@@ -38,6 +39,8 @@ export default function AddEquipmentModal({
   const [floorId, setFloorId] = useState("");
   const [templateName, setTemplateName] = useState("");
   const [controllerRef, setControllerRef] = useState("");
+  const [address, setAddress] = useState("");
+  const [locationLabel, setLocationLabel] = useState("");
   const [notes, setNotes] = useState("");
 
   const buildings = siteStructure?.buildings || [];
@@ -89,6 +92,8 @@ export default function AddEquipmentModal({
       floorId,
       templateName: templateName.trim() || undefined,
       controllerRef: controllerRef.trim() || undefined,
+      address: address.trim() || undefined,
+      locationLabel: locationLabel.trim() || undefined,
       notes: notes.trim() || undefined,
     });
     resetForm();
@@ -103,6 +108,8 @@ export default function AddEquipmentModal({
     setFloorId(buildings[0]?.floors?.[0]?.id || "");
     setTemplateName("");
     setControllerRef("");
+    setAddress("");
+    setLocationLabel("");
     setNotes("");
   };
 
@@ -192,9 +199,33 @@ export default function AddEquipmentModal({
             <Form.Control
               size="sm"
               className="bg-dark border border-light border-opacity-10 text-white"
-              placeholder="e.g. BACnet/IP: 43001"
+              placeholder={
+                USE_HIERARCHY_API
+                  ? "Device instance from Network Discovery (optional)"
+                  : "e.g. BACnet/IP: 43001"
+              }
               value={controllerRef}
               onChange={(e) => setControllerRef(e.target.value)}
+            />
+          </Form.Group>
+          <Form.Group className="mb-3">
+            <Form.Label className="text-white small">Address (optional)</Form.Label>
+            <Form.Control
+              size="sm"
+              className="bg-dark border border-light border-opacity-10 text-white"
+              placeholder="Controller / device address"
+              value={address}
+              onChange={(e) => setAddress(e.target.value)}
+            />
+          </Form.Group>
+          <Form.Group className="mb-3">
+            <Form.Label className="text-white small">Location (optional)</Form.Label>
+            <Form.Control
+              size="sm"
+              className="bg-dark border border-light border-opacity-10 text-white"
+              placeholder="e.g. North zone"
+              value={locationLabel}
+              onChange={(e) => setLocationLabel(e.target.value)}
             />
           </Form.Group>
           <Form.Group className="mb-0">

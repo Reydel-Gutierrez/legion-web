@@ -1,29 +1,108 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState, useEffect, useCallback } from "react";
 import { useParams, useHistory } from "react-router-dom";
 import { useActiveDeployment } from "../../../hooks/useWorkingVersion";
-import { getEquipmentFromRelease } from "../../../lib/activeReleaseUtils";
+import {
+  getEquipmentFromRelease,
+  resolveEquipmentLocationInRelease,
+} from "../../../lib/activeReleaseUtils";
 import { operatorRepository } from "../../../lib/data";
-import { Container, Row, Col, Card, Button } from "@themesberg/react-bootstrap";
+import { Container, Row, Col, Card, Button, Form, Modal } from "@themesberg/react-bootstrap";
 import LegionHeroHeader from "../../../components/legion/LegionHeroHeader";
 import StatusDotLabel from "../../../components/legion/StatusDotLabel";
 import { Routes } from "../../../routes";
 import VavGraphicImg from "../../../assets/graphics/mysvgvav.svg";
 import DeployedGraphicPreview from "./DeployedGraphicPreview";
+import {
+  getCommandProfileForRows,
+  getInitialCommandValue,
+  formatCommandValueForDisplay,
+  OperatorPointCommandField,
+} from "./OperatorPointCommandField";
+
+const DETAIL_OOS_LABEL = "Out Of Service";
+
+/** @typedef {{ outOfService?: boolean, pendingDisplay?: string, pendingRaw?: unknown }} PointUiPatch */
 
 /**
- * Build network details rows from equipment and active release (no static data).
+ * @param {import("../../../lib/data/contracts").WorkspaceRow} row
+ * @param {Record<string, PointUiPatch>} ui
  */
-function buildNetworkDetails(equipment, siteName) {
+function detailPointTableValue(row, ui) {
+  const u = ui[row.id];
+  if (u?.outOfService) return DETAIL_OOS_LABEL;
+  if (u?.pendingDisplay != null && String(u.pendingDisplay).length > 0) return u.pendingDisplay;
+  return row.value;
+}
+
+/**
+ * Expanded network / engineering-aligned fields for operator equipment detail.
+ * @param {object | null} releaseData
+ * @param {object | null} equipment
+ * @param {object | null} graphic
+ */
+function buildOperatorEquipmentNetworkDetails(releaseData, equipment, graphic) {
   if (!equipment) return [];
+  const loc = releaseData
+    ? resolveEquipmentLocationInRelease(releaseData, equipment.id)
+    : {
+        siteName: "",
+        buildingName: "",
+        floorName: "",
+        equipmentLabel: equipment.displayLabel || equipment.name || "",
+      };
+  const fullPath = [loc.siteName, loc.buildingName, loc.floorName, loc.equipmentLabel]
+    .filter((x) => x != null && String(x).trim() !== "")
+    .join(" / ");
+
+  const eid = equipment.id;
+  const maps =
+    releaseData?.mappings?.[eid] ?? releaseData?.mappings?.[String(eid)] ?? {};
+  const mappedPointCount = Object.keys(maps).filter((k) => maps[k]).length;
+  const pointsTotal =
+    typeof equipment.pointsDefined === "number"
+      ? equipment.pointsDefined
+      : Array.isArray(equipment.livePoints)
+        ? equipment.livePoints.length
+        : "—";
+
+  const graphicTemplate =
+    graphic?.templateName ||
+    graphic?.sourceTemplateName ||
+    graphic?.name ||
+    (graphic?.objects?.length > 0 ? "Deployed graphic (instance)" : "—");
+
+  const protocol = equipment.protocol || "BACnet/IP";
+  const controller = equipment.controllerRef
+    ? `${protocol}: ${equipment.controllerRef}`
+    : "Unassigned";
+
+  /** @type {{ key: string, value: string | number }[]} */
   const rows = [];
-  rows.push({ key: "Equipment", value: (equipment.displayLabel || equipment.name || "—") + (equipment.locationLabel ? " (" + equipment.locationLabel + ")" : "") });
-  rows.push({ key: "Instance Number", value: equipment.instanceNumber || "—" });
-  rows.push({ key: "Device Type", value: equipment.type ? equipment.type + (equipment.protocol ? " (" + equipment.protocol + ")" : "") : "—" });
-  rows.push({ key: "Controller", value: equipment.controllerRef ? (equipment.protocol || "BACnet/IP") + ": " + equipment.controllerRef : "Unassigned" });
-  rows.push({ key: "Template", value: equipment.templateName || "—" });
-  rows.push({ key: "Location", value: equipment.locationLabel || "—" });
-  rows.push({ key: "Status", value: equipment.status || "—" });
-  if (siteName) rows.push({ key: "Site", value: siteName });
+  rows.push({ key: "Equipment full address", value: fullPath || "—" });
+  rows.push({ key: "Equipment", value: equipment.displayLabel || equipment.name || "—" });
+  rows.push({ key: "Equipment ID", value: String(equipment.id) });
+  rows.push({ key: "Instance number", value: equipment.instanceNumber ?? "—" });
+  rows.push({ key: "Device type", value: equipment.type || equipment.equipmentType || "—" });
+  rows.push({ key: "Protocol", value: protocol });
+  rows.push({ key: "Mapped controller", value: controller });
+  rows.push({ key: "Engineering status", value: equipment.status || "—" });
+  rows.push({ key: "Comm / controller", value: equipment.commStatus || (equipment.controllerRef ? "Controller assigned" : "No controller") });
+  rows.push({ key: "Equipment template", value: equipment.templateName || "—" });
+  rows.push({ key: "Graphic template", value: graphicTemplate });
+  rows.push({ key: "Address #", value: equipment.address != null && String(equipment.address).trim() !== "" ? String(equipment.address) : "—" });
+  rows.push({ key: "Location label", value: equipment.locationLabel || "—" });
+  rows.push({ key: "Building ID", value: equipment.buildingId || "—" });
+  rows.push({ key: "Floor ID", value: equipment.floorId || "—" });
+  rows.push({
+    key: "Point mapping",
+    value: pointsTotal !== "—" ? `${mappedPointCount} mapped / ${pointsTotal} defined` : `${mappedPointCount} mapped`,
+  });
+  if (releaseData?.site?.name) {
+    rows.push({ key: "Site", value: releaseData.site.name });
+  }
+  if (equipment.notes != null && String(equipment.notes).trim() !== "") {
+    rows.push({ key: "Notes", value: String(equipment.notes) });
+  }
   return rows;
 }
 
@@ -32,6 +111,19 @@ export default function EquipmentDetailPage() {
   const history = useHistory();
   const { deployment, loading: releaseLoading, error: releaseError } = useActiveDeployment();
   const releaseData = deployment;
+
+  /** Local operator UI overrides per point (workspace-style; not persisted to API yet). */
+  const [pointUiState, setPointUiState] = useState({});
+  const [commandModalRow, setCommandModalRow] = useState(null);
+  const [showCommandModal, setShowCommandModal] = useState(false);
+  const [commandValue, setCommandValue] = useState("");
+  const [serviceStateChoice, setServiceStateChoice] = useState("in_service");
+
+  useEffect(() => {
+    setPointUiState({});
+    setCommandModalRow(null);
+    setShowCommandModal(false);
+  }, [equipmentId]);
 
   const equipment = useMemo(
     () => (releaseData && equipmentId ? getEquipmentFromRelease(releaseData, equipmentId) : null),
@@ -48,15 +140,107 @@ export default function EquipmentDetailPage() {
     );
   }, [releaseData, equipment]);
 
-  const networkDetails = useMemo(
-    () => buildNetworkDetails(equipment, releaseData?.site?.name),
-    [equipment, releaseData?.site?.name]
-  );
+  const pointsForGraphic = useMemo(() => {
+    return points.map((p) => {
+      const v = detailPointTableValue(p, pointUiState);
+      return { ...p, value: v };
+    });
+  }, [points, pointUiState]);
 
   const graphic = useMemo(() => {
     if (!releaseData?.graphics || !equipment) return null;
     return releaseData.graphics[equipment.id] || null;
   }, [releaseData?.graphics, equipment]);
+
+  const networkDetails = useMemo(
+    () => buildOperatorEquipmentNetworkDetails(releaseData, equipment, graphic),
+    [releaseData, equipment, graphic]
+  );
+
+  const openPointCommandModal = useCallback(
+    (row) => {
+      setCommandModalRow(row);
+      setShowCommandModal(true);
+      const profile = getCommandProfileForRows([row]);
+      if (profile.mode === "typed") {
+        const u = pointUiState[row.id];
+        setCommandValue(
+          u?.pendingRaw !== undefined ? u.pendingRaw : getInitialCommandValue([row], profile)
+        );
+      } else {
+        setCommandValue("");
+      }
+      const u = pointUiState[row.id];
+      if (profile.readOnlySensorUi) {
+        setServiceStateChoice(u?.outOfService ? "out_of_service" : "in_service");
+      } else {
+        setServiceStateChoice("in_service");
+      }
+    },
+    [pointUiState]
+  );
+
+  const closeCommandModal = useCallback(() => {
+    setShowCommandModal(false);
+    setCommandModalRow(null);
+    setCommandValue("");
+    setServiceStateChoice("in_service");
+  }, []);
+
+  const handleCommandModalApply = useCallback(() => {
+    if (!commandModalRow) return;
+    const row = commandModalRow;
+    const profile = getCommandProfileForRows([row]);
+
+    if (profile.readOnlySensorUi) {
+      const oos = serviceStateChoice === "out_of_service";
+      setPointUiState((s) => ({
+        ...s,
+        [row.id]: {
+          ...s[row.id],
+          outOfService: oos,
+          ...(oos ? {} : { pendingDisplay: undefined, pendingRaw: undefined }),
+        },
+      }));
+    } else if (profile.mode === "typed") {
+      setPointUiState((s) => ({
+        ...s,
+        [row.id]: {
+          ...s[row.id],
+          outOfService: false,
+          pendingRaw: commandValue,
+          pendingDisplay: formatCommandValueForDisplay(
+            profile.commandType,
+            commandValue,
+            profile.commandConfig
+          ),
+        },
+      }));
+    } else {
+      setPointUiState((s) => ({
+        ...s,
+        [row.id]: {
+          ...s[row.id],
+          pendingDisplay: String(commandValue ?? ""),
+          pendingRaw: commandValue,
+        },
+      }));
+    }
+
+    console.log("Equipment detail command:", {
+      equipmentId: equipment?.id,
+      point: row.pointId,
+      profile: profile.mode,
+      value: commandValue,
+      serviceState: profile.readOnlySensorUi ? serviceStateChoice : undefined,
+    });
+
+    closeCommandModal();
+  }, [commandModalRow, commandValue, serviceStateChoice, equipment?.id, closeCommandModal]);
+
+  const modalProfile = commandModalRow ? getCommandProfileForRows([commandModalRow]) : { mode: "empty" };
+  const commandApplyDisabled =
+    modalProfile.mode === "typed" && modalProfile.allOperational === false;
 
   const handleGraphicLinkClick = (linkTarget) => {
     if (!linkTarget?.type) return;
@@ -153,7 +337,7 @@ export default function EquipmentDetailPage() {
                           {graphic?.objects?.length > 0 ? (
                             <DeployedGraphicPreview
                               graphic={graphic}
-                              points={points}
+                              points={pointsForGraphic}
                               onLinkClick={handleGraphicLinkClick}
                               maxWidth={700}
                               maxHeight={360}
@@ -178,58 +362,113 @@ export default function EquipmentDetailPage() {
                       <Col xs={12} lg={8}>
                         <Card className="shadow-sm">
                           <Card.Body>
-                            <div className="text-white fw-bold mb-3">Live Points</div>
-                            <div className="table-responsive">
-                              <table className="table bas-points-table align-middle mb-0">
+                            <div className="text-white fw-bold mb-2">Live Points</div>
+                            <p className="text-white-50 small mb-3 mb-lg-2">
+                              Click a row to open the command dialog (same controls as the operator workspace).
+                            </p>
+                            <div className="table-responsive legion-equipment-detail-points-wrap">
+                              <table className="table bas-points-table legion-workspace-table align-middle mb-0">
                                 <thead>
                                   <tr>
-                                    <th className="col-point" scope="col"># Point Name</th>
-                                    <th className="col-current" scope="col">Current Value</th>
-                                    <th className="col-current" scope="col">Status</th>
-                                    <th className="col-current" scope="col">Description</th>
-                                    <th className="col-value text-end" scope="col">Address</th>
+                                    <th className="legion-workspace-th legion-workspace-th--narrow" scope="col">
+                                      #
+                                    </th>
+                                    <th className="legion-workspace-th" scope="col">
+                                      Point
+                                    </th>
+                                    <th className="legion-workspace-th" scope="col">
+                                      Point description
+                                    </th>
+                                    <th className="legion-workspace-th" scope="col">
+                                      Value
+                                    </th>
+                                    <th className="legion-workspace-th legion-workspace-th--mapped" scope="col">
+                                      Mapped to
+                                    </th>
+                                    <th className="legion-workspace-th legion-workspace-th--narrow" scope="col">
+                                      Status
+                                    </th>
                                   </tr>
                                 </thead>
                                 <tbody>
                                   {points.length === 0 ? (
                                     <tr>
-                                      <td colSpan={5} className="text-white-50 text-center py-4">
+                                      <td colSpan={6} className="text-white-50 text-center py-4">
                                         No points defined. Add a template in Engineering and deploy a version.
                                       </td>
                                     </tr>
                                   ) : (
-                                    points.map((p, index) => (
-                                      <tr key={p.id || index}>
-                                        <td>
-                                          <div className="point-cell">
-                                            <span className="point-index">
-                                              {String(index + 1).padStart(2, "0")}
-                                            </span>
-                                            <span className="point-name">{p.pointName}</span>
-                                          </div>
-                                        </td>
-                                        <td>
-                                          <div className="current-cell">
-                                            <span
-                                              className={`mini-dot ${p.status === "Unbound" ? "warn" : ""}`}
+                                    points.map((p, index) => {
+                                      const displayVal = detailPointTableValue(p, pointUiState);
+                                      const oos = pointUiState[p.id]?.outOfService;
+                                      const isOosText = displayVal === DETAIL_OOS_LABEL;
+                                      return (
+                                        <tr
+                                          key={p.id || index}
+                                          className="legion-workspace-row legion-equipment-detail-point-row"
+                                          role="button"
+                                          tabIndex={0}
+                                          onClick={() => openPointCommandModal(p)}
+                                          onKeyDown={(e) => {
+                                            if (e.key === "Enter" || e.key === " ") {
+                                              e.preventDefault();
+                                              openPointCommandModal(p);
+                                            }
+                                          }}
+                                        >
+                                          <td className="legion-workspace-td text-white-50">
+                                            {String(index + 1).padStart(2, "0")}
+                                          </td>
+                                          <td className="legion-workspace-td legion-workspace-point text-white font-monospace">
+                                            <span className="legion-workspace-point-label">{p.pointKey || p.pointId}</span>
+                                          </td>
+                                          <td className="legion-workspace-td text-white">
+                                            {p.pointDescription || p.pointName || "—"}
+                                          </td>
+                                          <td className="legion-workspace-td text-white">
+                                            <div className="d-flex align-items-center gap-2 flex-wrap">
+                                              <span
+                                                className={`mini-dot ${p.status === "Unbound" || oos ? "warn" : ""}`}
+                                              />
+                                              <span
+                                                className={
+                                                  isOosText ? "legion-workspace-value--oos" : undefined
+                                                }
+                                              >
+                                                {displayVal}
+                                              </span>
+                                            </div>
+                                          </td>
+                                          <td className="legion-workspace-td legion-workspace-td--mapped text-white-50 small">
+                                            <div
+                                              className="legion-workspace-mapped-scroll"
+                                              title={
+                                                p.mappedToLabel && p.mappedToLabel !== "—"
+                                                  ? p.mappedToLabel
+                                                  : undefined
+                                              }
+                                            >
+                                              {p.mappedToLabel ?? "—"}
+                                            </div>
+                                          </td>
+                                          <td className="legion-workspace-td legion-workspace-td--status">
+                                            <StatusDotLabel
+                                              value={
+                                                p.status === "OK"
+                                                  ? "online"
+                                                  : p.status === "Unbound"
+                                                    ? "unbound"
+                                                    : "offline"
+                                              }
+                                              kind="status"
+                                              dotOnly={["ok", "normal", "online"].includes(
+                                                (p.status || "").toLowerCase()
+                                              )}
                                             />
-                                            <span>{p.value}</span>
-                                          </div>
-                                        </td>
-                                        <td>
-                                          <StatusDotLabel
-                                            value={p.status === "OK" ? "online" : p.status === "Unbound" ? "unbound" : "offline"}
-                                            kind="status"
-                                          />
-                                        </td>
-                                        <td className="text-muted" style={{ opacity: 0.85 }}>
-                                          —
-                                        </td>
-                                        <td className="text-muted text-end" style={{ opacity: 0.85 }}>
-                                          {equipment.instanceNumber || equipment.displayLabel || equipment.name || "—"}/{p.pointReferenceId ?? p.pointId}
-                                        </td>
-                                      </tr>
-                                    ))
+                                          </td>
+                                        </tr>
+                                      );
+                                    })
                                   )}
                                 </tbody>
                               </table>
@@ -245,8 +484,12 @@ export default function EquipmentDetailPage() {
                               <table className="table bas-points-table bas-details-table align-middle mb-0">
                                 <thead>
                                   <tr>
-                                    <th className="col-key" scope="col">Field</th>
-                                    <th className="col-val" scope="col">Value</th>
+                                    <th className="col-key" scope="col">
+                                      Field
+                                    </th>
+                                    <th className="col-val" scope="col">
+                                      Value
+                                    </th>
                                   </tr>
                                 </thead>
                                 <tbody>
@@ -277,6 +520,116 @@ export default function EquipmentDetailPage() {
           </Col>
         </Row>
       </div>
+
+      <Modal
+        centered
+        show={showCommandModal}
+        onHide={closeCommandModal}
+        contentClassName="bg-primary border border-light border-opacity-10 text-white"
+      >
+        <Modal.Header closeButton closeVariant="white" className="border-light border-opacity-10">
+          <Modal.Title className="h6 text-white">Point command</Modal.Title>
+        </Modal.Header>
+        <Modal.Body className="text-white">
+          {commandModalRow && (
+            <>
+              <div className="mb-3 small">
+                <div className="text-white fw-semibold">{displayName}</div>
+                <div className="text-white-50">
+                  {commandModalRow.pointKey || commandModalRow.pointId}
+                  {(commandModalRow.pointDescription || commandModalRow.pointName) &&
+                  (commandModalRow.pointKey || commandModalRow.pointId) !==
+                    (commandModalRow.pointDescription || commandModalRow.pointName) ? (
+                    <span> — {commandModalRow.pointDescription || commandModalRow.pointName}</span>
+                  ) : null}
+                </div>
+              </div>
+              <Form.Group>
+                <Form.Label className="text-white small">
+                  {modalProfile.readOnlySensorUi
+                    ? "Service state"
+                    : modalProfile.mode === "typed" && modalProfile.commandType === "percentage"
+                      ? "Command (%)"
+                      : modalProfile.mode === "typed" && modalProfile.commandType === "numeric"
+                        ? "Command (numeric)"
+                        : modalProfile.mode === "typed" && modalProfile.commandType === "enum"
+                          ? "Command (select state)"
+                          : "Command"}
+                </Form.Label>
+                {modalProfile.mode === "mixed" && (
+                  <p className="small text-warning mb-2">
+                    This point has an ambiguous profile. Use raw text below or check the template in Engineering.
+                  </p>
+                )}
+                {modalProfile.mode === "generic" && modalProfile.hint && (
+                  <p className="small text-white-50 mb-2">{modalProfile.hint}</p>
+                )}
+                {modalProfile.mode === "typed" && commandApplyDisabled && (
+                  <p className="small text-warning mb-2">
+                    This point is offline, unbound, or not OK. Command input is disabled.
+                  </p>
+                )}
+                {modalProfile.readOnlySensorUi ? (
+                  <div className="legion-service-state-options" role="radiogroup" aria-label="Service state">
+                    <button
+                      type="button"
+                      className={`legion-service-state-option ${
+                        serviceStateChoice === "in_service" ? "legion-service-state-option--active" : ""
+                      }`}
+                      onClick={() => setServiceStateChoice("in_service")}
+                      role="radio"
+                      aria-checked={serviceStateChoice === "in_service"}
+                    >
+                      <div className="legion-service-state-option__title">In service</div>
+                      <p className="legion-service-state-option__hint">
+                        Show the live value from the device for this point.
+                      </p>
+                    </button>
+                    <button
+                      type="button"
+                      className={`legion-service-state-option ${
+                        serviceStateChoice === "out_of_service" ? "legion-service-state-option--active" : ""
+                      }`}
+                      onClick={() => setServiceStateChoice("out_of_service")}
+                      role="radio"
+                      aria-checked={serviceStateChoice === "out_of_service"}
+                    >
+                      <div className="legion-service-state-option__title">Out of service</div>
+                      <p className="legion-service-state-option__hint">
+                        Display &quot;Out Of Service&quot; in the table and graphic instead of the live reading.
+                      </p>
+                    </button>
+                  </div>
+                ) : modalProfile.mode === "typed" ? (
+                  <OperatorPointCommandField
+                    commandType={modalProfile.commandType}
+                    commandConfig={modalProfile.commandConfig}
+                    value={commandValue}
+                    onChange={setCommandValue}
+                    disabled={commandApplyDisabled}
+                    idSuffix="detail"
+                  />
+                ) : (
+                  <Form.Control
+                    className="bg-dark border border-light border-opacity-10 text-white"
+                    placeholder="Enter command (raw)…"
+                    value={typeof commandValue === "string" ? commandValue : String(commandValue ?? "")}
+                    onChange={(e) => setCommandValue(e.target.value)}
+                  />
+                )}
+              </Form.Group>
+            </>
+          )}
+        </Modal.Body>
+        <Modal.Footer className="border-light border-opacity-10">
+          <Button variant="secondary" onClick={closeCommandModal}>
+            Cancel
+          </Button>
+          <Button variant="success" onClick={handleCommandModalApply} disabled={commandApplyDisabled}>
+            Apply
+          </Button>
+        </Modal.Footer>
+      </Modal>
     </Container>
   );
 }

@@ -35,8 +35,8 @@ export default function MappingToolbar({
   const handleSave = onSaveWorkingVersion ?? onSaveDraft;
   const filterOptions = [
     { value: "all", label: "All" },
-    { value: "required", label: "Required Only" },
-    { value: "missing", label: "Missing Only" },
+    { value: "command", label: "Command points" },
+    { value: "missing", label: "Unmapped command" },
     { value: "auto_mapped", label: "Auto-Mapped" },
     { value: "unused", label: "Unused Objects" },
     { value: "type_mismatch", label: "Type Mismatch" },

@@ -25,13 +25,23 @@
  * @property {string} id
  * @property {string|number} equipmentId
  * @property {string} equipmentName
- * @property {string} pointId
- * @property {string} pointName
- * @property {string} [pointReferenceId] - Stable reference for addressing and commands (e.g. DA-T, damper_pos). Used in Address and API.
+ * @property {string} pointId - Stable logical id (e.g. template point id).
+ * @property {string} [pointKey] - Logical point key from template (no spaces; e.g. SA-T).
+ * @property {string} [pointDescription] - Operator-facing description (template label / display name).
+ * @property {string} pointName - Human-readable label for operators (same as pointDescription when set; fallback for legacy rows).
+ * @property {string} [pointAddress] - Display path: Site / Building / Floor / Equipment / pointId (names).
+ * @property {string} [pointPathKey] - Stable id path: siteId/buildingId/floorId/equipmentId/pointId (for integrations, tooltips).
+ * @property {string} [pointReferenceId] - Address / mapping hint or logical key (e.g. SA-T, damperCommand).
  * @property {string|number} value
  * @property {string} [units]
  * @property {string} [status]
- * @property {boolean} [writable]
+ * @property {boolean} [writable] - True when template commandType is not "none".
+ * @property {string} [expectedType] - Template expected BACnet-style type (AI, AV, …).
+ * @property {"none"|"numeric"|"percentage"|"boolean"|"enum"} [commandType] - Operator control behavior from equipment template.
+ * @property {Object|null} [commandConfig] - Sanitized config for the command type.
+ * @property {*} [presentValueRaw] - Parsed or live value for operator controls.
+ * @property {boolean} [operatorOutOfService] - Workspace-only: show value as out of service until restored.
+ * @property {string} [mappedToLabel] - Display: controller / BACnet object mapped from engineering (operator workspace).
  */
 
 /**

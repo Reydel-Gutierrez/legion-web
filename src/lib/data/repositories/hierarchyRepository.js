@@ -5,6 +5,8 @@
 
 import * as api from "../adapters/api/hierarchyApiAdapter";
 import { isHierarchyApiEnabled } from "../../api/apiConfig";
+import { EMPTY_WORKING_DATA } from "../../../modules/engineering/working-version/workingVersionModel";
+import { ensureNetworkConfig } from "../../../modules/engineering/network/networkConfigModel";
 
 export { isHierarchyApiEnabled };
 
@@ -101,7 +103,8 @@ export async function buildOperatorDeploymentSnapshot(siteId) {
   for (const b of buildings) {
     const floors = await api.listFloorsByBuilding(b.id);
     const floorNodes = [];
-    for (const f of floors) {
+    for (let fi = 0; fi < floors.length; fi++) {
+      const f = floors[fi];
       const equipmentList = await api.listEquipmentByFloor(f.id);
       for (const eq of equipmentList) {
         const points = await api.listPointsByEquipment(eq.id);
@@ -118,6 +121,7 @@ export async function buildOperatorDeploymentSnapshot(siteId) {
           type: eq.equipmentType,
           instanceNumber: null,
           equipmentType: eq.equipmentType,
+          address: eq.address || "",
           locationLabel: "",
           controllerRef: null,
           protocol: "API",
@@ -131,7 +135,7 @@ export async function buildOperatorDeploymentSnapshot(siteId) {
       floorNodes.push({
         id: f.id,
         name: f.name,
-        sortOrder: 0,
+        sortOrder: fi,
         floorType: "Standard Floor",
       });
     }
@@ -173,64 +177,103 @@ export async function buildOperatorDeploymentSnapshot(siteId) {
 }
 
 /**
- * Working-version site + equipment[] from API (for Site Builder sync).
- * Uses persisted working-version payload when the hierarchy API is enabled.
+ * Maps GET /working-version payload JSON into flat engineering reducer state.
+ * Hierarchy (site.buildings / equipment) comes from the server after DB sync.
+ */
+function normalizeWorkingPayloadFromApi(p) {
+  if (!p || typeof p !== "object") return null;
+  const s = p.site;
+  const equipmentRaw = Array.isArray(p.equipment) ? p.equipment : [];
+  const workingEquipment = equipmentRaw.map((eq) => ({
+    ...eq,
+    id: eq.id,
+    sortOrder:
+      typeof eq.sortOrder === "number" && !Number.isNaN(eq.sortOrder) ? eq.sortOrder : undefined,
+    floorId: eq.floorId,
+    siteId: eq.siteId,
+    buildingId: eq.buildingId,
+    name: eq.name,
+    displayLabel: eq.displayLabel || eq.name,
+    type: eq.type || eq.equipmentType,
+    equipmentType: eq.equipmentType || eq.type,
+    instanceNumber: eq.instanceNumber ?? null,
+    address: eq.address != null ? String(eq.address) : "",
+    locationLabel: eq.locationLabel || "",
+    controllerRef: eq.controllerRef ?? null,
+    protocol: eq.protocol || "API",
+    templateName: eq.templateName ?? null,
+    pointsDefined: eq.pointsDefined ?? 0,
+    status: eq.status || "CONTROLLER_ASSIGNED",
+    notes: eq.notes || "",
+    livePoints: Array.isArray(eq.livePoints) ? eq.livePoints : [],
+  }));
+
+  let workingSite = null;
+  if (s && typeof s === "object") {
+    workingSite = {
+      id: s.id,
+      name: s.name,
+      mode: s.mode ?? "api",
+      status: s.status ?? "editing",
+      siteType: s.siteType || "Site",
+      address: s.address || "",
+      timezone: s.timezone || "",
+      buildings: (s.buildings || []).map((b) => ({
+        id: b.id,
+        name: b.name,
+        buildingType: b.buildingType,
+        buildingCode: b.buildingCode,
+        address: b.address,
+        city: b.city,
+        state: b.state,
+        lat: b.lat,
+        lng: b.lng,
+        status: b.status,
+        hasFloors: b.hasFloors,
+        floors: (b.floors || []).map((f) => ({
+          id: f.id,
+          name: f.name,
+          sortOrder: f.sortOrder ?? 0,
+          floorType: f.floorType,
+        })),
+      })),
+    };
+  }
+
+  const base = { ...EMPTY_WORKING_DATA, ...p };
+  return {
+    ...base,
+    site: workingSite,
+    equipment: workingEquipment,
+    templates: {
+      equipmentTemplates: Array.isArray(p.templates?.equipmentTemplates)
+        ? p.templates.equipmentTemplates
+        : EMPTY_WORKING_DATA.templates.equipmentTemplates,
+      graphicTemplates: Array.isArray(p.templates?.graphicTemplates)
+        ? p.templates.graphicTemplates
+        : EMPTY_WORKING_DATA.templates.graphicTemplates,
+    },
+    discoveredDevices: Array.isArray(p.discoveredDevices) ? p.discoveredDevices : [],
+    discoveredObjects:
+      p.discoveredObjects && typeof p.discoveredObjects === "object" ? p.discoveredObjects : {},
+    mappings: p.mappings && typeof p.mappings === "object" ? p.mappings : {},
+    graphics: p.graphics && typeof p.graphics === "object" ? p.graphics : {},
+    siteLayoutGraphics:
+      p.siteLayoutGraphics && typeof p.siteLayoutGraphics === "object" ? p.siteLayoutGraphics : {},
+    networkConfig: ensureNetworkConfig(base),
+    validation: p.validation ?? null,
+    deploymentHistory: Array.isArray(p.deploymentHistory) ? p.deploymentHistory : [],
+    activeDeploymentSnapshot: p.activeDeploymentSnapshot ?? null,
+  };
+}
+
+/**
+ * Full working-version flat state from API (GET working-version syncs hierarchy from DB first).
  */
 export async function fetchWorkingVersionForEngineering(siteId) {
   const raw = await api.getWorkingVersion(siteId);
   const p = raw?.workingVersion?.payload;
-  if (!p || typeof p !== "object") return null;
-  const s = p.site;
-  const equipment = Array.isArray(p.equipment) ? p.equipment : [];
-  if (!s) {
-    return { site: null, equipment };
-  }
-  const workingSite = {
-    id: s.id,
-    name: s.name,
-    mode: s.mode ?? "api",
-    status: s.status ?? "editing",
-    siteType: s.siteType || "Site",
-    address: s.address || "",
-    timezone: s.timezone || "",
-    buildings: (s.buildings || []).map((b) => ({
-      id: b.id,
-      name: b.name,
-      buildingType: b.buildingType,
-      buildingCode: b.buildingCode,
-      address: b.address,
-      city: b.city,
-      state: b.state,
-      lat: b.lat,
-      lng: b.lng,
-      status: b.status,
-      hasFloors: b.hasFloors,
-      floors: (b.floors || []).map((f) => ({
-        id: f.id,
-        name: f.name,
-        sortOrder: f.sortOrder ?? 0,
-        floorType: f.floorType,
-      })),
-    })),
-  };
-  const workingEquipment = equipment.map((eq) => ({
-    id: eq.id,
-    floorId: eq.floorId,
-    siteId: eq.siteId,
-    name: eq.name,
-    displayLabel: eq.displayLabel || eq.name,
-    type: eq.type || eq.equipmentType,
-    instanceNumber: eq.instanceNumber || null,
-    locationLabel: eq.locationLabel || "",
-    controllerRef: eq.controllerRef || null,
-    protocol: eq.protocol || "API",
-    templateName: eq.templateName || null,
-    pointsDefined: eq.pointsDefined ?? 0,
-    status: eq.status || "CONTROLLER_ASSIGNED",
-    notes: eq.notes || "",
-    livePoints: eq.livePoints,
-  }));
-  return { site: workingSite, equipment: workingEquipment };
+  return normalizeWorkingPayloadFromApi(p);
 }
 
 /**
@@ -250,6 +293,21 @@ export async function fetchActiveRelease(siteId) {
   }
   const live = await buildOperatorDeploymentSnapshot(siteId);
   if (!live) return null;
+  try {
+    const working = await fetchWorkingVersionForEngineering(siteId);
+    if (working?.templates && typeof working.templates === "object") {
+      live.templates = {
+        equipmentTemplates: Array.isArray(working.templates.equipmentTemplates)
+          ? working.templates.equipmentTemplates
+          : [],
+        graphicTemplates: Array.isArray(working.templates.graphicTemplates)
+          ? working.templates.graphicTemplates
+          : [],
+      };
+    }
+  } catch {
+    /* operator still works without template command metadata */
+  }
   return {
     versionNumber: ar?.versionNumber ?? 0,
     status: ar?.status || "LIVE",

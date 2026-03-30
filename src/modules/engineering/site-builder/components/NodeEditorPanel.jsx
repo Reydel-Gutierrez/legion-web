@@ -26,6 +26,9 @@ export default function NodeEditorPanel({
   graphicTemplates = [],
   equipmentList = [],
   onGraphicChange,
+  discoveredDevices = [],
+  onDuplicateEquipment,
+  onMoveEquipment,
 }) {
   const [form, setForm] = useState({
     name: "",
@@ -120,6 +123,9 @@ export default function NodeEditorPanel({
         graphicTemplates={graphicTemplates}
         equipmentList={equipmentList}
         onGraphicChange={onGraphicChange}
+        discoveredDevices={discoveredDevices}
+        onDuplicateEquipment={onDuplicateEquipment}
+        onMoveEquipment={onMoveEquipment}
       />
     );
   }

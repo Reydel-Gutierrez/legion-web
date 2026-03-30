@@ -1,4 +1,4 @@
-import React, { useCallback, useState, useEffect } from "react";
+import React, { useCallback, useState, useEffect, useMemo } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faMousePointer,
@@ -12,6 +12,14 @@ import {
   faTrash,
   faExternalLinkAlt,
 } from "@fortawesome/free-solid-svg-icons";
+import FloorZoneGlassChip from "./FloorZoneGlassChip";
+import {
+  isZoneShape,
+  getStyleForZoneState,
+  deriveZoneVisualState,
+  resolveZonePointValuesForDisplay,
+  buildSimulatedPointValuesForObjectId,
+} from "../floorZoneModel";
 
 /**
  * Canvas toolbar: Select, Pan, Zoom, Add Shape, Add Text, Add Value, Bind Point, Delete
@@ -36,6 +44,7 @@ function CanvasToolbar({
   onDeleteObject,
   hasSelection,
   canBindPoint,
+  liveZonePreview = false,
 }) {
   return (
     <div className="graphics-canvas-toolbar d-flex align-items-center gap-2 p-2 border-bottom border-light border-opacity-10">
@@ -67,6 +76,8 @@ function CanvasToolbar({
         <FontAwesomeIcon icon={faSearchPlus} />
       </button>
       <div className="site-builder-toolbar-divider" />
+      {!liveZonePreview && (
+        <>
       <button
         type="button"
         className={`btn btn-sm ${
@@ -146,6 +157,8 @@ function CanvasToolbar({
         <FontAwesomeIcon icon={faTrash} className="me-1" />
         Delete
       </button>
+        </>
+      )}
     </div>
   );
 }
@@ -174,6 +187,13 @@ function CanvasObject({
   isEditingLabel,
   onStartEditLabel,
   onFinishEditLabel,
+  liveZonePreview = false,
+  shapeAppearance = null,
+  zoneShowHoverChip = false,
+  onZoneMouseEnter,
+  onZoneMouseLeave,
+  onZoneClick,
+  noPointerEvents = false,
 }) {
   const {
     type,
@@ -205,8 +225,14 @@ function CanvasObject({
     }
   }, [isEditingLabel]);
 
+  const zoneEnabled = isZoneShape(obj);
+
   const handleClick = (e) => {
     e.stopPropagation();
+    if (liveZonePreview && zoneEnabled && onZoneClick) {
+      onZoneClick(obj, e);
+      return;
+    }
     if (onSelect) onSelect(obj);
   };
 
@@ -217,6 +243,7 @@ function CanvasObject({
 
   const handleMouseDown = (e) => {
     e.stopPropagation();
+    if (liveZonePreview) return;
     if (onObjectMouseDown && e.button === 0) onObjectMouseDown(obj, e);
   };
 
@@ -277,14 +304,20 @@ function CanvasObject({
     borderColor: stroke || undefined,
   };
   if (isShape) {
-    baseStyle.backgroundColor = fill || "rgba(255, 255, 255, 0.2)";
+    const app = shapeAppearance;
+    baseStyle.backgroundColor = app?.fill ?? fill ?? "rgba(255, 255, 255, 0.2)";
     baseStyle.border = "1px solid";
-    baseStyle.borderColor = stroke || "rgba(255, 255, 255, 0.6)";
-    baseStyle.pointerEvents = "auto";
+    baseStyle.borderColor = app?.stroke ?? stroke ?? "rgba(255, 255, 255, 0.6)";
+    if (app?.opacity != null) baseStyle.opacity = app.opacity;
+    if (app?.boxShadow) baseStyle.boxShadow = app.boxShadow;
+    baseStyle.pointerEvents = noPointerEvents ? "none" : "auto";
     // Optional rounding override (defaults to the CSS radius)
     if (borderRadius != null) {
       const br = Number(borderRadius);
       if (Number.isFinite(br)) baseStyle.borderRadius = br;
+    }
+    if (shapeAppearance?.pulse) {
+      baseStyle.animation = "floorZonePulse 1.4s ease-in-out infinite";
     }
   } else {
     // Text-like objects: allow alignment to match inspector.
@@ -293,9 +326,11 @@ function CanvasObject({
       baseStyle.textAlign = align === "left" ? "left" : align === "right" ? "right" : "center";
       baseStyle.alignItems = align === "left" ? "flex-start" : align === "right" ? "flex-end" : "center";
     }
+    if (noPointerEvents) baseStyle.pointerEvents = "none";
   }
 
-  const showResizeHandles = isShape && isSelected && onResizeHandleMouseDown && !obj?.locked;
+  const showResizeHandles =
+    isShape && isSelected && onResizeHandleMouseDown && !obj?.locked && !liveZonePreview;
 
   return (
     <div
@@ -304,7 +339,24 @@ function CanvasObject({
       onClick={handleClick}
       onDoubleClick={isLink ? undefined : handleDoubleClick}
       onMouseDown={handleMouseDown}
+      onMouseEnter={zoneEnabled && liveZonePreview ? () => onZoneMouseEnter?.(obj) : undefined}
+      onMouseLeave={zoneEnabled && liveZonePreview ? () => onZoneMouseLeave?.(obj) : undefined}
     >
+      {zoneEnabled && liveZonePreview && zoneShowHoverChip && obj.zoneConfig?.hoverPreviewEnabled !== false && (
+        <div
+          className="position-absolute badge bg-dark border border-info border-opacity-40 text-info"
+          style={{
+            top: -22,
+            left: 0,
+            fontSize: 10,
+            fontWeight: 600,
+            pointerEvents: "none",
+            zIndex: 3,
+          }}
+        >
+          {obj.zoneConfig?.zoneName || "Zone"}
+        </div>
+      )}
       {showResizeHandles &&
         RESIZE_HANDLES.map((handle) => {
           const cursor =
@@ -389,6 +441,9 @@ export default function GraphicsCanvas({
   emptyMessage = "Select a graphic from the library to edit",
   canvasWidth = 800,
   canvasHeight = 500,
+  liveZonePreview = false,
+  onOpenEquipmentDetail,
+  resolveEquipmentLabel,
 }) {
   const [tool, setTool] = useState("select");
   const [zoom, setZoom] = useState(1);
@@ -402,6 +457,8 @@ export default function GraphicsCanvas({
   const [backgroundCropResizeState, setBackgroundCropResizeState] = useState(null);
   const backgroundDragRef = React.useRef(null);
   const canvasRef = React.useRef(null);
+  const [hoveredZoneId, setHoveredZoneId] = useState(null);
+  const [expandedGlassZoneId, setExpandedGlassZoneId] = useState(null);
   const onBackgroundPositionChangeRef = React.useRef(onBackgroundPositionChange);
   const onBackgroundSizeChangeRef = React.useRef(onBackgroundSizeChange);
   const onBackgroundCropChangeRef = React.useRef(onBackgroundCropChange);
@@ -419,6 +476,60 @@ export default function GraphicsCanvas({
   }, [onBackgroundCropChange]);
   const objects = graphic?.objects || [];
   const selectedObject = objects.find((o) => o.id === selectedObjectId) || null;
+
+  useEffect(() => {
+    if (!liveZonePreview) {
+      setHoveredZoneId(null);
+      setExpandedGlassZoneId(null);
+    }
+  }, [liveZonePreview]);
+
+  const zonePointValuesById = useMemo(() => {
+    const map = {};
+    objects.forEach((o) => {
+      if (!isZoneShape(o)) return;
+      const raw = resolveZonePointValuesForDisplay(o.zoneConfig, availablePoints);
+      const sim = buildSimulatedPointValuesForObjectId(o.id);
+      map[o.id] = { ...sim, ...raw };
+    });
+    return map;
+  }, [objects, availablePoints]);
+
+  const getZoneShapeAppearance = useCallback(
+    (obj) => {
+      if (!liveZonePreview || !isZoneShape(obj)) return null;
+      const zc = obj.zoneConfig || {};
+      const pv = zonePointValuesById[obj.id] || {};
+      const derived = deriveZoneVisualState(zc, pv);
+      let stateKey = derived;
+      if (expandedGlassZoneId === obj.id) stateKey = "selected";
+      else if (hoveredZoneId === obj.id) stateKey = "hover";
+      return getStyleForZoneState(zc, stateKey);
+    },
+    [liveZonePreview, zonePointValuesById, expandedGlassZoneId, hoveredZoneId]
+  );
+
+  const handleZoneMouseEnter = useCallback((o) => {
+    if (!isZoneShape(o)) return;
+    setHoveredZoneId(o.id);
+  }, []);
+
+  const handleZoneMouseLeave = useCallback((o) => {
+    if (!isZoneShape(o)) return;
+    setHoveredZoneId(null);
+  }, []);
+
+  const handleZoneClick = useCallback(
+    (o, e) => {
+      if (!isZoneShape(o)) return;
+      e.stopPropagation();
+      if (!liveZonePreview) return;
+      if (o.zoneConfig?.wedgeEnabled === false) return;
+      setExpandedGlassZoneId((prev) => (prev === o.id ? null : o.id));
+    },
+    [liveZonePreview]
+  );
+
   const canBindPoint = selectedObject ? selectedObject.type !== "text" && selectedObject.type !== "link" : false;
 
   const backgroundMinSize = 30;
@@ -483,6 +594,7 @@ export default function GraphicsCanvas({
   }, []);
 
   const handleCanvasClick = () => {
+    setExpandedGlassZoneId(null);
     if (onSelectObject) onSelectObject(null);
     setEditingLabelObjectId(null);
     setBackgroundSelected(false);
@@ -491,6 +603,7 @@ export default function GraphicsCanvas({
 
   const handleObjectMouseDown = useCallback(
     (obj, e) => {
+      if (liveZonePreview) return;
       // Lock prevents dragging/resizing while still allowing selection.
       if (obj?.locked) return;
       if (!canvasRef.current || !onUpdateObject) return;
@@ -507,11 +620,12 @@ export default function GraphicsCanvas({
         canvasRect: rect,
       });
     },
-    [zoom, onUpdateObject]
+    [zoom, onUpdateObject, liveZonePreview]
   );
 
   const handleResizeHandleMouseDown = useCallback(
     (obj, handle, e) => {
+      if (liveZonePreview) return;
       // Lock prevents moving/resizing while still allowing selection.
       if (obj?.locked) return;
       if (!canvasRef.current || !onUpdateObject || obj.type !== "shape") return;
@@ -527,7 +641,7 @@ export default function GraphicsCanvas({
         canvasRect: rect,
       });
     },
-    [onUpdateObject]
+    [onUpdateObject, liveZonePreview]
   );
 
   const handleFinishEditLabel = useCallback(
@@ -889,6 +1003,11 @@ export default function GraphicsCanvas({
     <div
       className={`graphics-canvas-container border border-light border-opacity-10 rounded overflow-hidden bg-primary ${dragState || backgroundDragState ? "graphics-canvas-container--dragging" : ""}`}
     >
+      {liveZonePreview && (
+        <div className="px-2 py-1 small text-info bg-dark border-bottom border-info border-opacity-25">
+          Live zone preview — hover zones for highlight; click a zone to open the wedge. Click empty floor to close.
+        </div>
+      )}
       <CanvasToolbar
         tool={tool}
         onToolChange={setTool}
@@ -931,6 +1050,7 @@ export default function GraphicsCanvas({
         onDeleteObject={selectedObjectId ? () => onDeleteObject(selectedObjectId) : undefined}
         hasSelection={!!selectedObjectId}
         canBindPoint={canBindPoint}
+        liveZonePreview={liveZonePreview}
       />
       <div
         className="graphics-canvas-wrapper graphics-canvas-grid"
@@ -1158,9 +1278,33 @@ export default function GraphicsCanvas({
                 isEditingLabel={editingLabelObjectId === obj.id}
                 onStartEditLabel={setEditingLabelObjectId}
                 onFinishEditLabel={handleFinishEditLabel}
+                liveZonePreview={liveZonePreview}
+                shapeAppearance={getZoneShapeAppearance(obj)}
+                zoneShowHoverChip={false}
+                onZoneMouseEnter={handleZoneMouseEnter}
+                onZoneMouseLeave={handleZoneMouseLeave}
+                onZoneClick={handleZoneClick}
+                noPointerEvents={!!liveZonePreview && !isZoneShape(obj)}
               />
             )
           ))}
+          {objects.map((obj) =>
+            obj.visible === false || !isZoneShape(obj) ? null : (
+              <FloorZoneGlassChip
+                key={`zone-glass-${obj.id}`}
+                zoneObject={obj}
+                mergedValues={zonePointValuesById[obj.id]}
+                equipmentTitle={resolveEquipmentLabel?.(obj.zoneConfig?.linkedEquipmentId)}
+                expanded={
+                  expandedGlassZoneId === obj.id && obj.zoneConfig?.wedgeEnabled !== false
+                }
+                onToggleExpand={() =>
+                  setExpandedGlassZoneId((prev) => (prev === obj.id ? null : obj.id))
+                }
+                onOpenEquipmentDetail={onOpenEquipmentDetail}
+              />
+            )
+          )}
           </div>
         </div>
       </div>

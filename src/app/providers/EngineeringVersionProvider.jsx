@@ -25,7 +25,12 @@ import {
   saveActiveReleaseForSite,
   loadWorkingVersionForSite,
 } from "../../lib/data/persistence/engineeringVersionPersistence";
-import { notifyEngineeringHierarchyChanged } from "../../lib/data/repositories/engineeringRepository";
+import {
+  notifyEngineeringHierarchyChanged,
+  fetchWorkingVersion,
+  saveWorkingVersion,
+} from "../../lib/data/repositories/engineeringRepository";
+import { USE_HIERARCHY_API } from "../../lib/data/config";
 
 const EngineeringVersionContext = createContext(null);
 
@@ -57,7 +62,12 @@ export function EngineeringVersionProvider({ children }) {
   const { site } = useSite();
   const [workingState, dispatch] = useReducer(workingVersionReducer, site, getInitialWorkingVersionState);
   const [activeReleaseBySite, setActiveReleaseBySite] = React.useState(getInitialActiveReleasesMap);
+  const [backendWorkingVersionLoading, setBackendWorkingVersionLoading] = React.useState(false);
+  const [backendWorkingVersionError, setBackendWorkingVersionError] = React.useState(null);
+  /** True only after a successful GET working-version for this site (avoids PUT empty payload over DB). */
+  const [backendWorkingVersionSynced, setBackendWorkingVersionSynced] = React.useState(false);
   const saveTimeoutRef = useRef(null);
+  const backendApiSaveTimeoutRef = useRef(null);
   const isMountedRef = useRef(true);
 
   const workingVersion = useMemo(() => toWorkingVersion(site, workingState), [site, workingState]);
@@ -91,7 +101,26 @@ export function EngineeringVersionProvider({ children }) {
         type: WORKING_VERSION_ACTIONS.RESET_WORKING_VERSION,
         payload: normalizeWorkingVersionNetworkConfig(raw, site),
       });
-    } else if (isBackendSiteId(site)) {
+    } else if (isBackendSiteId(site) && !USE_HIERARCHY_API) {
+      const emptyPayload = {
+        site: null,
+        templates: { equipmentTemplates: [], graphicTemplates: [] },
+        equipment: [],
+        discoveredDevices: [],
+        discoveredObjects: {},
+        mappings: {},
+        graphics: {},
+        siteLayoutGraphics: {},
+        networkConfig: createEmptyNetworkConfig(),
+        validation: null,
+        deploymentHistory: [],
+        activeDeploymentSnapshot: null,
+      };
+      dispatch({
+        type: WORKING_VERSION_ACTIONS.RESET_WORKING_VERSION,
+        payload: normalizeWorkingVersionNetworkConfig(emptyPayload, site),
+      });
+    } else if (isBackendSiteId(site) && USE_HIERARCHY_API) {
       const emptyPayload = {
         site: null,
         templates: { equipmentTemplates: [], graphicTemplates: [] },
@@ -143,6 +172,45 @@ export function EngineeringVersionProvider({ children }) {
   }, [site]);
 
   useEffect(() => {
+    if (!USE_HIERARCHY_API || !isBackendSiteId(site)) {
+      setBackendWorkingVersionLoading(false);
+      setBackendWorkingVersionError(null);
+      setBackendWorkingVersionSynced(false);
+      return undefined;
+    }
+    let cancelled = false;
+    setBackendWorkingVersionLoading(true);
+    setBackendWorkingVersionError(null);
+    setBackendWorkingVersionSynced(false);
+    fetchWorkingVersion(site)
+      .then((state) => {
+        if (cancelled) return;
+        if (!state) {
+          setBackendWorkingVersionError("No working version payload from server.");
+          setBackendWorkingVersionSynced(false);
+          return;
+        }
+        dispatch({
+          type: WORKING_VERSION_ACTIONS.RESET_WORKING_VERSION,
+          payload: normalizeWorkingVersionNetworkConfig(state, site),
+        });
+        setBackendWorkingVersionSynced(true);
+      })
+      .catch((e) => {
+        if (!cancelled) {
+          setBackendWorkingVersionError(e?.message || String(e));
+          setBackendWorkingVersionSynced(false);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setBackendWorkingVersionLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [site]);
+
+  useEffect(() => {
     if (!site) return;
     if (isBackendSiteId(site)) return;
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
@@ -159,6 +227,26 @@ export function EngineeringVersionProvider({ children }) {
       if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
     };
   }, [site, workingState]);
+
+  /** Persist full working payload to API for backend UUID sites (templates, mappings, etc.). */
+  useEffect(() => {
+    if (!USE_HIERARCHY_API || !isBackendSiteId(site)) return;
+    if (!backendWorkingVersionSynced || backendWorkingVersionLoading) return;
+    if (backendApiSaveTimeoutRef.current) clearTimeout(backendApiSaveTimeoutRef.current);
+    backendApiSaveTimeoutRef.current = setTimeout(() => {
+      backendApiSaveTimeoutRef.current = null;
+      if (!isMountedRef.current) return;
+      saveWorkingVersion(site, workingState)
+        .then(() => notifyEngineeringHierarchyChanged(site))
+        .catch((err) => {
+          // eslint-disable-next-line no-console
+          console.error("Failed to persist working version to API", err);
+        });
+    }, 800);
+    return () => {
+      if (backendApiSaveTimeoutRef.current) clearTimeout(backendApiSaveTimeoutRef.current);
+    };
+  }, [site, workingState, backendWorkingVersionSynced, backendWorkingVersionLoading]);
 
   useEffect(() => {
     const fromStorage = loadAllActiveReleases();
@@ -197,8 +285,20 @@ export function EngineeringVersionProvider({ children }) {
       dispatch,
       activeReleaseBySite,
       deployWorkingVersion,
+      backendWorkingVersionLoading,
+      backendWorkingVersionError,
+      backendWorkingVersionSynced,
     }),
-    [site, workingState, workingVersion, activeReleaseBySite, deployWorkingVersion]
+    [
+      site,
+      workingState,
+      workingVersion,
+      activeReleaseBySite,
+      deployWorkingVersion,
+      backendWorkingVersionLoading,
+      backendWorkingVersionError,
+      backendWorkingVersionSynced,
+    ]
   );
 
   return <EngineeringVersionContext.Provider value={value}>{children}</EngineeringVersionContext.Provider>;

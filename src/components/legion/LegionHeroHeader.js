@@ -1,14 +1,11 @@
 import React from "react";
 import { useHistory } from "react-router-dom";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faSearch } from "@fortawesome/free-solid-svg-icons";
-import { Form, InputGroup } from "@themesberg/react-bootstrap";
-
 import { ReactComponent as LCILogo } from "../../assets/svgs/LCI-logo.svg";
 import { ReactComponent as LCCLogo } from "../../assets/svgs/LCC-logo.svg";
 import { useWorkspaceMode } from "../../app/providers/WorkspaceModeProvider";
 import { useValidation } from "../../app/providers/ValidationProvider";
 import { Routes } from "../../routes";
+import LegionOperatorGlobalSearch from "./LegionOperatorGlobalSearch";
 
 export default function LegionHeroHeader() {
   const { currentMode } = useWorkspaceMode();
@@ -29,7 +26,11 @@ export default function LegionHeroHeader() {
   };
 
   return (
-    <div className="d-flex w-100 justify-content-between mt-2">
+    <div
+      className={`d-flex w-100 justify-content-between mt-2 legion-hero-header${
+        currentMode !== "engineering" ? " legion-hero-header--operator" : ""
+      }`}
+    >
 
       {/* LEFT */}
       <div className="legion-hero-left">
@@ -77,20 +78,7 @@ export default function LegionHeroHeader() {
           </div>
         ) : (
           <div className="mt-auto">
-            <Form className="navbar-search">
-              <Form.Group id="topbarSearch">
-                <InputGroup className="input-group-merge legion-search-bar">
-                  <InputGroup.Text className="legion-search-bar-addon">
-                    <FontAwesomeIcon icon={faSearch} />
-                  </InputGroup.Text>
-                  <Form.Control
-                    type="text"
-                    placeholder="Search Equipment, Rooms, etc..."
-                    className="legion-search-bar-input"
-                  />
-                </InputGroup>
-              </Form.Group>
-            </Form>
+            <LegionOperatorGlobalSearch />
           </div>
         )}
       </div>

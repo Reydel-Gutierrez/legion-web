@@ -77,50 +77,53 @@ export function validateWorkingVersion(workingData) {
     }
   });
 
+  const draftEquipmentTemplates = workingData?.templates?.equipmentTemplates;
+
   equipment.forEach((eq) => {
     if (!eq.controllerRef || !eq.templateName) return;
-    const templatePoints = engineeringRepository.getTemplatePoints(eq.templateName);
+    const templatePoints = engineeringRepository.getTemplatePoints(eq.templateName, draftEquipmentTemplates);
     const eqMappings = getMappingsForEquipment(mappings, eq.id);
-    templatePoints.forEach((tp) => {
-      const mapped = !!eqMappings[tp.id];
-      if (tp.required && !mapped) {
-        issues.push({
-          id: nextId(),
-          severity: SEVERITY.ERROR,
-          category: CATEGORY.POINT_MAPPING,
-          equipmentOrDevice: eq.displayLabel || eq.name,
-          issue: "Required point not mapped",
-          relatedPointOrBinding: tp.displayName || tp.key,
-          recommendedFix: "Map a BACnet object",
-          status: "Open",
-          actionTarget: ACTION_TARGET.POINT_MAPPING,
-          actionLabel: "Open in Point Mapping",
-          whyThisMatters: "Required template points must be mapped for the equipment to operate correctly.",
-          fixSteps: `Open Point Mapping, select ${eq.displayLabel || eq.name}, and map ${tp.displayName || tp.key} to a BACnet object.`,
-          templatePoint: tp.displayName || tp.key,
-          mappedBacnetObject: null,
-          mappingStatus: "not mapped",
-        });
-      } else if (!tp.required && !mapped) {
-        issues.push({
-          id: nextId(),
-          severity: SEVERITY.WARNING,
-          category: CATEGORY.POINT_MAPPING,
-          equipmentOrDevice: eq.displayLabel || eq.name,
-          issue: "Optional point unmapped",
-          relatedPointOrBinding: tp.displayName || tp.key,
-          recommendedFix: "Map in Point Mapping or ignore",
-          status: "Open",
-          actionTarget: ACTION_TARGET.POINT_MAPPING,
-          actionLabel: "Open in Point Mapping",
-          whyThisMatters: "Optional points can improve functionality but are not required for deployment.",
-          fixSteps: `Optionally map ${tp.displayName || tp.key} in Point Mapping.`,
-          templatePoint: tp.displayName || tp.key,
-          mappedBacnetObject: null,
-          mappingStatus: "optional unmapped",
-        });
-      }
+    const unmappedPoints = templatePoints.filter((tp) => !eqMappings[tp.id]);
+    unmappedPoints.forEach((tp) => {
+      if (!tp.required) return;
+      issues.push({
+        id: nextId(),
+        severity: SEVERITY.ERROR,
+        category: CATEGORY.POINT_MAPPING,
+        equipmentOrDevice: eq.displayLabel || eq.name,
+        issue: "Required point not mapped",
+        relatedPointOrBinding: tp.displayName || tp.key,
+        recommendedFix: "Map a BACnet object",
+        status: "Open",
+        actionTarget: ACTION_TARGET.POINT_MAPPING,
+        actionLabel: "Open in Point Mapping",
+        whyThisMatters: "Legacy templates may still mark individual points as required.",
+        fixSteps: `Open Point Mapping, select ${eq.displayLabel || eq.name}, and map ${tp.displayName || tp.key} to a BACnet object.`,
+        templatePoint: tp.displayName || tp.key,
+        mappedBacnetObject: null,
+        mappingStatus: "not mapped",
+      });
     });
+    const requiredUnmapped = unmappedPoints.filter((tp) => tp.required);
+    if (unmappedPoints.length > 0 && requiredUnmapped.length === 0) {
+      issues.push({
+        id: nextId(),
+        severity: SEVERITY.INFO,
+        category: CATEGORY.POINT_MAPPING,
+        equipmentOrDevice: eq.displayLabel || eq.name,
+        issue: `${unmappedPoints.length} logical point(s) not yet mapped`,
+        relatedPointOrBinding: "—",
+        recommendedFix: "Map BACnet objects in Point Mapping as needed",
+        status: "Open",
+        actionTarget: ACTION_TARGET.POINT_MAPPING,
+        actionLabel: "Open in Point Mapping",
+        whyThisMatters: "Unmapped points remain logical placeholders until you bind them to live objects.",
+        fixSteps: `In Point Mapping, map points for ${eq.displayLabel || eq.name} when ready.`,
+        templatePoint: null,
+        mappedBacnetObject: null,
+        mappingStatus: "unmapped summary",
+      });
+    }
   });
 
   equipment.forEach((eq) => {

@@ -13,6 +13,7 @@ const pointEquipmentRoutes = require('./modules/points/point.equipment.routes');
 const equipmentPatchRoutes = require('./modules/equipment/equipment.routes');
 const pointRoutes = require('./modules/points/point.routes');
 const userRoutes = require('./modules/users/user.routes');
+const globalTemplateLibraryRoutes = require('./modules/globalTemplateLibrary/globalTemplateLibrary.routes');
 
 const app = express();
 
@@ -33,6 +34,7 @@ app.use('/api/equipment', pointEquipmentRoutes);
 app.use('/api/equipment', equipmentPatchRoutes);
 app.use('/api/points', pointRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/global-template-library', globalTemplateLibraryRoutes);
 
 app.use(notFound);
 app.use(errorHandler);

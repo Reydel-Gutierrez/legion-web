@@ -1,12 +1,55 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { Card, Form, Button } from "@themesberg/react-bootstrap";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faTrashAlt, faMapMarkerAlt } from "@fortawesome/free-solid-svg-icons";
+import { faTrashAlt, faMapMarkerAlt, faCopy, faArrowUp, faArrowDown } from "@fortawesome/free-solid-svg-icons";
 import LegionFormSelect from "../../../../components/legion/LegionFormSelect";
 import { Routes } from "../../../../routes";
 import { EQUIPMENT_TYPE_OPTIONS } from "../equipmentTypes";
 import { engineeringRepository } from "../../../../lib/data";
+import { USE_HIERARCHY_API } from "../../../../lib/data/config";
+import { flattenDiscoveryTree } from "../../network/discoveryScan";
+import { sortEquipmentForDisplay } from "../../site-builder/siteBuilderEquipmentUtils";
+
+/** Legacy demo IDs — only used when not on API-backed projects (local mock sites). */
+const LEGACY_MOCK_CONTROLLER_OPTIONS = [
+  { value: "43001", label: "BACnet/IP: 43001" },
+  { value: "43002", label: "BACnet/IP: 43002" },
+  { value: "43020", label: "BACnet/IP: 43020" },
+  { value: "43021", label: "BACnet/IP: 43021" },
+  { value: "43100", label: "BACnet/IP: 43100" },
+];
+
+function buildControllerAssignOptions(discoveredDevices, currentControllerRef, includeLegacyMock) {
+  const opts = [{ value: "", label: "Unassigned" }];
+  const seen = new Set();
+  const flat = flattenDiscoveryTree(discoveredDevices || []);
+  flat.forEach((d) => {
+    const inst = d?.deviceInstance != null ? String(d.deviceInstance).trim() : "";
+    if (!inst || seen.has(inst)) return;
+    seen.add(inst);
+    const network = (d.network || "BACnet/IP").replace(/\s+/g, " ").trim();
+    const nm = (d.name || "").trim();
+    const addr = (d.address != null && String(d.address).trim()) ? String(d.address).trim() : "";
+    const label = nm
+      ? `${network}: ${inst} — ${nm}${addr ? ` · #${addr}` : ""}`
+      : `${network}: ${inst}${addr ? ` · #${addr}` : ""}`;
+    opts.push({ value: inst, label });
+  });
+  const cur = currentControllerRef != null ? String(currentControllerRef).trim() : "";
+  if (cur && !seen.has(cur)) {
+    opts.push({ value: cur, label: `${cur} (not in discovery)` });
+  }
+  if (includeLegacyMock) {
+    LEGACY_MOCK_CONTROLLER_OPTIONS.forEach((o) => {
+      if (!seen.has(o.value)) {
+        seen.add(o.value);
+        opts.push(o);
+      }
+    });
+  }
+  return opts;
+}
 
 /**
  * Right panel: Edit selected equipment.
@@ -64,6 +107,9 @@ export default function EquipmentEditorPanel({
   graphicTemplates = [],
   equipmentList = [],
   onGraphicChange,
+  discoveredDevices = [],
+  onDuplicateEquipment,
+  onMoveEquipment,
 }) {
   const [form, setForm] = useState({
     name: "",
@@ -73,6 +119,7 @@ export default function EquipmentEditorPanel({
     controllerRef: "",
     templateName: "",
     floorId: "",
+    address: "",
     locationLabel: "",
     notes: "",
   });
@@ -91,6 +138,23 @@ export default function EquipmentEditorPanel({
   const graphicOptions = buildGraphicOptions(equipment?.id, graphics, graphicTemplates, equipmentList);
   const graphicSelectionValue = getGraphicSelectionValue(equipment, graphics, graphicTemplates);
 
+  const controllerOptions = useMemo(
+    () =>
+      buildControllerAssignOptions(discoveredDevices, form.controllerRef, !USE_HIERARCHY_API),
+    [discoveredDevices, form.controllerRef]
+  );
+
+  const floorPeers = useMemo(
+    () =>
+      equipment?.floorId
+        ? sortEquipmentForDisplay((equipmentList || []).filter((e) => e.floorId === equipment.floorId))
+        : [],
+    [equipmentList, equipment]
+  );
+  const floorIndex = floorPeers.findIndex((e) => e.id === equipment?.id);
+  const canMoveUp = floorIndex > 0;
+  const canMoveDown = floorIndex >= 0 && floorIndex < floorPeers.length - 1;
+
   useEffect(() => {
     if (equipment) {
       setForm({
@@ -101,6 +165,7 @@ export default function EquipmentEditorPanel({
         controllerRef: equipment.controllerRef || "",
         templateName: equipment.templateName || "",
         floorId: equipment.floorId || "",
+        address: equipment.address ?? "",
         locationLabel: equipment.locationLabel || "",
         notes: equipment.notes || "",
       });
@@ -109,6 +174,19 @@ export default function EquipmentEditorPanel({
 
   const handleChange = (field, value) => {
     setForm((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleControllerRefChange = (value) => {
+    setForm((prev) => {
+      const next = { ...prev, controllerRef: value };
+      const inst = String(value || "").trim();
+      if (!String(prev.address || "").trim() && inst) {
+        const flat = flattenDiscoveryTree(discoveredDevices || []);
+        const dev = flat.find((d) => String(d.deviceInstance ?? "").trim() === inst);
+        if (dev?.address) next.address = String(dev.address);
+      }
+      return next;
+    });
   };
 
   const handleSave = () => {
@@ -178,6 +256,21 @@ export default function EquipmentEditorPanel({
           </Form.Group>
 
           <Form.Group className="mb-3">
+            <Form.Label className="text-white small">Address #</Form.Label>
+            <Form.Control
+              size="sm"
+              className="bg-dark bg-opacity-25 border border-light border-opacity-10 text-white"
+              value={form.address}
+              onChange={(e) => handleChange("address", e.target.value)}
+              placeholder="Equipment address # for mapping"
+            />
+            <Form.Text className="text-white-50 small">
+              Enter the address # for this equipment. If the controller has an address in Network Discovery, choosing that
+              controller fills this when empty.
+            </Form.Text>
+          </Form.Group>
+
+          <Form.Group className="mb-3">
             <Form.Label className="text-white small">Instance Number</Form.Label>
             <Form.Control
               size="sm"
@@ -197,15 +290,8 @@ export default function EquipmentEditorPanel({
             <LegionFormSelect
               size="sm"
               value={form.controllerRef || ""}
-              onChange={(e) => handleChange("controllerRef", e.target.value)}
-              options={[
-                { value: "", label: "Unassigned" },
-                { value: "43001", label: "BACnet/IP: 43001" },
-                { value: "43002", label: "BACnet/IP: 43002" },
-                { value: "43020", label: "BACnet/IP: 43020" },
-                { value: "43021", label: "BACnet/IP: 43021" },
-                { value: "43100", label: "BACnet/IP: 43100" },
-              ]}
+              onChange={(e) => handleControllerRefChange(e.target.value)}
+              options={controllerOptions}
               placeholder="Unassigned"
             />
           </Form.Group>
@@ -248,13 +334,24 @@ export default function EquipmentEditorPanel({
           </Form.Group>
 
           <Form.Group className="mb-3">
-            <Form.Label className="text-white small">Floor / Location</Form.Label>
+            <Form.Label className="text-white small">Floor</Form.Label>
             <LegionFormSelect
               size="sm"
               value={form.floorId}
               onChange={(e) => handleChange("floorId", e.target.value)}
               options={[{ value: "", label: "Select floor" }, ...(floors || []).map((f) => ({ value: f.id, label: f.name }))]}
               placeholder="Select floor"
+            />
+          </Form.Group>
+
+          <Form.Group className="mb-3">
+            <Form.Label className="text-white small">Location (optional)</Form.Label>
+            <Form.Control
+              size="sm"
+              className="bg-dark bg-opacity-25 border border-light border-opacity-10 text-white"
+              value={form.locationLabel}
+              onChange={(e) => handleChange("locationLabel", e.target.value)}
+              placeholder="e.g. North zone, mechanical room"
             />
           </Form.Group>
 
@@ -273,6 +370,46 @@ export default function EquipmentEditorPanel({
         </Form>
 
         <div className="d-flex flex-column gap-2 mt-auto pt-3 border-top border-light border-opacity-10">
+          <div className="d-flex flex-wrap gap-2 align-items-center">
+            {onDuplicateEquipment && (
+              <Button
+                type="button"
+                size="sm"
+                variant="outline-light"
+                className="border-opacity-25"
+                onClick={() => onDuplicateEquipment(equipment.id)}
+              >
+                <FontAwesomeIcon icon={faCopy} className="me-1" />
+                Duplicate
+              </Button>
+            )}
+            {onMoveEquipment && (
+              <>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline-light"
+                  className="border-opacity-25"
+                  disabled={!canMoveUp}
+                  title="Move up in floor list"
+                  onClick={() => onMoveEquipment(-1)}
+                >
+                  <FontAwesomeIcon icon={faArrowUp} />
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline-light"
+                  className="border-opacity-25"
+                  disabled={!canMoveDown}
+                  title="Move down in floor list"
+                  onClick={() => onMoveEquipment(1)}
+                >
+                  <FontAwesomeIcon icon={faArrowDown} />
+                </Button>
+              </>
+            )}
+          </div>
           <Button
             size="sm"
             as={Link}

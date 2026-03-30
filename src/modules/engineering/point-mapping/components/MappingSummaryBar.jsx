@@ -5,9 +5,9 @@ import React from "react";
  */
 export default function MappingSummaryBar({
   totalTemplatePoints,
-  requiredPoints,
-  mappedRequired,
-  missingRequired,
+  commandPoints,
+  mappedCommand,
+  missingCommand,
   unusedObjects,
 }) {
   return (
@@ -17,15 +17,15 @@ export default function MappingSummaryBar({
       </span>
       <span className="text-white-50 small">|</span>
       <span className="text-white-50 small">
-        {requiredPoints} Required
+        {commandPoints} Command point{commandPoints !== 1 ? "s" : ""}
       </span>
       <span className="text-white-50 small">|</span>
       <span className="text-success small">
-        {mappedRequired} Required Mapped
+        {mappedCommand} Command mapped
       </span>
       <span className="text-white-50 small">|</span>
-      <span className={missingRequired > 0 ? "text-warning small" : "text-white-50 small"}>
-        {missingRequired} Missing
+      <span className={missingCommand > 0 ? "text-warning small" : "text-white-50 small"}>
+        {missingCommand} Unmapped command
       </span>
       <span className="text-white-50 small">|</span>
       <span className="text-white-50 small">

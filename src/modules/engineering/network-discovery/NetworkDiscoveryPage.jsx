@@ -5,7 +5,12 @@ import { faNetworkWired } from "@fortawesome/free-solid-svg-icons";
 
 import { useSite } from "../../../app/providers/SiteProvider";
 import { useWorkingVersion, selectNetworkConfig } from "../../../hooks/useWorkingVersion";
-import { hasEnabledDiscoveryPaths, getMockDiscoveryScanResult, flattenDeviceCount } from "../network/discoveryScan";
+import {
+  hasEnabledDiscoveryPaths,
+  getMockDiscoveryScanResult,
+  flattenDeviceCount,
+  flattenDiscoveryTree,
+} from "../network/discoveryScan";
 import LegionTablePagination from "../../../components/legion/LegionTablePagination";
 import { useTablePagination } from "../../../hooks/useTablePagination";
 import { engineeringRepository } from "../../../lib/data";
@@ -24,21 +29,8 @@ import NoSearchResultsState from "./components/NoSearchResultsState";
 import { POINTS_STATUS } from "./components/DeviceInspectorPanel";
 
 // ---------------------------------------------------------------------------
-// Helpers: flatten tree to list, then filter (no hierarchy in UI)
+// Helpers: filter flat discovery list (no hierarchy in UI)
 // ---------------------------------------------------------------------------
-function flattenDiscoveryTree(roots) {
-  const out = [];
-  function walk(nodes) {
-    if (!nodes || !nodes.length) return;
-    nodes.forEach((node) => {
-      if (node?.id) out.push({ ...node, children: undefined });
-      walk(node?.children);
-    });
-  }
-  walk(Array.isArray(roots) ? roots : []);
-  return out;
-}
-
 function filterFlatDevices(flatList, query) {
   if (!query || !query.trim()) return flatList;
   const lower = query.trim().toLowerCase();
@@ -140,6 +132,14 @@ export default function NetworkDiscoveryPage() {
     hasPrev,
     hasNext,
   } = useTablePagination(filteredDevices, 10, "discovery", searchQuery);
+
+  const handlePatchDiscoveredDevice = useCallback(
+    (deviceId, patch) => {
+      actions.patchDiscoveredDevice(deviceId, patch);
+      setInspectorDevice((prev) => (prev?.id === deviceId ? { ...prev, ...patch } : prev));
+    },
+    [actions]
+  );
 
   const toggleSelect = useCallback((device) => {
     setSelectedIds((prev) => {
@@ -414,6 +414,7 @@ export default function NetworkDiscoveryPage() {
             ? () => handleRefreshPoints(inspectorDevice.id)
             : undefined
         }
+        onPatchDevice={handlePatchDiscoveredDevice}
       />
 
       <AdvancedScanModal show={showAdvancedScan} onHide={() => setShowAdvancedScan(false)} />

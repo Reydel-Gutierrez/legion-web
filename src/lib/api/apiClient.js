@@ -40,10 +40,13 @@ export async function apiFetch(path, options = {}) {
     }
   }
   if (!res.ok) {
-    const msg =
+    let msg =
       data && typeof data === "object" && data.error
         ? String(data.error)
         : res.statusText || `HTTP ${res.status}`;
+    if (data && typeof data === "object" && data.detail) {
+      msg = `${msg} — ${String(data.detail)}`;
+    }
     throw new ApiError(msg, res.status, data);
   }
   return data;

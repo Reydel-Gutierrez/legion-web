@@ -77,6 +77,7 @@ export function normalizeEquipment(api) {
     code: api.code,
     equipmentType: api.equipmentType,
     templateName: api.templateName ?? null,
+    address: api.address ?? null,
     status: api.status,
     engineeringStatus: mapEquipmentEngineeringStatus(api.status),
   };
@@ -94,10 +95,25 @@ export function normalizePoint(api) {
     pointCode: api.pointCode,
     pointType: api.pointType,
     unit: api.unit,
-    writable: Boolean(api.writable),
+    writable: api.writable !== false,
     presentValue: api.presentValue,
     status: api.status,
   };
+}
+
+function parsePresentValueRawForWorkspace(presentValue) {
+  if (presentValue === null || presentValue === undefined || presentValue === "") return null;
+  if (typeof presentValue === "boolean") return presentValue;
+  if (typeof presentValue === "number" && !Number.isNaN(presentValue)) return presentValue;
+  const s = String(presentValue).trim();
+  if (s === "") return null;
+  const lower = s.toLowerCase();
+  if (lower === "true" || lower === "on" || lower === "active") return true;
+  if (lower === "false" || lower === "off" || lower === "inactive") return false;
+  if (s === "1") return true;
+  if (s === "0") return false;
+  if (/^-?\d+(\.\d+)?$/.test(s)) return parseFloat(s);
+  return presentValue;
 }
 
 export function pointToWorkspaceRow(equipmentId, equipmentName, pt) {
@@ -106,17 +122,24 @@ export function pointToWorkspaceRow(equipmentId, equipmentName, pt) {
   const units = p.unit || "";
   const val = p.presentValue != null && p.presentValue !== "" ? String(p.presentValue) : "—";
   const valueStr = units ? `${val} ${units}`.trim() : val;
+  const pointKey = (p.pointCode != null && String(p.pointCode).trim() !== "" ? String(p.pointCode).trim() : String(p.id));
+  const pointDescription = (p.pointName != null && String(p.pointName).trim() !== "" ? String(p.pointName).trim() : "");
+  const presentValueRaw =
+    p.presentValue != null && p.presentValue !== "" ? parsePresentValueRawForWorkspace(p.presentValue) : null;
   return {
     id: `${equipmentId}-${p.pointCode || p.id}`,
     equipmentId,
     equipmentName,
-    pointId: p.pointCode,
-    pointName: p.pointName,
-    pointReferenceId: p.pointCode,
+    pointId: p.pointCode || p.id,
+    pointKey,
+    pointDescription,
+    pointName: pointDescription || pointKey,
+    pointReferenceId: p.pointCode || p.id,
     value: valueStr,
     units,
     status: mapEntityStatus(p.status) === "active" ? "OK" : "Warn",
     writable: p.writable,
+    presentValueRaw,
   };
 }
 

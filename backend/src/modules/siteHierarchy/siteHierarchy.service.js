@@ -90,6 +90,7 @@ async function buildWorkingSiteEquipmentFromDb(siteId) {
           type: eq.equipmentType,
           instanceNumber: null,
           equipmentType: eq.equipmentType,
+          address: eq.address || '',
           locationLabel: '',
           controllerRef: null,
           protocol: 'API',

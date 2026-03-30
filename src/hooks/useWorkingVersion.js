@@ -9,6 +9,7 @@ import { WORKING_VERSION_ACTIONS } from "../modules/engineering/working-version/
 import { getMappingsForEquipment } from "../modules/engineering/working-version/workingVersionModel";
 import { ensureNetworkConfig } from "../modules/engineering/network/networkConfigModel";
 import { USE_HIERARCHY_API } from "../lib/data/config";
+import { sortEquipmentForDisplay } from "../modules/engineering/site-builder/siteBuilderEquipmentUtils";
 import { isBackendSiteId } from "../lib/data/siteIdUtils";
 import * as operatorRepository from "../lib/data/repositories/operatorRepository";
 import { toActiveRelease } from "../modules/engineering/working-version/workingVersionTransforms";
@@ -18,7 +19,15 @@ function workingDataFromVersion(workingVersion) {
 }
 
 export function useWorkingVersion() {
-  const { workingVersion, workingState, dispatch, deployWorkingVersion } = useEngineeringVersionContext();
+  const {
+    workingVersion,
+    workingState,
+    dispatch,
+    deployWorkingVersion,
+    backendWorkingVersionLoading,
+    backendWorkingVersionError,
+    backendWorkingVersionSynced,
+  } = useEngineeringVersionContext();
 
   const actions = useMemo(
     () => ({
@@ -26,6 +35,8 @@ export function useWorkingVersion() {
       setTemplates: (payload) => dispatch({ type: WORKING_VERSION_ACTIONS.SET_TEMPLATES, payload }),
       setEquipment: (payload) => dispatch({ type: WORKING_VERSION_ACTIONS.SET_EQUIPMENT, payload }),
       setDiscoveredDevices: (payload) => dispatch({ type: WORKING_VERSION_ACTIONS.SET_DISCOVERED_DEVICES, payload }),
+      patchDiscoveredDevice: (deviceId, patch) =>
+        dispatch({ type: WORKING_VERSION_ACTIONS.PATCH_DISCOVERED_DEVICE, payload: { deviceId, patch } }),
       setDiscoveredObjects: (payload) => dispatch({ type: WORKING_VERSION_ACTIONS.SET_DISCOVERED_OBJECTS, payload }),
       setDiscoveredObjectsForDevice: (deviceId, objects) =>
         dispatch({ type: WORKING_VERSION_ACTIONS.SET_DISCOVERED_OBJECTS_FOR_DEVICE, payload: { deviceId, objects } }),
@@ -47,7 +58,15 @@ export function useWorkingVersion() {
     [dispatch, deployWorkingVersion]
   );
 
-  return { workingVersion, workingState, actions, dispatch };
+  return {
+    workingVersion,
+    workingState,
+    actions,
+    dispatch,
+    backendWorkingVersionLoading,
+    backendWorkingVersionError,
+    backendWorkingVersionSynced,
+  };
 }
 
 export function selectSite(workingVersion) {
@@ -140,7 +159,7 @@ export function selectSiteTree(workingVersion) {
         status: b.status,
         parentId: siteId,
         children: (b.floors || []).map((f) => {
-          const floorEq = equipment.filter((e) => e.floorId === f.id);
+          const floorEq = sortEquipmentForDisplay(equipment.filter((e) => e.floorId === f.id));
           return {
             id: f.id,
             type: "floor",

@@ -1,11 +1,28 @@
-import React, { useMemo, useRef, useState, useEffect } from "react";
+import React, { useMemo, useRef, useState, useEffect, useCallback } from "react";
+import FloorZoneGlassChip from "../../engineering/graphics-manager/components/FloorZoneGlassChip";
+import {
+  isZoneShape,
+  getStyleForZoneState,
+  deriveZoneVisualState,
+  resolveZonePointValuesForDisplay,
+  buildSimulatedPointValuesForObjectId,
+} from "../../engineering/graphics-manager/floorZoneModel";
 
 /**
  * Read-only preview of a deployed equipment graphic.
  * Renders the same layout as Graphics Manager: background image/SVG, text, value, and link objects.
  * Value objects show live point values; link objects are clickable and call onLinkClick.
  */
-function GraphicObject({ obj, pointsByPointId, onLinkClick }) {
+function GraphicObject({
+  obj,
+  pointsByPointId,
+  onLinkClick,
+  floorZoneInteractive = false,
+  zoneShapeStyle = null,
+  onZoneMouseEnter,
+  onZoneMouseLeave,
+  onZoneClick,
+}) {
   const {
     type,
     label,
@@ -22,7 +39,6 @@ function GraphicObject({ obj, pointsByPointId, onLinkClick }) {
     borderRadius,
     fontSize,
     textAlign,
-    visible,
   } = obj;
   const boundPoint = bindings[0];
   const pointRow = boundPoint ? pointsByPointId[boundPoint.pointId] : null;
@@ -40,6 +56,7 @@ function GraphicObject({ obj, pointsByPointId, onLinkClick }) {
   const valueStateClass = type === "value" && isOffline ? " graphics-canvas-object--offline" : "";
   const isLink = type === "link";
   const isShape = type === "shape";
+  const isFloorZone = floorZoneInteractive && isShape && isZoneShape(obj);
   const hasValidLink =
     isLink &&
     linkTarget?.type &&
@@ -60,16 +77,19 @@ function GraphicObject({ obj, pointsByPointId, onLinkClick }) {
         width,
         minHeight: height,
         fontSize: Number.isFinite(Number(fontSize)) ? Number(fontSize) : 14,
-        cursor: isLink && hasValidLink ? "pointer" : "default",
-        pointerEvents: isLink && hasValidLink ? "auto" : "none",
+        cursor: isFloorZone ? "pointer" : isLink && hasValidLink ? "pointer" : "default",
+        pointerEvents:
+          isFloorZone || (isLink && hasValidLink) ? "auto" : "none",
         border: isShape ? "1px solid" : "none",
         borderRadius: isShape ? (Number.isFinite(Number(borderRadius)) ? Number(borderRadius) : 4) : 0,
-        boxShadow: "none",
+        boxShadow: zoneShapeStyle?.boxShadow || "none",
         padding: isShape ? 0 : 0,
-        backgroundColor: isShape ? (fill || "rgba(255,255,255,0.2)") : "transparent",
-        borderColor: isShape ? (stroke || "rgba(255,255,255,0.6)") : "transparent",
+        backgroundColor: isShape
+          ? zoneShapeStyle?.fill ?? fill ?? "rgba(255,255,255,0.2)"
+          : "transparent",
+        borderColor: isShape ? zoneShapeStyle?.stroke ?? stroke ?? "rgba(255,255,255,0.6)" : "transparent",
         color: !isShape && type !== "value" ? color || undefined : undefined,
-        opacity: opacity != null ? opacity : 1,
+        opacity: zoneShapeStyle?.opacity != null ? zoneShapeStyle.opacity : opacity != null ? opacity : 1,
         ...(type === "text" || type === "value" || type === "link"
           ? (() => {
               const align = (textAlign || "center").toLowerCase();
@@ -80,7 +100,16 @@ function GraphicObject({ obj, pointsByPointId, onLinkClick }) {
             })()
           : {}),
       }}
-      onClick={handleLinkClick}
+      onClick={
+        isFloorZone
+          ? (e) => {
+              e.stopPropagation();
+              if (onZoneClick) onZoneClick(obj);
+            }
+          : handleLinkClick
+      }
+      onMouseEnter={isFloorZone ? () => onZoneMouseEnter?.(obj) : undefined}
+      onMouseLeave={isFloorZone ? () => onZoneMouseLeave?.(obj) : undefined}
       onKeyDown={isLink && hasValidLink ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onLinkClick(linkTarget); } } : undefined}
       role={isLink && hasValidLink ? "button" : undefined}
       tabIndex={isLink && hasValidLink ? 0 : undefined}
@@ -121,6 +150,9 @@ export default function DeployedGraphicPreview({
   maxHeight,
   zoomFactor = 1,
   presentation = DEPLOYED_GRAPHIC_PRESENTATION.equipment,
+  onOpenEquipmentDetail,
+  enableFloorZones = true,
+  resolveEquipmentLabel,
 }) {
   const objects = graphic?.objects ?? [];
   const backgroundImage = graphic?.backgroundImage;
@@ -140,6 +172,71 @@ export default function DeployedGraphicPreview({
     });
     return map;
   }, [points]);
+
+  const floorZonesActive = Boolean(isLayoutPresentation && enableFloorZones);
+
+  const pointsAsAuthoringList = useMemo(
+    () =>
+      (points || []).map((p) => ({
+        id: p.pointId,
+        displayValue: p.value,
+        presentValue: p.value,
+        valueState: p.status === "OFFLINE" || p.status === "Unbound" ? "offline" : "mapped",
+      })),
+    [points]
+  );
+
+  const zonePointValuesById = useMemo(() => {
+    const map = {};
+    (objects || []).forEach((o) => {
+      if (!isZoneShape(o)) return;
+      const raw = resolveZonePointValuesForDisplay(o.zoneConfig, pointsAsAuthoringList);
+      const sim = buildSimulatedPointValuesForObjectId(o.id);
+      map[o.id] = { ...sim, ...raw };
+    });
+    return map;
+  }, [objects, pointsAsAuthoringList]);
+
+  const [hoveredZoneId, setHoveredZoneId] = useState(null);
+  const [expandedGlassZoneId, setExpandedGlassZoneId] = useState(null);
+
+  const getZoneShapeAppearance = useCallback(
+    (obj) => {
+      if (!floorZonesActive || !isZoneShape(obj)) return null;
+      const zc = obj.zoneConfig || {};
+      const pv = zonePointValuesById[obj.id] || {};
+      const derived = deriveZoneVisualState(zc, pv);
+      let stateKey = derived;
+      if (expandedGlassZoneId === obj.id) stateKey = "selected";
+      else if (hoveredZoneId === obj.id) stateKey = "hover";
+      return getStyleForZoneState(zc, stateKey);
+    },
+    [floorZonesActive, zonePointValuesById, expandedGlassZoneId, hoveredZoneId]
+  );
+
+  const resolveEquipmentLabelFn = useCallback(
+    (equipmentId) => {
+      if (!equipmentId) return "";
+      if (typeof resolveEquipmentLabel === "function") return resolveEquipmentLabel(equipmentId) || equipmentId;
+      return equipmentId;
+    },
+    [resolveEquipmentLabel]
+  );
+
+  const handleZoneMouseEnter = useCallback((o) => {
+    if (!isZoneShape(o)) return;
+    setHoveredZoneId(o.id);
+  }, []);
+
+  const handleZoneMouseLeave = useCallback((o) => {
+    if (!isZoneShape(o)) return;
+    setHoveredZoneId(null);
+  }, []);
+
+  const handleZoneActivate = useCallback((o) => {
+    if (!isZoneShape(o) || o.zoneConfig?.wedgeEnabled === false) return;
+    setExpandedGlassZoneId((prev) => (prev === o.id ? null : o.id));
+  }, []);
 
   const containerRef = useRef(null);
   const [scale, setScale] = useState(1);
@@ -451,15 +548,44 @@ export default function DeployedGraphicPreview({
             })()}
           </div>
         )}
-        <div style={{ position: "absolute", inset: 0, zIndex: 1 }}>
+        <div
+          style={{ position: "absolute", inset: 0, zIndex: 1 }}
+          onClick={floorZonesActive ? () => setExpandedGlassZoneId(null) : undefined}
+          role="presentation"
+        >
           {objects.filter((obj) => obj.visible !== false).map((obj) => (
             <GraphicObject
               key={obj.id}
               obj={obj}
               pointsByPointId={pointsByPointId}
               onLinkClick={onLinkClick}
+              floorZoneInteractive={floorZonesActive}
+              zoneShapeStyle={getZoneShapeAppearance(obj)}
+              onZoneMouseEnter={handleZoneMouseEnter}
+              onZoneMouseLeave={handleZoneMouseLeave}
+              onZoneClick={handleZoneActivate}
             />
           ))}
+          {floorZonesActive &&
+            objects
+              .filter((obj) => obj.visible !== false)
+              .map((obj) =>
+                isZoneShape(obj) ? (
+                  <FloorZoneGlassChip
+                    key={`zone-glass-${obj.id}`}
+                    zoneObject={obj}
+                    mergedValues={zonePointValuesById[obj.id]}
+                    equipmentTitle={resolveEquipmentLabelFn(obj.zoneConfig?.linkedEquipmentId)}
+                    expanded={
+                      expandedGlassZoneId === obj.id && obj.zoneConfig?.wedgeEnabled !== false
+                    }
+                    onToggleExpand={() =>
+                      setExpandedGlassZoneId((prev) => (prev === obj.id ? null : obj.id))
+                    }
+                    onOpenEquipmentDetail={onOpenEquipmentDetail}
+                  />
+                ) : null
+              )}
         </div>
       </div>
     </div>

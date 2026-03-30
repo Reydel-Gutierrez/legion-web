@@ -1,5 +1,11 @@
 import { getDashboardSummary, getRecentEvents, getDashboardAlarms, getEquipmentHealth, getWeather } from "../../mockDashboard";
-import { getWorkspaceRowsFromRelease } from "../../../activeReleaseUtils";
+import {
+  getWorkspaceRowsFromRelease,
+  enrichWorkspaceRowsWithAddresses,
+  mergeTemplateCommandMetaIntoWorkspaceRows,
+  enrichWorkspaceRowsWithMappedTo,
+} from "../../../activeReleaseUtils";
+import { USE_HIERARCHY_API } from "../../config";
 import { getTrendEquipmentLibraryForSite } from "../../../../modules/engineering/data/mockEngineeringData";
 
 // NOTE: This module is the only place in the operator stack that should
@@ -172,19 +178,83 @@ function workspaceRowId(equipmentId, pointId) {
   return `${equipmentId}-${pointId}`;
 }
 
+/** Tree / snapshot status strings that mean no live comms — hide stale or placeholder values. */
+function isOfflineStatusLabel(s) {
+  const x = String(s || "").trim().toLowerCase();
+  if (!x) return false;
+  return ["offline", "down", "disabled"].includes(x) || x.includes("offline");
+}
+
+function isEquipmentOfflineInRelease(eq) {
+  if (!eq) return false;
+  if (isOfflineStatusLabel(eq.status)) return true;
+  if (isOfflineStatusLabel(eq.commStatus)) return true;
+  if (eq.controllerOnline === false) return true;
+  return false;
+}
+
+function blankWorkspaceRowsForCommLoss(rows) {
+  return rows.map((r) => ({
+    ...r,
+    value: "—",
+    presentValueRaw: null,
+    status: "OFFLINE",
+  }));
+}
+
+/** True when engineering has assigned a field controller (BACnet/device ref). */
+function hasControllerAssigned(eq) {
+  if (!eq) return false;
+  const ref = eq.controllerRef;
+  if (ref == null) return false;
+  return String(ref).trim().length > 0;
+}
+
+/**
+ * API-backed sites: DB may still hold seed/stale presentValue before a controller exists.
+ * Do not present those as live OK — show unbound until a controller is assigned.
+ */
+function stripWorkspaceRowsWhenNoController(rows) {
+  return rows.map((r) => ({
+    ...r,
+    value: "—",
+    presentValueRaw: null,
+    status: "Unbound",
+  }));
+}
+
 /**
  * Get workspace points for equipment. When activeRelease payload is provided (operator mode),
  * derives rows from deployed snapshot so sites without discovered devices still show logical points with Unbound status.
  */
 export function getWorkspacePointsForEquipmentMock(equipmentId, equipmentName, status, options = {}) {
   const releaseData = options.activeRelease ?? options.activeDeployment;
+  const eqFromRelease = releaseData?.equipment?.find((e) => String(e.id) === String(equipmentId)) ?? null;
+  const commOffline = isOfflineStatusLabel(status) || isEquipmentOfflineInRelease(eqFromRelease);
+
   if (releaseData) {
-    const eq = releaseData.equipment?.find((e) => String(e.id) === String(equipmentId));
+    const eq = eqFromRelease;
+    let rows = [];
     if (eq?.livePoints && Array.isArray(eq.livePoints) && eq.livePoints.length > 0) {
-      return eq.livePoints;
+      rows = eq.livePoints;
+    } else {
+      rows = getWorkspaceRowsFromRelease(releaseData, equipmentId, equipmentName);
     }
-    const rows = getWorkspaceRowsFromRelease(releaseData, equipmentId, equipmentName);
-    if (rows.length > 0) return rows;
+    if (rows.length > 0) {
+      let out = enrichWorkspaceRowsWithAddresses(releaseData, equipmentId, rows);
+      out = mergeTemplateCommandMetaIntoWorkspaceRows(releaseData, equipmentId, out);
+      out = enrichWorkspaceRowsWithMappedTo(releaseData, equipmentId, out);
+      if (commOffline) {
+        out = blankWorkspaceRowsForCommLoss(out);
+      } else if (USE_HIERARCHY_API && !hasControllerAssigned(eqFromRelease)) {
+        out = stripWorkspaceRowsWhenNoController(out);
+      }
+      return out;
+    }
+    // Real deployment snapshot but no DB/template rows for this equipment — do not fabricate demo VAV/AHU points.
+    if (USE_HIERARCHY_API) {
+      return [];
+    }
   }
 
   const idStr = String(equipmentId || "").toLowerCase();
@@ -201,6 +271,8 @@ export function getWorkspacePointsForEquipmentMock(equipmentId, equipmentName, s
     equipmentId,
     equipmentName,
     pointId: pt.pointId,
+    pointKey: pt.pointId,
+    pointDescription: pt.name,
     pointName: pt.name,
     pointReferenceId: pt.pointId,
     value: pt.unit ? `${pt.value} ${pt.unit}`.trim() : pt.value,
@@ -209,7 +281,10 @@ export function getWorkspacePointsForEquipmentMock(equipmentId, equipmentName, s
     writable: false,
   }));
 
-  return rows;
+  let enriched = enrichWorkspaceRowsWithAddresses(releaseData, equipmentId, rows);
+  enriched = mergeTemplateCommandMetaIntoWorkspaceRows(releaseData, equipmentId, enriched);
+  enriched = enrichWorkspaceRowsWithMappedTo(releaseData, equipmentId, enriched);
+  return commOffline ? blankWorkspaceRowsForCommLoss(enriched) : enriched;
 }
 
 // Schedules (mock list for Schedules page)

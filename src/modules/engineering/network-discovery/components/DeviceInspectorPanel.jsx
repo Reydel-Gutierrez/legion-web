@@ -1,5 +1,5 @@
-import React from "react";
-import { Card, Button, Table } from "@themesberg/react-bootstrap";
+import React, { useState, useEffect } from "react";
+import { Card, Button, Table, Form } from "@themesberg/react-bootstrap";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faTimes, faSearch, faSyncAlt } from "@fortawesome/free-solid-svg-icons";
 
@@ -38,7 +38,23 @@ export default function DeviceInspectorPanel({
   onClose,
   onDiscoverPoints,
   onRefreshPoints,
+  onPatchDevice,
 }) {
+  const [addressDraft, setAddressDraft] = useState("");
+  const deviceId = device?.id;
+  const deviceAddress = device?.address;
+  useEffect(() => {
+    setAddressDraft(deviceAddress != null ? String(deviceAddress) : "");
+  }, [deviceId, deviceAddress]);
+
+  const commitAddressIfChanged = () => {
+    if (!device?.id || !onPatchDevice) return;
+    const v = addressDraft.trim();
+    const cur = device?.address != null ? String(device.address).trim() : "";
+    if (v === cur) return;
+    onPatchDevice(device.id, { address: v || null });
+  };
+
   const pointsStatus = pointDiscovery?.pointsStatus ?? null;
   const lastPointDiscoveryTime = pointDiscovery?.lastPointDiscoveryTime ?? null;
   const discoveredObjects = pointDiscovery?.discoveredObjects ?? [];
@@ -114,6 +130,21 @@ export default function DeviceInspectorPanel({
                   <div className="text-white">{assignedEquipmentPath}</div>
                 </div>
               )}
+              <div className="col-12">
+                <Form.Label className="text-white-50 small mb-1">Address # (optional)</Form.Label>
+                <Form.Control
+                  size="sm"
+                  className="bg-dark bg-opacity-25 border border-light border-opacity-10 text-white"
+                  value={addressDraft}
+                  onChange={(e) => setAddressDraft(e.target.value)}
+                  onBlur={commitAddressIfChanged}
+                  placeholder="User-defined address # for mapping to equipment"
+                  disabled={!device?.id || !onPatchDevice}
+                />
+                <div className="text-white-50 mt-1" style={{ fontSize: "0.7rem" }}>
+                  Saved when you leave this field. Shown when assigning equipment to this controller.
+                </div>
+              </div>
             </div>
           </Card.Body>
         </Card>

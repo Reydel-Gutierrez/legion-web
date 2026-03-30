@@ -14,6 +14,22 @@ function errorHandler(err, req, res, next) {
       });
       return;
     }
+    if (err.code === 'P2021') {
+      res.status(503).json({
+        error:
+          'Database is missing tables for this feature. On the API server run: npx prisma migrate deploy',
+      });
+      return;
+    }
+  }
+
+  const msg = err && err.message ? String(err.message) : '';
+  if (msg.includes('Could not find mapping for model')) {
+    res.status(503).json({
+      error:
+        'API Prisma client is out of date. Stop the server, then run: npx prisma generate && restart',
+    });
+    return;
   }
 
   const statusCode =
@@ -30,9 +46,18 @@ function errorHandler(err, req, res, next) {
     console.error(err);
   }
 
-  res.status(statusCode).json({
-    error: message,
-  });
+  const body = { error: message };
+  if (
+    process.env.NODE_ENV !== 'production' &&
+    statusCode === 500 &&
+    err &&
+    !(err instanceof HttpError) &&
+    err.message
+  ) {
+    body.detail = String(err.message);
+  }
+
+  res.status(statusCode).json(body);
 }
 
 module.exports = { errorHandler };

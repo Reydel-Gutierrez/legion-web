@@ -142,8 +142,12 @@ export default function PointMappingPage() {
   }, [equipmentList, workingState.mappings]);
 
   const templatePoints = useMemo(
-    () => engineeringRepository.getTemplatePoints(equipment?.templateName),
-    [equipment?.templateName]
+    () =>
+      engineeringRepository.getTemplatePoints(
+        equipment?.templateName,
+        workingState?.templates?.equipmentTemplates
+      ),
+    [equipment?.templateName, workingState?.templates?.equipmentTemplates]
   );
   const discoveredObjects = useMemo(
     () => getDiscoveredObjectsFromWorkingState(workingState, equipment?.controllerRef),
@@ -165,14 +169,13 @@ export default function PointMappingPage() {
 
   const summary = useMemo(() => {
     const total = templatePoints?.length || 0;
-    const required = (templatePoints || []).filter((tp) => tp.required).length;
-    const mappedRequired = (templatePoints || [])
-      .filter((tp) => tp.required && mappings[tp.id])
-      .length;
-    const missingRequired = required - mappedRequired;
+    const isCommand = (tp) => (tp.commandType || "none") !== "none";
+    const commandPoints = (templatePoints || []).filter(isCommand).length;
+    const mappedCommand = (templatePoints || []).filter((tp) => isCommand(tp) && mappings[tp.id]).length;
+    const missingCommand = commandPoints - mappedCommand;
     const usedIds = new Set(Object.values(mappings).filter(Boolean));
     const unused = (discoveredObjects || []).filter((o) => !usedIds.has(o.id)).length;
-    return { total, required, mappedRequired, missingRequired, unused };
+    return { total, commandPoints, mappedCommand, missingCommand, unused };
   }, [templatePoints, mappings, discoveredObjects]);
 
   const selectedPoint = useMemo(
@@ -379,9 +382,9 @@ export default function PointMappingPage() {
 
         <MappingSummaryBar
           totalTemplatePoints={summary.total}
-          requiredPoints={summary.required}
-          mappedRequired={summary.mappedRequired}
-          missingRequired={summary.missingRequired}
+          commandPoints={summary.commandPoints}
+          mappedCommand={summary.mappedCommand}
+          missingCommand={summary.missingCommand}
           unusedObjects={summary.unused}
         />
 

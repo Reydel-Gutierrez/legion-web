@@ -17,6 +17,7 @@ export default function DeviceInspectorDrawer({
   pointDiscovery,
   onDiscoverPoints,
   onRefreshPoints,
+  onPatchDevice,
 }) {
   return (
     <LegionDrawer
@@ -34,6 +35,7 @@ export default function DeviceInspectorDrawer({
           onClose={onClose}
           onDiscoverPoints={onDiscoverPoints}
           onRefreshPoints={onRefreshPoints}
+          onPatchDevice={onPatchDevice}
         />
       </div>
     </LegionDrawer>

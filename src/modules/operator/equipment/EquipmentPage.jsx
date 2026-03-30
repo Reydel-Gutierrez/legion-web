@@ -4,16 +4,32 @@ import { activeReleaseDataToEquipmentTree } from "../../../lib/activeReleaseUtil
 import { Container, Row, Col, Card, Button, Form, Table, Modal, Toast } from "@themesberg/react-bootstrap";
 import { useHistory } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faChevronDown, faChevronRight, faLayerGroup, faSnowflake, faFolder, faFilter, faSearch } from "@fortawesome/free-solid-svg-icons";
+import {
+  faChevronDown,
+  faChevronRight,
+  faLayerGroup,
+  faSnowflake,
+  faFolder,
+  faFilter,
+  faSearch,
+  faBuilding,
+} from "@fortawesome/free-solid-svg-icons";
 import LegionHeroHeader from "../../../components/legion/LegionHeroHeader";
 import StatusDotLabel from "../../../components/legion/StatusDotLabel";
 import { operatorRepository } from "../../../lib/data";
+import {
+  getCommandProfileForRows,
+  getInitialCommandValue,
+  formatCommandValueForDisplay,
+  OperatorPointCommandField,
+} from "./OperatorPointCommandField";
 
 // ---------------------------------------
 // Operator equipment tree row — simple, clear hierarchy + offline pill
 // ---------------------------------------
 const NODE_ICONS = {
   group: faSnowflake,
+  building: faBuilding,
   floor: faLayerGroup,
   equip: faFolder,
 };
@@ -62,7 +78,13 @@ function EquipmentTreeRow({ level = 0, active, onClick, isGroup, isOpen, node, i
           </span>
         )}
         <span className="site-tree-type-badge">
-          {node.type === "group" ? "GROUP" : node.type === "floor" ? "FLOOR" : "EQUIPMENT"}
+          {node.type === "group"
+            ? "GROUP"
+            : node.type === "building"
+              ? "BUILDING"
+              : node.type === "floor"
+                ? "FLOOR"
+                : "EQUIPMENT"}
         </span>
       </span>
     </>
@@ -108,6 +130,14 @@ function flattenEquipmentNodes(nodes) {
   return out;
 }
 
+/** Workspace display when operator marks read-only points out of service */
+const WORKSPACE_OUT_OF_SERVICE_LABEL = "Out Of Service";
+
+function workspacePointDisplayValue(row) {
+  if (row.operatorOutOfService) return WORKSPACE_OUT_OF_SERVICE_LABEL;
+  return row.value;
+}
+
 /** Get all equipment nodes under a node (for floors: AHU + all VAVs) */
 function getEquipmentUnderNode(node) {
   if (node.type === "equip") return [node];
@@ -142,7 +172,8 @@ function WorkspacePanel({
   const tableRef = useRef(null);
   const [lastClickedIndex, setLastClickedIndex] = useState(null);
   const [showCommandModal, setShowCommandModal] = useState(false);
-  const [commandInput, setCommandInput] = useState("");
+  const [commandValue, setCommandValue] = useState("");
+  const [serviceStateChoice, setServiceStateChoice] = useState("in_service");
   const [commandConfirmStep, setCommandConfirmStep] = useState(false);
   const [showToast, setShowToast] = useState({ show: false, msg: "" });
   const [showAddConfirm, setShowAddConfirm] = useState(false);
@@ -168,6 +199,10 @@ function WorkspacePanel({
         String(r.equipmentName || "").toLowerCase().includes(q) ||
         String(r.pointId || "").toLowerCase().includes(q) ||
         String(r.pointName || "").toLowerCase().includes(q) ||
+        String(r.pointKey || "").toLowerCase().includes(q) ||
+        String(r.pointDescription || "").toLowerCase().includes(q) ||
+        String(r.pointAddress || "").toLowerCase().includes(q) ||
+        String(r.pointPathKey || "").toLowerCase().includes(q) ||
         String(r.value || "").toLowerCase().includes(q) ||
         String(r.status || "").toLowerCase().includes(q)
     );
@@ -194,7 +229,14 @@ function WorkspacePanel({
         pointsOptions
       );
       const matched = points.filter(
-        (p) => matches(p.pointId) || matches(p.pointName) || matches(p.units)
+        (p) =>
+          matches(p.pointId) ||
+          matches(p.pointName) ||
+          matches(p.pointKey) ||
+          matches(p.pointDescription) ||
+          matches(p.pointAddress) ||
+          matches(p.pointPathKey) ||
+          matches(p.units)
       );
       if (matched.length) results.push({ equipment: node, points: matched });
     }
@@ -211,6 +253,11 @@ function WorkspacePanel({
     () => rows.filter((r) => selectedRowIds.includes(r.id)),
     [rows, selectedRowIds]
   );
+  const commandModalProfile = getCommandProfileForRows(selectedRows);
+  const commandApplyDisabled =
+    !commandConfirmStep &&
+    commandModalProfile.mode === "typed" &&
+    commandModalProfile.allOperational === false;
 
   const addAllPointsForEquipment = useCallback(
     (equipmentId, equipmentName, status) => {
@@ -446,24 +493,100 @@ function WorkspacePanel({
     setShowGlobalResults(false);
   }, [globalSearchResults, addSinglePointToWorkspace]);
 
+  const syncServiceStateFromSelection = useCallback((sel) => {
+    const p = getCommandProfileForRows(sel);
+    if (p.readOnlySensorUi && sel.length) {
+      setServiceStateChoice(sel.every((r) => r.operatorOutOfService) ? "out_of_service" : "in_service");
+    } else {
+      setServiceStateChoice("in_service");
+    }
+  }, []);
+
   const openCommandModal = useCallback(() => {
-    setCommandConfirmStep(selectedCount > 10);
+    const sel = rows.filter((r) => selectedRowIds.includes(r.id));
+    const needBulkConfirm = selectedCount > 10;
+    setCommandConfirmStep(needBulkConfirm);
     setShowCommandModal(true);
-    setCommandInput("");
-  }, [selectedCount]);
+    if (!needBulkConfirm) {
+      const p = getCommandProfileForRows(sel);
+      setCommandValue(p.mode === "typed" ? getInitialCommandValue(sel, p) : "");
+      syncServiceStateFromSelection(sel);
+    } else {
+      setCommandValue("");
+      setServiceStateChoice("in_service");
+    }
+  }, [selectedCount, rows, selectedRowIds, syncServiceStateFromSelection]);
 
   const handleCommandApply = useCallback(() => {
     if (commandConfirmStep) {
       setCommandConfirmStep(false);
+      const sel = rows.filter((r) => selectedRowIds.includes(r.id));
+      const p = getCommandProfileForRows(sel);
+      setCommandValue(p.mode === "typed" ? getInitialCommandValue(sel, p) : "");
+      syncServiceStateFromSelection(sel);
       return;
     }
-    console.log("Command Selected:", {
-      points: selectedRows.map((r) => ({ id: r.id, equipment: r.equipmentName, point: r.pointId })),
-      command: commandInput,
-    });
+    const profile = getCommandProfileForRows(selectedRows);
+    const ids = selectedRowIds;
+
+    if (profile.readOnlySensorUi) {
+      const oos = serviceStateChoice === "out_of_service";
+      setWorkspace((prev) => ({
+        ...prev,
+        rows: (prev.rows || []).map((r) =>
+          ids.includes(r.id) ? { ...r, operatorOutOfService: oos } : r
+        ),
+      }));
+      console.log("Command Selected (read-only / service state):", {
+        points: selectedRows.map((r) => ({
+          id: r.id,
+          equipment: r.equipmentName,
+          point: r.pointId,
+          commandType: r.commandType,
+        })),
+        serviceState: serviceStateChoice,
+        operatorOutOfService: oos,
+      });
+      setShowToast({
+        show: true,
+        msg:
+          oos
+            ? `Marked ${selectedRows.length} point(s) out of service (workspace).`
+            : `Restored ${selectedRows.length} point(s) in service — showing live values.`,
+      });
+    } else {
+      const commandSummary =
+        profile.mode === "typed"
+          ? formatCommandValueForDisplay(profile.commandType, commandValue, profile.commandConfig)
+          : String(commandValue ?? "");
+      console.log("Command Selected:", {
+        points: selectedRows.map((r) => ({
+          id: r.id,
+          equipment: r.equipmentName,
+          point: r.pointId,
+          commandType: r.commandType,
+        })),
+        value: commandValue,
+        summary: commandSummary,
+      });
+    }
+
     setShowCommandModal(false);
+    setCommandConfirmStep(false);
+    setCommandValue("");
+    setServiceStateChoice("in_service");
     clearSelection();
-  }, [commandConfirmStep, selectedRows, commandInput, clearSelection]);
+  }, [
+    commandConfirmStep,
+    selectedRows,
+    commandValue,
+    clearSelection,
+    rows,
+    selectedRowIds,
+    serviceStateChoice,
+    setWorkspace,
+    syncServiceStateFromSelection,
+  ]);
 
   const scopeTrayDropActive = dropActive[`${zone}-scope`];
 
@@ -636,7 +759,9 @@ function WorkspacePanel({
                             checked={globalSearchSelected.has(p.id)}
                             onChange={() => toggleGlobalResult(p)}
                           />
-                          <span className="text-white">{p.pointId}</span>
+                          <span className="text-white">
+                            {[p.pointKey, p.pointDescription || p.pointName].filter(Boolean).join(" — ") || p.pointId}
+                          </span>
                         </label>
                       ))}
                     </div>
@@ -704,16 +829,17 @@ function WorkspacePanel({
                 <th className="legion-workspace-th legion-workspace-th--check" scope="col" />
                 <th className="legion-workspace-th" scope="col">Equipment</th>
                 <th className="legion-workspace-th" scope="col">Point</th>
+                <th className="legion-workspace-th" scope="col">Point description</th>
                 <th className="legion-workspace-th" scope="col">Value</th>
+                <th className="legion-workspace-th legion-workspace-th--mapped" scope="col">Mapped to</th>
                 <th className="legion-workspace-th legion-workspace-th--narrow" scope="col">Status</th>
-                <th className="legion-workspace-th legion-workspace-th--actions text-end" scope="col">Actions</th>
               </tr>
             </thead>
             <tbody>
               {filteredRows.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={6}
+                    colSpan={7}
                     className={
                       rows.length === 0
                         ? "legion-workspace-empty legion-workspace-empty--drop-hint"
@@ -745,19 +871,31 @@ function WorkspacePanel({
                       />
                     </td>
                     <td className="legion-workspace-td text-white fw-semibold">{row.equipmentName}</td>
-                    <td className="legion-workspace-td legion-workspace-point text-white">{row.pointId}</td>
-                    <td className="legion-workspace-td text-white">{row.value}</td>
+                    <td className="legion-workspace-td legion-workspace-point text-white font-monospace">
+                      <span className="legion-workspace-point-label">{row.pointKey || row.pointId}</span>
+                    </td>
+                    <td className="legion-workspace-td text-white">
+                      {row.pointDescription || row.pointName || "—"}
+                    </td>
+                    <td className="legion-workspace-td text-white">
+                      <span className={row.operatorOutOfService ? "legion-workspace-value--oos" : undefined}>
+                        {workspacePointDisplayValue(row)}
+                      </span>
+                    </td>
+                    <td className="legion-workspace-td legion-workspace-td--mapped text-white-50 small">
+                      <div
+                        className="legion-workspace-mapped-scroll"
+                        title={row.mappedToLabel && row.mappedToLabel !== "—" ? row.mappedToLabel : undefined}
+                      >
+                        {row.mappedToLabel ?? "—"}
+                      </div>
+                    </td>
                     <td className="legion-workspace-td legion-workspace-td--status">
                       <StatusDotLabel
                         value={row.status || "Normal"}
                         kind="status"
                         dotOnly={["ok", "normal", "online"].includes((row.status || "").toLowerCase())}
                       />
-                    </td>
-                    <td className="legion-workspace-td text-end">
-                      <Button size="sm" variant="outline-light" className="legion-workspace-cmd-btn border-opacity-10">
-                        Command
-                      </Button>
                     </td>
                   </tr>
                 ))
@@ -811,6 +949,8 @@ function WorkspacePanel({
         onHide={() => {
           setShowCommandModal(false);
           setCommandConfirmStep(false);
+          setCommandValue("");
+          setServiceStateChoice("in_service");
         }}
         contentClassName="bg-primary border border-light border-opacity-10 text-white"
       >
@@ -830,28 +970,112 @@ function WorkspacePanel({
               <div className="legion-command-points-list mb-3">
                 {selectedRows.slice(0, 15).map((r) => (
                   <div key={r.id} className="small">
-                    {r.equipmentName} — {r.pointId}
+                    {r.equipmentName} — {r.pointKey || r.pointId}
+                    {(r.pointDescription || r.pointName) && r.pointKey !== (r.pointDescription || r.pointName) ? (
+                      <span className="text-white-50"> ({r.pointDescription || r.pointName})</span>
+                    ) : null}
                   </div>
                 ))}
                 {selectedRows.length > 15 && <div className="small text-white-50">... and {selectedRows.length - 15} more</div>}
               </div>
               <Form.Group>
-                <Form.Label className="text-white small">Command</Form.Label>
-                <Form.Control
-                  className="bg-primary border border-light border-opacity-10 text-white"
-                  placeholder="Enter command..."
-                  value={commandInput}
-                  onChange={(e) => setCommandInput(e.target.value)}
-                />
+                <Form.Label className="text-white small">
+                  {commandModalProfile.readOnlySensorUi
+                    ? "Service state"
+                    : commandModalProfile.mode === "typed" && commandModalProfile.commandType === "percentage"
+                      ? "Command (%)"
+                      : commandModalProfile.mode === "typed" && commandModalProfile.commandType === "numeric"
+                        ? "Command (numeric)"
+                        : commandModalProfile.mode === "typed" && commandModalProfile.commandType === "enum"
+                          ? "Command (select state)"
+                          : "Command"}
+                </Form.Label>
+                {commandModalProfile.mode === "mixed" && (
+                  <p className="small text-warning mb-2">
+                    Selected points use different command types ({commandModalProfile.types?.join(", ") || ""}). Enter a raw
+                    value below, or select points of the same type (e.g. all percentages or all enums).
+                  </p>
+                )}
+                {commandModalProfile.mode === "generic" && commandModalProfile.hint && (
+                  <p className="small text-white-50 mb-2">{commandModalProfile.hint}</p>
+                )}
+                {commandModalProfile.mode === "typed" && commandApplyDisabled && (
+                  <p className="small text-warning mb-2">
+                    One or more selected points are offline, unbound, or not OK. Command input is disabled.
+                  </p>
+                )}
+                {commandModalProfile.readOnlySensorUi ? (
+                  <div className="legion-service-state-options" role="radiogroup" aria-label="Service state">
+                    <button
+                      type="button"
+                      className={`legion-service-state-option ${
+                        serviceStateChoice === "in_service" ? "legion-service-state-option--active" : ""
+                      }`}
+                      onClick={() => setServiceStateChoice("in_service")}
+                      role="radio"
+                      aria-checked={serviceStateChoice === "in_service"}
+                    >
+                      <div className="legion-service-state-option__title">In service</div>
+                      <p className="legion-service-state-option__hint">
+                        Restore normal operation and show the live value from the device in this workspace.
+                      </p>
+                    </button>
+                    <button
+                      type="button"
+                      className={`legion-service-state-option ${
+                        serviceStateChoice === "out_of_service" ? "legion-service-state-option--active" : ""
+                      }`}
+                      onClick={() => setServiceStateChoice("out_of_service")}
+                      role="radio"
+                      aria-checked={serviceStateChoice === "out_of_service"}
+                    >
+                      <div className="legion-service-state-option__title">Out of service</div>
+                      <p className="legion-service-state-option__hint">
+                        Mark the point out of service for operations. The value column will show &quot;Out Of Service&quot;
+                        instead of the live reading.
+                      </p>
+                    </button>
+                  </div>
+                ) : commandModalProfile.mode === "typed" ? (
+                  <OperatorPointCommandField
+                    commandType={commandModalProfile.commandType}
+                    commandConfig={commandModalProfile.commandConfig}
+                    value={commandValue}
+                    onChange={setCommandValue}
+                    disabled={commandApplyDisabled}
+                    idSuffix={zone}
+                  />
+                ) : (
+                  <Form.Control
+                    className="bg-dark border border-light border-opacity-10 text-white"
+                    placeholder={
+                      commandModalProfile.mode === "empty"
+                        ? "Enter command…"
+                        : commandModalProfile.mode === "mixed" || commandModalProfile.mode === "generic"
+                          ? "Enter command (raw)…"
+                          : "Enter command…"
+                    }
+                    value={typeof commandValue === "string" ? commandValue : String(commandValue ?? "")}
+                    onChange={(e) => setCommandValue(e.target.value)}
+                  />
+                )}
               </Form.Group>
             </>
           )}
         </Modal.Body>
         <Modal.Footer className="border-light border-opacity-10">
-          <Button variant="secondary" onClick={() => setShowCommandModal(false)}>
+          <Button
+            variant="secondary"
+            onClick={() => {
+              setShowCommandModal(false);
+              setCommandConfirmStep(false);
+              setCommandValue("");
+              setServiceStateChoice("in_service");
+            }}
+          >
             Cancel
           </Button>
-          <Button variant="success" onClick={handleCommandApply}>
+          <Button variant="success" onClick={handleCommandApply} disabled={commandApplyDisabled}>
             {commandConfirmStep ? "Continue" : "Apply"}
           </Button>
         </Modal.Footer>
@@ -920,9 +1144,10 @@ export default function EquipmentPage() {
   const [showSecondaryWorkspace, setShowSecondaryWorkspace] = useState(false);
 
   const handleDragStart = useCallback((e, node, tree) => {
-    const equipment = node.type === "floor" ? getEquipmentUnderNode(node) : [node];
+    const isMultiEquip = node.type === "floor" || node.type === "building";
+    const equipment = isMultiEquip ? getEquipmentUnderNode(node) : [node];
     e.dataTransfer.setData("text/plain", JSON.stringify({
-      type: node.type === "floor" ? "floor" : "equip",
+      type: isMultiEquip ? "floor" : "equip",
       id: node.id,
       label: node.label,
       status: node.status || "OK",
@@ -933,12 +1158,13 @@ export default function EquipmentPage() {
 
   const TreeNode = ({ node, level = 0 }) => {
     const isGroup = node.type === "group";
+    const isBuilding = node.type === "building";
     const isFloor = node.type === "floor";
     const isLeaf = node.type === "equip";
-    const isExpandable = isGroup || isFloor;
+    const isExpandable = isGroup || isBuilding || isFloor;
     const isOpen = !!openMap[node.id];
     const isActive = selectedEquipId === node.id;
-    const isDraggable = isLeaf || isFloor;
+    const isDraggable = isLeaf || isFloor || isBuilding;
 
     const onClick = () => {
       if (isExpandable) return toggleOpen(node.id);

@@ -26,7 +26,12 @@ import { USE_HIERARCHY_API } from "../../../lib/data/config";
 import { isBackendSiteId } from "../../../lib/data/siteIdUtils";
 import * as hierarchyRepository from "../../../lib/data/repositories/hierarchyRepository";
 import { selectSiteTree, siteTreeToWorkingSite } from "../../../hooks/useWorkingVersion";
-import { WORKING_VERSION_ACTIONS } from "../working-version/workingVersionReducer";
+import {
+  reorderAfterDrag,
+  sortEquipmentOnFloorByField,
+  moveEquipmentRelative,
+  insertDuplicateAfterSource,
+} from "./siteBuilderEquipmentUtils";
 
 // ---------------------------------------------------------------------------
 // Data helpers: build nested tree from flat structure
@@ -124,6 +129,18 @@ function collectFloorIdsUnder(node) {
   return ids;
 }
 
+function findBuildingIdForFloor(siteTree, floorId) {
+  if (!siteTree || !floorId) return null;
+  for (const b of siteTree.children || []) {
+    if ((b.children || []).some((f) => f.id === floorId)) return b.id;
+  }
+  return null;
+}
+
+function generateEquipmentId() {
+  return `eq-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+}
+
 // ---------------------------------------------------------------------------
 // Validation
 // ---------------------------------------------------------------------------
@@ -161,7 +178,13 @@ function validateStructure(siteTree) {
 // ---------------------------------------------------------------------------
 export default function SiteBuilderPage() {
   const { site, setSite } = useSite();
-  const { workingVersion, workingState, actions, dispatch } = useWorkingVersion();
+  const {
+    workingVersion,
+    workingState,
+    actions,
+    backendWorkingVersionLoading,
+    backendWorkingVersionError,
+  } = useWorkingVersion();
   const siteTree = selectSiteTree(workingVersion);
   const equipmentList = workingState.equipment ?? [];
 
@@ -173,37 +196,7 @@ export default function SiteBuilderPage() {
   const [showValidationToast, setShowValidationToast] = useState(false);
   const [deleteConfirmNode, setDeleteConfirmNode] = useState(null);
   const [selectedEquipmentId, setSelectedEquipmentId] = useState(null);
-  const [hierarchyLoading, setHierarchyLoading] = useState(false);
-  const [hierarchyError, setHierarchyError] = useState(null);
-
-  useEffect(() => {
-    if (!USE_HIERARCHY_API || !isBackendSiteId(site)) {
-      setHierarchyLoading(false);
-      setHierarchyError(null);
-      return undefined;
-    }
-    let cancelled = false;
-    setHierarchyLoading(true);
-    setHierarchyError(null);
-    engineeringRepository
-      .fetchWorkingVersion(site)
-      .then((payload) => {
-        if (cancelled || !payload) return;
-        // Use dispatch, not actions — actions is recreated when workingState changes (deployWorkingVersion
-        // deps), which would retrigger this effect and spam GET /working-version.
-        dispatch({ type: WORKING_VERSION_ACTIONS.SET_SITE, payload: payload.site });
-        dispatch({ type: WORKING_VERSION_ACTIONS.SET_EQUIPMENT, payload: payload.equipment });
-      })
-      .catch((e) => {
-        if (!cancelled) setHierarchyError(e?.message || String(e));
-      })
-      .finally(() => {
-        if (!cancelled) setHierarchyLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [site, dispatch]);
+  const [hierarchyMutationError, setHierarchyMutationError] = useState(null);
 
   // Expand all and set selected when working version has a site
   useEffect(() => {
@@ -239,7 +232,7 @@ export default function SiteBuilderPage() {
   const handleCreateSite = useCallback(
     async (data) => {
       if (USE_HIERARCHY_API) {
-        setHierarchyError(null);
+        setHierarchyMutationError(null);
         try {
           const created = await hierarchyRepository.createSite({ name: data.name.trim() });
           await hierarchyRepository.createBuilding(created.id, {
@@ -261,7 +254,7 @@ export default function SiteBuilderPage() {
           setSite(created.id);
           engineeringRepository.notifyEngineeringHierarchyChanged();
         } catch (e) {
-          setHierarchyError(e?.message || String(e));
+          setHierarchyMutationError(e?.message || String(e));
         }
         return;
       }
@@ -298,7 +291,7 @@ export default function SiteBuilderPage() {
   const handleAddBuilding = useCallback(async () => {
     if (!siteTree || !workingState.site) return;
     if (USE_HIERARCHY_API && isBackendSiteId(workingState.site.id)) {
-      setHierarchyError(null);
+      setHierarchyMutationError(null);
       try {
         await hierarchyRepository.createBuilding(workingState.site.id, {
           name: `Building ${(siteTree.children || []).length + 1}`,
@@ -315,7 +308,7 @@ export default function SiteBuilderPage() {
         }
         engineeringRepository.notifyEngineeringHierarchyChanged();
       } catch (e) {
-        setHierarchyError(e?.message || String(e));
+        setHierarchyMutationError(e?.message || String(e));
       }
       return;
     }
@@ -349,7 +342,7 @@ export default function SiteBuilderPage() {
         node &&
         (node.type === "site" || node.type === "building" || node.type === "floor")
       ) {
-        setHierarchyError(null);
+        setHierarchyMutationError(null);
         try {
           if (node.type === "site") {
             await hierarchyRepository.updateSite(site, { name: form.name });
@@ -374,7 +367,7 @@ export default function SiteBuilderPage() {
           }
           engineeringRepository.notifyEngineeringHierarchyChanged();
         } catch (e) {
-          setHierarchyError(e?.message || String(e));
+          setHierarchyMutationError(e?.message || String(e));
         }
         return;
       }
@@ -409,7 +402,7 @@ export default function SiteBuilderPage() {
       if (!siteTree) return;
       const node = findNodeById(siteTree, id);
       if (USE_HIERARCHY_API && isBackendSiteId(site) && node && node.type !== "site") {
-        setHierarchyError(null);
+        setHierarchyMutationError(null);
         try {
           if (node.type === "building") {
             await hierarchyRepository.deleteBuilding(id);
@@ -425,7 +418,7 @@ export default function SiteBuilderPage() {
           if (selectedId === id) setSelectedId(null);
           setDeleteConfirmNode(null);
         } catch (e) {
-          setHierarchyError(e?.message || String(e));
+          setHierarchyMutationError(e?.message || String(e));
         }
         return;
       }
@@ -468,17 +461,50 @@ export default function SiteBuilderPage() {
     setSelectedId(null);
   }, []);
 
-  const handleSaveEquipment = useCallback(
-    async (id, form) => {
+  const handleReorderEquipment = useCallback(
+    (floorId, draggedId, targetId) => {
+      const next = reorderAfterDrag(equipmentList, floorId, draggedId, targetId);
+      actions.setEquipment(next);
+    },
+    [equipmentList, actions]
+  );
+
+  const handleSortFloorEquipment = useCallback(
+    (floorId, spec) => {
+      const next =
+        typeof spec === "string"
+          ? sortEquipmentOnFloorByField(equipmentList, floorId, "name", spec)
+          : sortEquipmentOnFloorByField(equipmentList, floorId, spec.field, spec.direction);
+      actions.setEquipment(next);
+    },
+    [equipmentList, actions]
+  );
+
+  const handleMoveEquipment = useCallback(
+    (equipmentId, direction) => {
+      const eq = equipmentList.find((e) => e.id === equipmentId);
+      if (!eq?.floorId) return;
+      const next = moveEquipmentRelative(equipmentList, eq.floorId, equipmentId, direction);
+      actions.setEquipment(next);
+    },
+    [equipmentList, actions]
+  );
+
+  const handleDuplicateEquipment = useCallback(
+    async (equipmentId) => {
+      const source = equipmentList.find((e) => e.id === equipmentId);
+      if (!source) return;
+
       if (USE_HIERARCHY_API && isBackendSiteId(site)) {
-        setHierarchyError(null);
+        setHierarchyMutationError(null);
         try {
-          const tmpl = form.templateName != null && String(form.templateName).trim() ? String(form.templateName).trim() : null;
-          await hierarchyRepository.updateEquipment(id, {
-            name: form.name,
-            code: (form.displayLabel && String(form.displayLabel).trim()) || form.name,
-            equipmentType: form.equipmentType,
-            templateName: tmpl,
+          const base = String(source.name || "Equipment").replace(/\s*\(copy\)\s*$/i, "").trim();
+          const code = `${base}_copy_${Date.now()}`.replace(/\s+/g, "_").slice(0, 64);
+          await hierarchyRepository.createEquipment(source.floorId, {
+            name: `${base} (copy)`,
+            code,
+            equipmentType: source.type || source.equipmentType || "CUSTOM",
+            ...(source.templateName ? { templateName: source.templateName } : {}),
           });
           const payload = await engineeringRepository.fetchWorkingVersion(site);
           if (payload) {
@@ -487,18 +513,86 @@ export default function SiteBuilderPage() {
           }
           engineeringRepository.notifyEngineeringHierarchyChanged();
         } catch (e) {
-          setHierarchyError(e?.message || String(e));
+          setHierarchyMutationError(e?.message || String(e));
+        }
+        return;
+      }
+
+      const newId = generateEquipmentId();
+      const baseName = String(source.name || "Equipment").replace(/\s*\(copy\)\s*$/i, "").trim();
+      const newEq = {
+        ...source,
+        id: newId,
+        name: `${baseName} (copy)`,
+        displayLabel: `${String(source.displayLabel || source.name || "Equipment")
+          .replace(/\s*\(copy\)\s*$/i, "")
+          .trim()} (copy)`,
+        instanceNumber: null,
+        controllerRef: null,
+        deviceInstance: null,
+        status: "MISSING_CONTROLLER",
+        pointsDefined: 0,
+        buildingId: source.buildingId ?? findBuildingIdForFloor(siteTree, source.floorId),
+        notes: source.notes || "",
+      };
+
+      const nextList = insertDuplicateAfterSource(equipmentList, equipmentId, newId, newEq);
+      actions.setEquipment(nextList);
+
+      const m = workingState.mappings?.[equipmentId];
+      if (m && typeof m === "object" && Object.keys(m).length) {
+        actions.setMappingsForEquipment(newId, JSON.parse(JSON.stringify(m)));
+      }
+
+      const g = workingState.graphics?.[equipmentId];
+      if (g) {
+        actions.setGraphicForEquipment(newId, {
+          ...g,
+          id: g.id ? `g-${newId}-${Date.now()}` : undefined,
+          equipmentId: newId,
+        });
+      }
+
+      setSelectedEquipmentId(newId);
+    },
+    [equipmentList, actions, site, siteTree, workingState.mappings, workingState.graphics]
+  );
+
+  const handleSaveEquipment = useCallback(
+    async (id, form) => {
+      if (USE_HIERARCHY_API && isBackendSiteId(site)) {
+        setHierarchyMutationError(null);
+        try {
+          const tmpl = form.templateName != null && String(form.templateName).trim() ? String(form.templateName).trim() : null;
+          const addr = form.address != null && String(form.address).trim() ? String(form.address).trim() : null;
+          await hierarchyRepository.updateEquipment(id, {
+            name: form.name,
+            code: (form.displayLabel && String(form.displayLabel).trim()) || form.name,
+            equipmentType: form.equipmentType,
+            templateName: tmpl,
+            address: addr,
+          });
+          const payload = await engineeringRepository.fetchWorkingVersion(site);
+          if (payload) {
+            actions.setSite(payload.site);
+            actions.setEquipment(payload.equipment);
+          }
+          engineeringRepository.notifyEngineeringHierarchyChanged();
+        } catch (e) {
+          setHierarchyMutationError(e?.message || String(e));
         }
         return;
       }
       const hasController = !!(form.controllerRef && String(form.controllerRef).trim());
       const status = hasController ? "CONTROLLER_ASSIGNED" : "MISSING_CONTROLLER";
       const instanceNum = (form.instanceNumber && String(form.instanceNumber).trim()) || null;
+      const prev = (workingState.equipment || []).find((e) => e.id === id);
       const updates = {
         name: form.name,
         displayLabel: form.displayLabel,
         type: form.equipmentType,
         instanceNumber: instanceNum,
+        address: (form.address != null && String(form.address).trim()) ? String(form.address).trim() : null,
         locationLabel: form.locationLabel,
         controllerRef: form.controllerRef ?? null,
         templateName: form.templateName ?? null,
@@ -506,10 +600,22 @@ export default function SiteBuilderPage() {
         status,
         notes: form.notes ?? "",
       };
+      if (form.floorId) {
+        updates.floorId = form.floorId;
+        updates.buildingId = findBuildingIdForFloor(siteTree, form.floorId);
+        if (prev && form.floorId !== prev.floorId) {
+          const mates = (workingState.equipment || []).filter((e) => e.floorId === form.floorId && e.id !== id);
+          const maxSort = mates.reduce(
+            (m, e) => Math.max(m, typeof e.sortOrder === "number" ? e.sortOrder : -1),
+            -1
+          );
+          updates.sortOrder = maxSort + 1;
+        }
+      }
       const next = (workingState.equipment || []).map((e) => (e.id === id ? { ...e, ...updates } : e));
       actions.setEquipment(next);
     },
-    [workingState.equipment, actions, site]
+    [workingState.equipment, actions, site, siteTree]
   );
 
   const handleGraphicChange = useCallback(
@@ -552,7 +658,7 @@ export default function SiteBuilderPage() {
   const handleDeleteEquipment = useCallback(
     async (id) => {
       if (USE_HIERARCHY_API && isBackendSiteId(site)) {
-        setHierarchyError(null);
+        setHierarchyMutationError(null);
         try {
           await hierarchyRepository.deleteEquipment(id);
           const payload = await engineeringRepository.fetchWorkingVersion(site);
@@ -563,7 +669,7 @@ export default function SiteBuilderPage() {
           engineeringRepository.notifyEngineeringHierarchyChanged();
           setSelectedEquipmentId(null);
         } catch (e) {
-          setHierarchyError(e?.message || String(e));
+          setHierarchyMutationError(e?.message || String(e));
         }
         return;
       }
@@ -579,7 +685,7 @@ export default function SiteBuilderPage() {
       if (node?.type === "site") handleAddBuilding();
       else if (node?.type === "building") {
         if (USE_HIERARCHY_API && isBackendSiteId(site)) {
-          setHierarchyError(null);
+          setHierarchyMutationError(null);
           try {
             await hierarchyRepository.createFloor(node.id, {
               name: `Floor ${(node.children || []).length + 1}`,
@@ -591,7 +697,7 @@ export default function SiteBuilderPage() {
             }
             engineeringRepository.notifyEngineeringHierarchyChanged();
           } catch (e) {
-            setHierarchyError(e?.message || String(e));
+            setHierarchyMutationError(e?.message || String(e));
           }
           return;
         }
@@ -627,15 +733,18 @@ export default function SiteBuilderPage() {
       if (!selectedNode || selectedNode.type !== "floor") return;
       const floorId = data.floorId || selectedNode.id;
       if (USE_HIERARCHY_API && isBackendSiteId(site)) {
-        setHierarchyError(null);
+        setHierarchyMutationError(null);
         try {
           const code =
             (data.name && String(data.name).replace(/\s+/g, "_")) || `EQ-${Date.now()}`;
+          const addr =
+            data.address != null && String(data.address).trim() ? String(data.address).trim() : undefined;
           await hierarchyRepository.createEquipment(floorId, {
             name: data.name,
             code,
             equipmentType: data.equipmentType || "CUSTOM",
             ...(data.templateName ? { templateName: data.templateName } : {}),
+            ...(addr ? { address: addr } : {}),
           });
           const payload = await engineeringRepository.fetchWorkingVersion(site);
           if (payload) {
@@ -644,32 +753,40 @@ export default function SiteBuilderPage() {
           }
           engineeringRepository.notifyEngineeringHierarchyChanged();
         } catch (e) {
-          setHierarchyError(e?.message || String(e));
+          setHierarchyMutationError(e?.message || String(e));
         }
         setShowAddEquipment(false);
         return;
       }
       const hasController = !!(data.controllerRef && String(data.controllerRef).trim());
       const status = hasController ? "CONTROLLER_ASSIGNED" : "MISSING_CONTROLLER";
+      const mates = (workingState.equipment || []).filter((e) => e.floorId === floorId);
+      const maxSort = mates.reduce(
+        (m, e) => Math.max(m, typeof e.sortOrder === "number" ? e.sortOrder : -1),
+        -1
+      );
       const newEq = {
         id: `eq-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
         siteId: workingState.site?.id,
+        buildingId: findBuildingIdForFloor(siteTree, floorId),
         floorId,
         name: data.name,
         displayLabel: data.displayLabel || data.name,
         type: data.equipmentType || "CUSTOM",
         instanceNumber: (data.instanceNumber && String(data.instanceNumber).trim()) || null,
-        locationLabel: "",
+        address: (data.address != null && String(data.address).trim()) ? String(data.address).trim() : null,
+        locationLabel: (data.locationLabel != null && String(data.locationLabel).trim()) ? String(data.locationLabel).trim() : "",
         controllerRef: data.controllerRef || null,
         templateName: data.templateName || null,
         pointsDefined: 0,
         status,
         notes: data.notes || "",
+        sortOrder: maxSort + 1,
       };
       actions.setEquipment([...(workingState.equipment || []), newEq]);
       setShowAddEquipment(false);
     },
-    [selectedNode, workingState.site, workingState.equipment, actions, site]
+    [selectedNode, workingState.site, workingState.equipment, actions, site, siteTree]
   );
 
   const handleExpandAll = useCallback(() => {
@@ -705,12 +822,12 @@ export default function SiteBuilderPage() {
           </div>
         </div>
 
-        {hierarchyLoading && (
+        {USE_HIERARCHY_API && isBackendSiteId(site) && backendWorkingVersionLoading && (
           <div className="text-white-50 small mb-2">Loading site structure from server…</div>
         )}
-        {hierarchyError && (
+        {(backendWorkingVersionError || hierarchyMutationError) && (
           <div className="alert alert-danger py-2 small mb-3" role="alert">
-            {hierarchyError}
+            {hierarchyMutationError || backendWorkingVersionError}
           </div>
         )}
 
@@ -853,6 +970,9 @@ export default function SiteBuilderPage() {
                       }}
                       onEdit={(node) => handleSelectNode(node)}
                       onDelete={handleDeleteFromTree}
+                      onReorderEquipment={handleReorderEquipment}
+                      onSortFloorEquipment={handleSortFloorEquipment}
+                      onDuplicateEquipment={handleDuplicateEquipment}
                     />
                   </Card.Body>
                 </Card>
@@ -878,6 +998,11 @@ export default function SiteBuilderPage() {
                   graphicTemplates={workingState.templates?.graphicTemplates ?? []}
                   equipmentList={workingState.equipment ?? []}
                   onGraphicChange={handleGraphicChange}
+                  discoveredDevices={workingState.discoveredDevices ?? []}
+                  onDuplicateEquipment={handleDuplicateEquipment}
+                  onMoveEquipment={(delta) =>
+                    selectedEquipment ? handleMoveEquipment(selectedEquipment.id, delta) : undefined
+                  }
                 />
               </Col>
             </Row>

@@ -15,6 +15,7 @@ export const WORKING_VERSION_ACTIONS = {
   SET_TEMPLATES: "SET_TEMPLATES",
   SET_EQUIPMENT: "SET_EQUIPMENT",
   SET_DISCOVERED_DEVICES: "SET_DISCOVERED_DEVICES",
+  PATCH_DISCOVERED_DEVICE: "PATCH_DISCOVERED_DEVICE",
   SET_DISCOVERED_OBJECTS: "SET_DISCOVERED_OBJECTS",
   SET_DISCOVERED_OBJECTS_FOR_DEVICE: "SET_DISCOVERED_OBJECTS_FOR_DEVICE",
   SET_MAPPINGS: "SET_MAPPINGS",
@@ -47,6 +48,20 @@ function workingVersionReducer(state, action) {
 
     case WORKING_VERSION_ACTIONS.SET_DISCOVERED_DEVICES:
       return { ...state, discoveredDevices: action.payload };
+
+    case WORKING_VERSION_ACTIONS.PATCH_DISCOVERED_DEVICE: {
+      const { deviceId, patch } = action.payload;
+      if (!deviceId || !patch || typeof patch !== "object") return state;
+      function mapTree(nodes) {
+        if (!Array.isArray(nodes)) return nodes;
+        return nodes.map((n) => {
+          if (n.id === deviceId) return { ...n, ...patch };
+          if (n.children?.length) return { ...n, children: mapTree(n.children) };
+          return n;
+        });
+      }
+      return { ...state, discoveredDevices: mapTree(state.discoveredDevices || []) };
+    }
 
     case WORKING_VERSION_ACTIONS.SET_DISCOVERED_OBJECTS:
       return { ...state, discoveredObjects: action.payload };

@@ -22,8 +22,10 @@ import { useSite } from "../../../app/providers/SiteProvider";
 import { useWorkingVersion } from "../../../hooks/useWorkingVersion";
 import LegionHeroHeader from "../../../components/legion/LegionHeroHeader";
 import { engineeringRepository } from "../../../lib/data";
+import { USE_HIERARCHY_API } from "../../../lib/data/config";
+import { isBackendSiteId } from "../../../lib/data/siteIdUtils";
+import { saveWorkingVersion } from "../../../lib/data/repositories/engineeringRepository";
 import { Routes } from "../../../routes";
-import EmptyTemplateState from "./components/EmptyTemplateState";
 import EquipmentTemplatesTable from "./components/EquipmentTemplatesTable";
 import GraphicTemplatesTable from "./components/GraphicTemplatesTable";
 import ImportFromGlobalModal from "./components/ImportFromGlobalModal";
@@ -42,32 +44,49 @@ function generateId(prefix) {
 }
 
 function globalEquipmentToSite(globalRow) {
+  const points = (globalRow.points || []).map((p, i) => ({
+    ...p,
+    id: `pt-${Date.now()}-${i}-${Math.random().toString(36).slice(2, 9)}`,
+  }));
   return {
     id: generateId("site-eq"),
     name: globalRow.name,
     equipmentType: globalRow.equipmentType,
-    pointCount: globalRow.pointCount || 0,
-    defaultGraphic: globalRow.defaultGraphicName || null,
-    description: "",
-    points: [],
+    pointCount: points.length || globalRow.pointCount || 0,
+    defaultGraphic: globalRow.defaultGraphicName || globalRow.defaultGraphic || null,
+    description: globalRow.description || "",
+    points,
     source: engineeringRepository.SOURCE.GLOBAL_IMPORTED,
     lastUpdated: new Date().toISOString().slice(0, 10),
   };
 }
 
-function globalGraphicToSite(globalRow, equipmentTemplates) {
-  const appliesTo = equipmentTemplates.find(
-    (e) => e.equipmentType === globalRow.appliesToEquipmentType
-  )?.name || globalRow.appliesToEquipmentType;
-  const matchedEqTemplate =
-    equipmentTemplates.find((e) => e.equipmentType === globalRow.appliesToEquipmentType) || null;
+function globalGraphicToSite(globalRow, equipmentTemplates, importedGlobalEquipmentIdToSiteId) {
+  let siteEqId =
+    globalRow.globalEquipmentTemplateId &&
+    importedGlobalEquipmentIdToSiteId &&
+    importedGlobalEquipmentIdToSiteId.get(globalRow.globalEquipmentTemplateId);
+  if (!siteEqId) {
+    siteEqId =
+      equipmentTemplates.find((e) => e.equipmentType === globalRow.appliesToEquipmentType)?.id ?? null;
+  }
+  const eq = siteEqId ? equipmentTemplates.find((e) => e.id === siteEqId) : null;
+  let graphicEditorState = globalRow.graphicEditorState;
+  if (graphicEditorState && typeof graphicEditorState === "object") {
+    graphicEditorState = JSON.parse(JSON.stringify(graphicEditorState));
+  }
+  const boundPointCount =
+    graphicEditorState?.objects != null
+      ? countBoundTemplatePointBindings(graphicEditorState.objects)
+      : globalRow.boundPointCount ?? 0;
+
   return {
     id: generateId("site-gfx"),
     name: globalRow.name,
-    appliesTo,
-    equipmentTemplateId: globalRow.equipmentTemplateId || matchedEqTemplate?.id || null,
-    boundPointCount: globalRow.boundPointCount,
-    graphicEditorState: globalRow.graphicEditorState || null,
+    appliesTo: eq?.name || globalRow.equipmentTemplateName || globalRow.appliesToEquipmentType,
+    equipmentTemplateId: eq?.id ?? siteEqId,
+    boundPointCount,
+    graphicEditorState: graphicEditorState || null,
     source: engineeringRepository.SOURCE.GLOBAL_IMPORTED,
     lastUpdated: new Date().toISOString().slice(0, 10),
   };
@@ -79,7 +98,7 @@ function globalGraphicToSite(globalRow, equipmentTemplates) {
 export default function TemplateLibraryPage() {
   const history = useHistory();
   const { site } = useSite();
-  const { workingState, actions } = useWorkingVersion();
+  const { workingState, actions, backendWorkingVersionSynced } = useWorkingVersion();
   const [activeTab, setActiveTab] = useState("equipment");
   const [showImportModal, setShowImportModal] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -90,6 +109,7 @@ export default function TemplateLibraryPage() {
   const [saveToGlobalToast, setSaveToGlobalToast] = useState(null);
   const [showBindGraphicTemplateModal, setShowBindGraphicTemplateModal] = useState(false);
   const [bindGraphicTemplateRow, setBindGraphicTemplateRow] = useState(null);
+  const [importModalInitialTab, setImportModalInitialTab] = useState("equipment");
 
   const siteTemplates = {
     equipment: workingState.templates?.equipmentTemplates ?? [],
@@ -128,10 +148,6 @@ export default function TemplateLibraryPage() {
   }, [siteTemplates.graphic, workingState?.equipment, workingState?.graphics]);
 
   const hasEquipment = (siteTemplates.equipment || []).length > 0;
-  const hasGraphic =
-    (siteTemplates.graphic || []).length > 0 ||
-    Object.values(workingState?.graphics ?? {}).some((g) => g && (g.name || "").trim());
-  const isEmpty = !hasEquipment && !hasGraphic;
 
   const existingEquipmentNames = (siteTemplates.equipment || []).map((e) => e.name);
   const existingGraphicNames = (siteTemplates.graphic || []).map((g) => g.name);
@@ -141,19 +157,30 @@ export default function TemplateLibraryPage() {
     const prevEq = workingState.templates?.equipmentTemplates ?? [];
     const prevGfx = workingState.templates?.graphicTemplates ?? [];
     const nextEq = [...prevEq];
+    const importedGlobalEquipmentIdToSiteId = new Map();
+
     (eqList || []).forEach((g) => {
-      if (!nextEq.some((e) => e.name === g.name)) {
-        nextEq.push(globalEquipmentToSite(g));
-      }
+      if (nextEq.some((e) => e.name === g.name)) return;
+      const siteRow = globalEquipmentToSite(g);
+      if (g.id) importedGlobalEquipmentIdToSiteId.set(g.id, siteRow.id);
+      nextEq.push(siteRow);
     });
+
     const nextGfx = [...prevGfx];
     (gfxList || []).forEach((g) => {
-      if (!nextGfx.some((x) => x.name === g.name)) {
-        nextGfx.push(globalGraphicToSite(g, nextEq));
-      }
+      if (nextGfx.some((x) => x.name === g.name)) return;
+      nextGfx.push(globalGraphicToSite(g, nextEq, importedGlobalEquipmentIdToSiteId));
     });
-    actions.setTemplates({ equipmentTemplates: nextEq, graphicTemplates: nextGfx });
-  }, [workingState.templates, actions]);
+
+    const nextTemplates = { equipmentTemplates: nextEq, graphicTemplates: nextGfx };
+    actions.setTemplates(nextTemplates);
+    if (USE_HIERARCHY_API && isBackendSiteId(site) && backendWorkingVersionSynced) {
+      saveWorkingVersion(site, { ...workingState, templates: nextTemplates }).catch((err) => {
+        // eslint-disable-next-line no-console
+        console.error("Failed to persist imported templates", err);
+      });
+    }
+  }, [workingState, site, actions, backendWorkingVersionSynced]);
 
   const handleRemoveEquipment = useCallback((row) => {
     const nextEq = (workingState.templates?.equipmentTemplates ?? []).filter((e) => e.id !== row.id);
@@ -196,22 +223,30 @@ export default function TemplateLibraryPage() {
     };
     const prevEq = workingState.templates?.equipmentTemplates ?? [];
     const prevGfx = workingState.templates?.graphicTemplates ?? [];
+    let nextTemplates;
     if (payload.id) {
       const nextEq = prevEq.map((e) =>
         e.id === payload.id ? { ...e, ...templateData } : e
       );
-      actions.setTemplates({ equipmentTemplates: nextEq, graphicTemplates: prevGfx });
+      nextTemplates = { equipmentTemplates: nextEq, graphicTemplates: prevGfx };
     } else {
       const newTemplate = {
         id: generateId("site-eq"),
         ...templateData,
         source: engineeringRepository.SOURCE.SITE_CUSTOM,
       };
-      actions.setTemplates({ equipmentTemplates: [...prevEq, newTemplate], graphicTemplates: prevGfx });
+      nextTemplates = { equipmentTemplates: [...prevEq, newTemplate], graphicTemplates: prevGfx };
+    }
+    actions.setTemplates(nextTemplates);
+    if (USE_HIERARCHY_API && isBackendSiteId(site) && backendWorkingVersionSynced) {
+      saveWorkingVersion(site, { ...workingState, templates: nextTemplates }).catch((err) => {
+        // eslint-disable-next-line no-console
+        console.error("Failed to persist equipment template", err);
+      });
     }
     setShowEquipmentEditorDrawer(false);
     setEquipmentEditorContext({ template: null, mode: "create" });
-  }, [workingState.templates, actions]);
+  }, [workingState, site, actions, backendWorkingVersionSynced]);
   const handleCloseEquipmentEditor = useCallback(() => {
     setShowEquipmentEditorDrawer(false);
     setEquipmentEditorContext({ template: null, mode: "create" });
@@ -381,7 +416,10 @@ export default function TemplateLibraryPage() {
             <Button
               size="sm"
               className="legion-hero-btn legion-hero-btn--secondary"
-              onClick={() => setShowImportModal(true)}
+              onClick={() => {
+                setImportModalInitialTab(activeTab === "graphic" ? "graphic" : "equipment");
+                setShowImportModal(true);
+              }}
             >
               <FontAwesomeIcon icon={faFileImport} className="me-1" /> Import from Global Library
             </Button>
@@ -439,58 +477,31 @@ export default function TemplateLibraryPage() {
               <FontAwesomeIcon icon={faObjectGroup} className="me-1" /> Graphic Templates
             </Nav.Link>
           </Nav.Item>
-          <Nav.Item>
-            <Nav.Link disabled className="text-white-50 opacity-50">
-              Point Templates
-            </Nav.Link>
-          </Nav.Item>
-          <Nav.Item>
-            <Nav.Link disabled className="text-white-50 opacity-50">
-              Alarm Profiles
-            </Nav.Link>
-          </Nav.Item>
-          <Nav.Item>
-            <Nav.Link disabled className="text-white-50 opacity-50">
-              Sequences
-            </Nav.Link>
-          </Nav.Item>
         </Nav>
 
-        {isEmpty ? (
-          <EmptyTemplateState
-            onImportFromGlobal={() => setShowImportModal(true)}
-            onCreateEquipmentTemplate={() => {
-              setEquipmentEditorContext({ template: null, mode: "create" });
-              setShowEquipmentEditorDrawer(true);
-            }}
-            onCreateGraphicTemplate={() => setShowCreateGraphicModal(true)}
-            hasEquipmentTemplates={hasEquipment}
-          />
-        ) : (
-          <Card className="bg-primary border border-light border-opacity-10 shadow-sm">
-            <Card.Body className="p-0">
-              {activeTab === "equipment" && (
-                <EquipmentTemplatesTable
-                  templates={siteTemplates.equipment}
-                  onView={handleViewEquipment}
-                  onEdit={handleEditEquipment}
-                  onDuplicate={handleDuplicateEquipment}
-                  onRemoveFromSite={handleRemoveEquipment}
-                />
-              )}
-              {activeTab === "graphic" && (
-                <GraphicTemplatesTable
-                  templates={siteGraphicTemplatesWithEquipmentGraphics}
-                  onView={handleViewGraphic}
-                  onEdit={handleEditGraphic}
-                  onDuplicate={handleDuplicateGraphic}
-                  onBindEquipmentTemplate={handleOpenBindGraphicTemplate}
-                  onRemoveFromSite={handleRemoveGraphic}
-                />
-              )}
-            </Card.Body>
-          </Card>
-        )}
+        <Card className="bg-primary border border-light border-opacity-10 shadow-sm">
+          <Card.Body className="p-0">
+            {activeTab === "equipment" && (
+              <EquipmentTemplatesTable
+                templates={siteTemplates.equipment}
+                onView={handleViewEquipment}
+                onEdit={handleEditEquipment}
+                onDuplicate={handleDuplicateEquipment}
+                onRemoveFromSite={handleRemoveEquipment}
+              />
+            )}
+            {activeTab === "graphic" && (
+              <GraphicTemplatesTable
+                templates={siteGraphicTemplatesWithEquipmentGraphics}
+                onView={handleViewGraphic}
+                onEdit={handleEditGraphic}
+                onDuplicate={handleDuplicateGraphic}
+                onBindEquipmentTemplate={handleOpenBindGraphicTemplate}
+                onRemoveFromSite={handleRemoveGraphic}
+              />
+            )}
+          </Card.Body>
+        </Card>
       </div>
 
       <ImportFromGlobalModal
@@ -499,6 +510,7 @@ export default function TemplateLibraryPage() {
         onImport={handleImportFromGlobal}
         existingEquipmentNames={existingEquipmentNames}
         existingGraphicNames={existingGraphicNames}
+        initialTab={importModalInitialTab}
       />
 
       <SaveToGlobalModal
@@ -559,6 +571,7 @@ export default function TemplateLibraryPage() {
       <CreateGraphicTemplateModal
         show={showCreateGraphicModal}
         onHide={() => setShowCreateGraphicModal(false)}
+        equipmentTemplates={siteTemplates.equipment}
       />
 
       <BindGraphicTemplateModal

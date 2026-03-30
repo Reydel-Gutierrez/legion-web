@@ -2,8 +2,8 @@ import React from "react";
 import LegionDrawer from "../../../../components/legion/LegionDrawer";
 import EquipmentTemplateEditorPanel from "./EquipmentTemplateEditorPanel";
 
-/** Default max width for the equipment template editor drawer (wider for comfortable editing) */
-const EQUIPMENT_DRAWER_MAX_WIDTH = 960;
+/** Wide working area; caps on small viewports so the drawer does not overflow the screen */
+const EQUIPMENT_DRAWER_MAX_WIDTH = "min(96vw, 1480px)";
 
 /**
  * Equipment Template Editor in a right-side drawer.

@@ -1,4 +1,8 @@
 const { PrismaClient } = require('@prisma/client');
+const {
+  getGlobalStarterTemplateSeedRows,
+  mergeStarterEquipmentTemplatesIfEmpty,
+} = require('../src/lib/legionStarterEquipmentTemplates');
 
 const prisma = new PrismaClient();
 
@@ -14,17 +18,20 @@ function pointToWorkspaceRow(equipmentId, equipmentName, pt) {
   const units = pt.unit || '';
   const val = pt.presentValue != null && pt.presentValue !== '' ? String(pt.presentValue) : '—';
   const valueStr = units ? `${val} ${units}`.trim() : val;
+  const pointCode = pt.pointCode || pt.id;
   return {
-    id: `${equipmentId}-${pt.pointCode || pt.id}`,
+    id: `${equipmentId}-${pointCode}`,
     equipmentId,
     equipmentName,
-    pointId: pt.pointCode,
+    pointId: pointCode,
+    pointKey: pointCode,
+    pointDescription: pt.pointName,
     pointName: pt.pointName,
-    pointReferenceId: pt.pointCode,
+    pointReferenceId: pointCode,
     value: valueStr,
     units,
     status: pt.status === 'ACTIVE' ? 'OK' : 'Warn',
-    writable: pt.writable,
+    writable: pt.writable !== false,
   };
 }
 
@@ -72,7 +79,7 @@ async function buildDemoDeploymentSnapshot(siteId) {
           locationLabel: '',
           controllerRef: null,
           protocol: 'API',
-          templateName: null,
+          templateName: eq.templateName ?? null,
           pointsDefined: points.length,
           status: engStatus,
           notes: '',
@@ -116,7 +123,10 @@ async function buildDemoDeploymentSnapshot(siteId) {
       buildings: siteBuildings,
     },
     equipment: allEquipment,
-    templates: { equipmentTemplates: [], graphicTemplates: [] },
+    templates: {
+      equipmentTemplates: mergeStarterEquipmentTemplatesIfEmpty([]),
+      graphicTemplates: [],
+    },
     mappings: {},
     graphics: {},
     siteLayoutGraphics: {},
@@ -124,6 +134,30 @@ async function buildDemoDeploymentSnapshot(siteId) {
 }
 
 async function main() {
+  const starterGlobalRows = getGlobalStarterTemplateSeedRows();
+  for (const row of starterGlobalRows) {
+    await prisma.globalEquipmentTemplate.upsert({
+      where: { id: row.id },
+      update: {
+        name: row.name,
+        equipmentType: row.equipmentType,
+        description: row.description,
+        defaultGraphicName: row.defaultGraphicName,
+        pointsJson: row.pointsJson,
+        status: row.status,
+      },
+      create: {
+        id: row.id,
+        name: row.name,
+        equipmentType: row.equipmentType,
+        description: row.description,
+        defaultGraphicName: row.defaultGraphicName,
+        pointsJson: row.pointsJson,
+        status: row.status,
+      },
+    });
+  }
+
   const roles = await Promise.all([
     prisma.role.upsert({
       where: { name: 'super_admin' },
@@ -266,6 +300,7 @@ async function main() {
       floorId: a1.id,
       name: 'AHU-01',
       equipmentType: 'AHU',
+      templateName: 'AHU',
       status: 'ACTIVE',
     },
     create: {
@@ -275,6 +310,7 @@ async function main() {
       name: 'AHU-01',
       code: 'AHU-01',
       equipmentType: 'AHU',
+      templateName: 'AHU',
     },
   });
 
@@ -285,6 +321,7 @@ async function main() {
       floorId: a2.id,
       name: 'VAV-12',
       equipmentType: 'VAV',
+      templateName: 'VAV-CLG-ONLY',
       status: 'ACTIVE',
     },
     create: {
@@ -294,6 +331,7 @@ async function main() {
       name: 'VAV-12',
       code: 'VAV-12',
       equipmentType: 'VAV',
+      templateName: 'VAV-CLG-ONLY',
     },
   });
 
@@ -349,11 +387,11 @@ async function main() {
       siteId: site.id,
       buildingId: buildingA.id,
       floorId: a1.id,
-      pointName: 'Fan Command',
-      pointType: 'Binary Output',
-      unit: null,
+      pointName: 'Supply Fan Speed Command',
+      pointType: 'Analog Output',
+      unit: '%',
       writable: true,
-      presentValue: '1',
+      presentValue: '65',
       status: 'ACTIVE',
     },
     create: {
@@ -361,12 +399,12 @@ async function main() {
       siteId: site.id,
       buildingId: buildingA.id,
       floorId: a1.id,
-      pointName: 'Fan Command',
+      pointName: 'Supply Fan Speed Command',
       pointCode: 'FAN_CMD',
-      pointType: 'Binary Output',
-      unit: null,
+      pointType: 'Analog Output',
+      unit: '%',
       writable: true,
-      presentValue: '1',
+      presentValue: '65',
     },
   });
 
@@ -394,6 +432,33 @@ async function main() {
       unit: '°F',
       writable: false,
       presentValue: '72.0',
+    },
+  });
+
+  await prisma.point.upsert({
+    where: { equipmentId_pointCode: { equipmentId: equip2.id, pointCode: 'CLG_SP' } },
+    update: {
+      siteId: site.id,
+      buildingId: buildingA.id,
+      floorId: a2.id,
+      pointName: 'Cooling Setpoint',
+      pointType: 'Analog Value',
+      unit: '°F',
+      writable: true,
+      presentValue: '74',
+      status: 'ACTIVE',
+    },
+    create: {
+      equipmentId: equip2.id,
+      siteId: site.id,
+      buildingId: buildingA.id,
+      floorId: a2.id,
+      pointName: 'Cooling Setpoint',
+      pointCode: 'CLG_SP',
+      pointType: 'Analog Value',
+      unit: '°F',
+      writable: true,
+      presentValue: '74',
     },
   });
 

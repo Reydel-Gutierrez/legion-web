@@ -59,15 +59,11 @@ function PointMappingRow({
       onClick={() => onSelect && onSelect(templatePoint.id)}
     >
       <td className="point-mapping-table-cell">
-        <span className="fw-semibold text-white">{templatePoint.displayName}</span>
-        <div className="text-white-50 small">{templatePoint.key}</div>
+        <span className="fw-semibold text-white font-monospace">{templatePoint.key}</span>
+        <div className="text-white-50 small">{templatePoint.displayName}</div>
       </td>
-      <td className="point-mapping-table-cell text-center">
-        {templatePoint.required ? (
-          <span className="badge bg-warning text-dark">Yes</span>
-        ) : (
-          <span className="text-white-50 small">No</span>
-        )}
+      <td className="point-mapping-table-cell text-center text-white-50 small">
+        {templatePoint.commandType || "none"}
       </td>
       <td className="point-mapping-table-cell">
         <span className="text-white-50 small">{templatePoint.expectedObjectType}</span>
@@ -120,8 +116,9 @@ export default function PointMappingTable({
           (tp.key || "").toLowerCase().includes(q)
       );
     }
-    if (filterValue === "required") list = list.filter((tp) => tp.required);
-    else if (filterValue === "missing") list = list.filter((tp) => tp.required && !mappings[tp.id]);
+    const isCommand = (tp) => (tp.commandType || "none") !== "none";
+    if (filterValue === "command") list = list.filter(isCommand);
+    else if (filterValue === "missing") list = list.filter((tp) => isCommand(tp) && !mappings[tp.id]);
     else if (filterValue === "auto_mapped") list = list.filter((tp) => autoMappedIds && autoMappedIds.has(tp.id));
     else if (filterValue === "type_mismatch") list = list.filter((tp) => mappingStatuses[tp.id] === MAPPING_STATUSES.TYPE_MISMATCH);
     return list;
@@ -143,8 +140,8 @@ export default function PointMappingTable({
       <table className="table point-mapping-table">
         <thead>
           <tr>
-            <th className="point-mapping-table-header">Template Point</th>
-            <th className="point-mapping-table-header text-center">Required</th>
+            <th className="point-mapping-table-header">Point / description</th>
+            <th className="point-mapping-table-header text-center">Command</th>
             <th className="point-mapping-table-header">Expected Type</th>
             <th className="point-mapping-table-header">Mapped BACnet Object</th>
             <th className="point-mapping-table-header">Object Type</th>

@@ -3,6 +3,11 @@
  * Template point definitions and discovered BACnet objects for equipment mapping.
  */
 
+import {
+  normalizeTemplatePointForRuntime,
+  placeholderPresentValueForTemplatePoint,
+} from "../../../lib/equipmentTemplatePointModel";
+
 // BACnet object type labels
 export const BACNET_OBJECT_TYPES = {
   AI: "Analog Input",
@@ -164,15 +169,7 @@ function getMappingsForEquipment(equipment, draftEquipmentTemplates) {
  * Placeholder value for unmapped/template-only points (for preview/draft).
  */
 function getPlaceholderValue(templatePoint) {
-  if (!templatePoint) return "—";
-  const u = templatePoint.units || "";
-  if (templatePoint.expectedObjectType === "AI" || templatePoint.expectedObjectType === "AV") {
-    if (u === "°F") return 72;
-    if (u === "%") return 50;
-    if (u === "CFM") return 400;
-  }
-  if (templatePoint.expectedObjectType === "BI" || templatePoint.expectedObjectType === "BO") return "—";
-  return "—";
+  return placeholderPresentValueForTemplatePoint(templatePoint);
 }
 
 /**
@@ -287,30 +284,49 @@ export const DEFAULT_MAPPING_EQUIPMENT = {
   locationLabel: "Floor 2",
 };
 
+function globalTemplatePointToRaw(tp) {
+  return {
+    id: tp.id,
+    label: tp.displayName,
+    key: tp.key,
+    expectedType: tp.expectedObjectType,
+    units: tp.units,
+    commandType: tp.commandType,
+    commandConfig: tp.commandConfig,
+    notes: tp.description,
+    mappingHint: tp.mappingHint,
+    pointCategory: tp.pointCategory,
+    description: tp.description,
+  };
+}
+
 // Get template points for a template name (from global TEMPLATE_POINTS or draft equipment templates)
 export function getTemplatePoints(templateName, draftEquipmentTemplates) {
   const fromGlobal = TEMPLATE_POINTS[templateName];
-  if (fromGlobal && fromGlobal.length > 0) return fromGlobal;
+  if (fromGlobal && fromGlobal.length > 0) {
+    return fromGlobal
+      .map((tp) => normalizeTemplatePointForRuntime(globalTemplatePointToRaw(tp)))
+      .filter(Boolean);
+  }
   if (draftEquipmentTemplates && draftEquipmentTemplates.length > 0 && templateName) {
     const t = draftEquipmentTemplates.find(
       (x) => (x.name || "").toLowerCase() === (templateName || "").toLowerCase() || x.id === templateName
     );
     if (t && Array.isArray(t.points) && t.points.length > 0) {
-      return t.points.map((p) => {
-        const key = p.pointKey || p.key;
-        const referenceId = (p.referenceId || "").trim() || key;
-        return {
-          id: p.id || p.key,
-          key,
-          referenceId: referenceId || undefined,
-          displayName: p.pointLabel || p.displayName || p.key,
-          expectedObjectType: p.expectedType || "AI",
-          required: p.required !== false,
-          units: p.units || "",
-          pointCategory: p.pointCategory || "sensor",
-          description: p.notes || p.description || "",
-        };
-      });
+      return t.points
+        .map((p) =>
+          normalizeTemplatePointForRuntime({
+            ...p,
+            id: p.id || p.key || p.pointKey,
+            label: p.label || p.pointLabel,
+            key: p.key || p.pointKey,
+            expectedType: p.expectedType || p.expectedObjectType,
+            referenceId: p.referenceId,
+            mappingHint: p.mappingHint,
+            notes: p.notes || p.description,
+          })
+        )
+        .filter(Boolean);
     }
   }
   return [];
@@ -367,6 +383,7 @@ export function autoMapPoints(templatePoints, discoveredObjects, existingMapping
 
 // Check if BACnet object type is compatible with expected (simplified)
 function isObjectTypeCompatible(expected, actual) {
+  const exp = expected === "MV" ? "MSV" : expected;
   const compat = {
     AI: ["AI"],
     AO: ["AO"],
@@ -374,8 +391,10 @@ function isObjectTypeCompatible(expected, actual) {
     BI: ["BI"],
     BO: ["BO"],
     BV: ["BV"],
-    MV: ["MV", "AV"],
+    MSV: ["MV", "MSV"],
+    MSI: ["MSI"],
+    MV: ["MV", "MSV"],
   };
-  const allowed = compat[expected] || [expected];
+  const allowed = compat[exp] || compat[expected] || [expected];
   return allowed.includes(actual);
 }

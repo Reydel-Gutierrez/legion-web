@@ -11,9 +11,19 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import LegionFormSelect from "../../../../components/legion/LegionFormSelect";
 import { engineeringRepository } from "../../../../lib/data";
+import {
+  COMMAND_TYPE_OPTIONS,
+  defaultCommandConfig,
+  sanitizeCommandConfigForSave,
+  sanitizeTemplatePointKeyForSave,
+  templatePointToEditorRow,
+  validateTemplatePointRow,
+} from "../../../../lib/equipmentTemplatePointModel";
 
 const EQUIPMENT_TYPES = [
   { value: "VAV", label: "VAV" },
+  { value: "VAV-CLG-ONLY", label: "VAV (cooling only)" },
+  { value: "VAV-HTG", label: "VAV (cooling + heat)" },
   { value: "AHU", label: "AHU" },
   { value: "FCU", label: "FCU" },
   { value: "Chiller", label: "Chiller" },
@@ -22,25 +32,154 @@ const EQUIPMENT_TYPES = [
   { value: "CUSTOM", label: "Custom" },
 ];
 
-const REQUIRED_OPTIONS = [
-  { value: true, label: "Yes" },
-  { value: false, label: "No" },
-];
-
 function generatePointId() {
   return `pt-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 }
 
-function toPointRow(p) {
-  return {
-    id: p.id || generatePointId(),
-    pointLabel: p.pointLabel || "",
-    pointKey: p.pointKey || "",
-    referenceId: p.referenceId !== undefined ? (p.referenceId || "") : (p.pointKey || ""),
-    required: p.required !== false,
-    expectedType: p.expectedType || "AI",
-    notes: p.notes || "",
-  };
+/** Inline command config in the same table row as the point (compact). */
+function CommandConfigInline({ point, readOnly, onChange }) {
+  const { commandType, commandConfig } = point;
+  const cfg = commandConfig && typeof commandConfig === "object" ? commandConfig : {};
+
+  if (commandType === "none") {
+    return <span className="text-white-50 small">—</span>;
+  }
+
+  if (commandType === "numeric" || commandType === "percentage") {
+    return (
+      <div className="d-flex flex-wrap align-items-end gap-2 equipment-template-inline-config">
+        {[
+          { key: "min", label: "Min" },
+          { key: "max", label: "Max" },
+          { key: "step", label: "Step" },
+          { key: "unit", label: "Unit", text: true },
+        ].map((field) => (
+          <div key={field.key} className="equipment-template-inline-field">
+            <Form.Label className="text-white-50 mb-0 d-block equipment-template-inline-label">{field.label}</Form.Label>
+            <Form.Control
+              size="sm"
+              type={field.text ? "text" : "number"}
+              value={cfg[field.key] ?? ""}
+              onChange={(e) => {
+                const v = e.target.value;
+                const next =
+                  field.key === "unit"
+                    ? { ...cfg, unit: v }
+                    : { ...cfg, [field.key]: v === "" ? null : v };
+                onChange(point.id, "commandConfig", next);
+              }}
+              readOnly={readOnly}
+              placeholder={field.key === "unit" ? "°F" : ""}
+              className={`bg-dark border border-light border-opacity-10 text-white ${
+                field.key === "unit" ? "equipment-template-cfg-unit" : ""
+              }`}
+            />
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  if (commandType === "boolean") {
+    return (
+      <div className="d-flex flex-wrap align-items-end gap-2 equipment-template-inline-config">
+        <div className="equipment-template-inline-field equipment-template-inline-field--grow">
+          <Form.Label className="text-white-50 mb-0 d-block equipment-template-inline-label">Off</Form.Label>
+          <Form.Control
+            size="sm"
+            type="text"
+            value={cfg.offLabel ?? "Off"}
+            onChange={(e) => onChange(point.id, "commandConfig", { ...cfg, offLabel: e.target.value })}
+            readOnly={readOnly}
+            className="bg-dark border border-light border-opacity-10 text-white"
+          />
+        </div>
+        <div className="equipment-template-inline-field equipment-template-inline-field--grow">
+          <Form.Label className="text-white-50 mb-0 d-block equipment-template-inline-label">On</Form.Label>
+          <Form.Control
+            size="sm"
+            type="text"
+            value={cfg.onLabel ?? "On"}
+            onChange={(e) => onChange(point.id, "commandConfig", { ...cfg, onLabel: e.target.value })}
+            readOnly={readOnly}
+            className="bg-dark border border-light border-opacity-10 text-white"
+          />
+        </div>
+      </div>
+    );
+  }
+
+  if (commandType === "enum") {
+    const options = Array.isArray(cfg.options) ? cfg.options : [];
+    return (
+      <div className="equipment-template-enum-inline d-flex flex-column gap-1">
+        <div className="d-flex flex-wrap gap-1 align-items-center">
+          {options.map((opt, idx) => (
+            <div key={idx} className="d-flex flex-wrap gap-1 align-items-center">
+              <Form.Control
+                size="sm"
+                type="text"
+                value={opt.label ?? ""}
+                placeholder="Label"
+                onChange={(e) => {
+                  const next = [...options];
+                  next[idx] = { ...next[idx], label: e.target.value };
+                  onChange(point.id, "commandConfig", { ...cfg, options: next });
+                }}
+                readOnly={readOnly}
+                className="bg-dark border border-light border-opacity-10 text-white equipment-template-enum-label"
+              />
+              <Form.Control
+                size="sm"
+                type="text"
+                value={opt.value ?? ""}
+                placeholder="Val"
+                onChange={(e) => {
+                  const next = [...options];
+                  const v = e.target.value;
+                  const num = v === "" ? "" : Number.isNaN(Number(v)) ? v : Number(v);
+                  next[idx] = { ...next[idx], value: num };
+                  onChange(point.id, "commandConfig", { ...cfg, options: next });
+                }}
+                readOnly={readOnly}
+                className="bg-dark border border-light border-opacity-10 text-white font-monospace equipment-template-enum-val"
+              />
+              {!readOnly && (
+                <Button
+                  size="sm"
+                  variant="link"
+                  className="text-danger p-0"
+                  onClick={() => {
+                    const next = options.filter((_, i) => i !== idx);
+                    onChange(point.id, "commandConfig", { ...cfg, options: next });
+                  }}
+                >
+                  <FontAwesomeIcon icon={faTrashAlt} />
+                </Button>
+              )}
+            </div>
+          ))}
+          {!readOnly && (
+            <Button
+              size="sm"
+              variant="outline-light"
+              className="legion-hero-btn legion-hero-btn--secondary py-0 px-2"
+              onClick={() =>
+                onChange(point.id, "commandConfig", {
+                  ...cfg,
+                  options: [...options, { label: "", value: 0 }],
+                })
+              }
+            >
+              <FontAwesomeIcon icon={faPlus} />
+            </Button>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  return null;
 }
 
 export default function EquipmentTemplateEditorPanel({
@@ -74,7 +213,7 @@ export default function EquipmentTemplateEditorPanel({
       setEquipmentType(template.equipmentType || "VAV");
       setDescription(template.description || "");
       setDefaultGraphic(template.defaultGraphic || "");
-      setPoints((template.points || []).map(toPointRow));
+      setPoints((template.points || []).map((p) => templatePointToEditorRow(p)));
     } else {
       setName("");
       setEquipmentType("VAV");
@@ -85,16 +224,44 @@ export default function EquipmentTemplateEditorPanel({
     setErrors({});
   }, [template]);
 
-  const updatePoint = useCallback((pointId, field, value) => {
-    if (readOnly) return;
-    setPoints((prev) =>
-      prev.map((p) => (p.id === pointId ? { ...p, [field]: value } : p))
-    );
-  }, [readOnly]);
+  const updatePoint = useCallback(
+    (pointId, field, value) => {
+      if (readOnly) return;
+      setPoints((prev) =>
+        prev.map((p) => (p.id === pointId ? { ...p, [field]: value } : p))
+      );
+    },
+    [readOnly]
+  );
+
+  const updateCommandConfig = useCallback(
+    (pointId, nextCfg) => {
+      if (readOnly) return;
+      setPoints((prev) => prev.map((p) => (p.id === pointId ? { ...p, commandConfig: nextCfg } : p)));
+    },
+    [readOnly]
+  );
+
+  const setCommandType = useCallback(
+    (pointId, commandType) => {
+      if (readOnly) return;
+      setPoints((prev) =>
+        prev.map((p) => {
+          if (p.id !== pointId) return p;
+          return {
+            ...p,
+            commandType,
+            commandConfig: defaultCommandConfig(commandType, { units: p.commandConfig?.unit }),
+          };
+        })
+      );
+    },
+    [readOnly]
+  );
 
   const addPoint = useCallback(() => {
     if (readOnly) return;
-    setPoints((prev) => [...prev, toPointRow({})]);
+    setPoints((prev) => [...prev, templatePointToEditorRow({ id: generatePointId() })]);
   }, [readOnly]);
 
   const deletePoint = useCallback((pointId) => {
@@ -104,26 +271,44 @@ export default function EquipmentTemplateEditorPanel({
 
   const duplicatePoint = useCallback((point) => {
     if (readOnly) return;
-    setPoints((prev) => [...prev, toPointRow({ ...point, id: undefined })]);
+    setPoints((prev) => {
+      const row = templatePointToEditorRow({ ...point, id: generatePointId() });
+      return [...prev, row];
+    });
   }, [readOnly]);
 
-  const loadStarterSet = useCallback((type) => {
-    if (readOnly) return;
-    const starter = engineeringRepository.getStarterPointsForEquipmentType(type);
-    if (starter.length) setPoints(starter.map(toPointRow));
-  }, [readOnly]);
+  const loadStarterSet = useCallback(
+    (type) => {
+      if (readOnly) return;
+      const starter = engineeringRepository.getStarterPointsForEquipmentType(type);
+      if (starter.length) {
+        setPoints(
+          starter.map((p) => {
+            return templatePointToEditorRow({ ...p, id: generatePointId() });
+          })
+        );
+      }
+    },
+    [readOnly]
+  );
 
   const validate = useCallback(() => {
     const next = {};
     if (!(name || "").trim()) next.name = "Template name is required.";
     if (!(equipmentType || "").trim()) next.equipmentType = "Equipment type is required.";
     const keys = new Set();
-    points.forEach((p, i) => {
-      if (!(p.pointLabel || "").trim()) next[`pointLabel-${p.id}`] = "Required";
-      if (!(p.pointKey || "").trim()) next[`pointKey-${p.id}`] = "Required";
-      else if (keys.has((p.pointKey || "").trim().toLowerCase())) next[`pointKey-${p.id}`] = "Must be unique";
-      else keys.add((p.pointKey || "").trim().toLowerCase());
-      if (!(p.expectedType || "").trim()) next[`expectedType-${p.id}`] = "Required";
+    points.forEach((p) => {
+      const rowErr = validateTemplatePointRow(p);
+      if (rowErr.key) next[`pointKey-${p.id}`] = rowErr.key;
+      if (rowErr.label) next[`pointDescription-${p.id}`] = rowErr.label;
+      if (rowErr.expectedType) next[`expectedType-${p.id}`] = rowErr.expectedType;
+      if (rowErr.commandType) next[`commandType-${p.id}`] = rowErr.commandType;
+      if (rowErr.commandConfig) next[`commandConfig-${p.id}`] = rowErr.commandConfig;
+      const k = sanitizeTemplatePointKeyForSave(p.key).toLowerCase();
+      if (k) {
+        if (keys.has(k)) next[`pointKey-${p.id}`] = "Another point uses the same key.";
+        else keys.add(k);
+      }
     });
     setErrors(next);
     return Object.keys(next).length === 0;
@@ -138,15 +323,25 @@ export default function EquipmentTemplateEditorPanel({
       description: description.trim() || null,
       defaultGraphic: defaultGraphic || null,
       pointCount: points.length,
-      points: points.map((p) => ({
-        id: p.id,
-        pointLabel: (p.pointLabel || "").trim(),
-        pointKey: (p.pointKey || "").trim().toLowerCase().replace(/\s+/g, "_"),
-        referenceId: (p.referenceId || "").trim() || null,
-        required: !!p.required,
-        expectedType: (p.expectedType || "AI").trim(),
-        notes: (p.notes || "").trim() || null,
-      })),
+      points: points.map((p) => {
+        const commandConfig = sanitizeCommandConfigForSave(p.commandType, p.commandConfig, {
+          units: p.commandConfig?.unit,
+        });
+        const key = sanitizeTemplatePointKeyForSave(p.key);
+        const label = (p.label || "").trim();
+        return {
+          id: p.id,
+          label,
+          key,
+          pointLabel: label,
+          pointKey: key,
+          expectedType: (p.expectedType || "AI").trim(),
+          commandType: p.commandType,
+          commandConfig,
+          mappingHint: null,
+          notes: null,
+        };
+      }),
     };
     if (typeof onSave === "function") onSave(payload);
   }, [template?.id, name, equipmentType, description, defaultGraphic, points, validate, onSave]);
@@ -158,7 +353,7 @@ export default function EquipmentTemplateEditorPanel({
         equipmentType,
         description,
         defaultGraphic: defaultGraphic || null,
-        points: points.map((p) => ({ ...p, id: undefined })),
+        points: points.map((p) => ({ ...p, id: generatePointId() })),
       });
     }
   }, [name, equipmentType, description, defaultGraphic, points, onDuplicate]);
@@ -225,7 +420,6 @@ export default function EquipmentTemplateEditorPanel({
       </div>
 
       <div className="equipment-template-editor-body flex-grow-1 overflow-auto px-4 py-3">
-        {/* Metadata card */}
         <Card className="bg-primary border border-light border-opacity-10 shadow-sm mb-3">
           <Card.Header className="bg-transparent border-light border-opacity-10 d-flex align-items-center justify-content-between">
             <span className="text-white fw-bold small text-uppercase">Template details</span>
@@ -321,7 +515,6 @@ export default function EquipmentTemplateEditorPanel({
           </Card.Body>
         </Card>
 
-        {/* Points table card */}
         <Card className="bg-primary border border-light border-opacity-10 shadow-sm">
           <Card.Header className="bg-transparent border-light border-opacity-10 d-flex align-items-center justify-content-between flex-wrap gap-2">
             <span className="text-white fw-bold small text-uppercase">Template points</span>
@@ -356,7 +549,7 @@ export default function EquipmentTemplateEditorPanel({
           </Card.Header>
           <Card.Body className="p-0">
             <p className="text-white-50 small px-3 pt-2 mb-2">
-              Template points define the logical structure used by equipment instances, point mapping, and graphics bindings.
+              Point is the logical key (no spaces; e.g. SA-T, BUILDING-P). Point description is the operator-facing name. Command type controls Operator inputs; expected type is the BACnet-style object type.
             </p>
             {points.length === 0 ? (
               <div className="equipment-template-editor-empty-points text-center py-5 px-3">
@@ -383,83 +576,56 @@ export default function EquipmentTemplateEditorPanel({
                 )}
               </div>
             ) : (
-              <div className="template-library-table-wrap overflow-auto">
-                <Table className="discovery-table equipment-template-points-table mb-0" responsive>
+              <div className="template-library-table-wrap">
+                <Table className="discovery-table equipment-template-points-table equipment-template-points-table--wide mb-0">
                   <thead>
                     <tr>
-                      <th>Point Label</th>
-                      <th>Point Key</th>
-                      <th>Reference ID</th>
-                      <th>Required</th>
-                      <th>Expected Type</th>
-                      <th>Notes</th>
-                      {!readOnly && <th className="text-end" style={{ width: 100 }}>Actions</th>}
+                      <th className="equipment-template-col-pointkey">Point</th>
+                      <th className="equipment-template-col-label">Point description</th>
+                      <th className="equipment-template-col-type">Expected type</th>
+                      <th className="equipment-template-col-cmd">Command type</th>
+                      <th className="equipment-template-col-config">Command config</th>
+                      {!readOnly && <th className="text-end equipment-template-col-actions" style={{ width: 88 }}>Actions</th>}
                     </tr>
                   </thead>
                   <tbody>
                     {points.map((p) => (
-                      <tr key={p.id} className="discovery-table-row">
-                        <td>
+                      <tr key={p.id} className="discovery-table-row align-top">
+                        <td className="equipment-template-col-pointkey">
                           {readOnly ? (
-                            <span className="text-white">{(p.pointLabel || "").trim() || "—"}</span>
+                            <span className="text-white font-monospace">{(p.key || "").trim() || "—"}</span>
                           ) : (
                             <Form.Control
                               size="sm"
                               type="text"
-                              value={p.pointLabel}
-                              onChange={(e) => updatePoint(p.id, "pointLabel", e.target.value)}
-                              placeholder="Label"
-                              className={`bg-dark border border-light border-opacity-10 text-white form-control-sm ${errors[`pointLabel-${p.id}`] ? "border-danger" : ""}`}
-                            />
-                          )}
-                          {errors[`pointLabel-${p.id}`] && (
-                            <Form.Text className="text-danger small d-block">{errors[`pointLabel-${p.id}`]}</Form.Text>
-                          )}
-                        </td>
-                        <td>
-                          {readOnly ? (
-                            <code className="text-white-50 small">{(p.pointKey || "").trim() || "—"}</code>
-                          ) : (
-                            <Form.Control
-                              size="sm"
-                              type="text"
-                              value={p.pointKey}
-                              onChange={(e) => updatePoint(p.id, "pointKey", e.target.value)}
-                              placeholder="pointKey"
-                              className={`bg-dark border border-light border-opacity-10 text-white form-control-sm font-monospace ${errors[`pointKey-${p.id}`] ? "border-danger" : ""}`}
+                              value={p.key}
+                              onChange={(e) => updatePoint(p.id, "key", e.target.value)}
+                              placeholder="SA-T"
+                              className={`bg-dark border border-light border-opacity-10 text-white font-monospace form-control-sm ${errors[`pointKey-${p.id}`] ? "border-danger" : ""}`}
                             />
                           )}
                           {errors[`pointKey-${p.id}`] && (
                             <Form.Text className="text-danger small d-block">{errors[`pointKey-${p.id}`]}</Form.Text>
                           )}
                         </td>
-                        <td title="Used in point address and commands; defaults to Point Key if blank.">
+                        <td className="equipment-template-col-label">
                           {readOnly ? (
-                            <code className="text-white-50 small">{(p.referenceId || p.pointKey || "").trim() || "—"}</code>
+                            <span className="text-white">{(p.label || "").trim() || "—"}</span>
                           ) : (
                             <Form.Control
                               size="sm"
                               type="text"
-                              value={p.referenceId}
-                              onChange={(e) => updatePoint(p.id, "referenceId", e.target.value)}
-                              placeholder={p.pointKey || "e.g. DA-T"}
-                              className="bg-dark border border-light border-opacity-10 text-white form-control-sm font-monospace"
+                              value={p.label}
+                              onChange={(e) => updatePoint(p.id, "label", e.target.value)}
+                              placeholder="Description"
+                              className={`bg-dark border border-light border-opacity-10 text-white form-control-sm ${errors[`pointDescription-${p.id}`] ? "border-danger" : ""}`}
                             />
                           )}
-                        </td>
-                        <td>
-                          {readOnly ? (
-                            <span className="text-white-50">{p.required ? "Yes" : "No"}</span>
-                          ) : (
-                            <LegionFormSelect
-                              value={p.required}
-                              onChange={(e) => updatePoint(p.id, "required", e.target.value === true || e.target.value === "true")}
-                              options={REQUIRED_OPTIONS}
-                              placeholder="Yes"
-                            />
+                          {errors[`pointDescription-${p.id}`] && (
+                            <Form.Text className="text-danger small d-block">{errors[`pointDescription-${p.id}`]}</Form.Text>
                           )}
                         </td>
-                        <td>
+                        <td className="equipment-template-col-type">
                           {readOnly ? (
                             <span className="text-white-50">{p.expectedType || "—"}</span>
                           ) : (
@@ -474,22 +640,33 @@ export default function EquipmentTemplateEditorPanel({
                             <Form.Text className="text-danger small d-block">{errors[`expectedType-${p.id}`]}</Form.Text>
                           )}
                         </td>
-                        <td>
+                        <td className="equipment-template-col-cmd">
                           {readOnly ? (
-                            <span className="text-white-50 small">{(p.notes || "").trim() || "—"}</span>
+                            <span className="text-white-50">{p.commandType || "—"}</span>
                           ) : (
-                            <Form.Control
-                              size="sm"
-                              type="text"
-                              value={p.notes}
-                              onChange={(e) => updatePoint(p.id, "notes", e.target.value)}
-                              placeholder="Notes"
-                              className="bg-dark border border-light border-opacity-10 text-white form-control-sm"
+                            <LegionFormSelect
+                              value={p.commandType}
+                              onChange={(e) => setCommandType(p.id, e.target.value)}
+                              options={COMMAND_TYPE_OPTIONS}
+                              placeholder="Command"
                             />
+                          )}
+                          {errors[`commandType-${p.id}`] && (
+                            <Form.Text className="text-danger small d-block">{errors[`commandType-${p.id}`]}</Form.Text>
+                          )}
+                        </td>
+                        <td className="equipment-template-col-config">
+                          <CommandConfigInline
+                            point={p}
+                            readOnly={readOnly}
+                            onChange={(id, _field, nextCfg) => updateCommandConfig(id, nextCfg)}
+                          />
+                          {errors[`commandConfig-${p.id}`] && (
+                            <Form.Text className="text-danger small d-block mt-1">{errors[`commandConfig-${p.id}`]}</Form.Text>
                           )}
                         </td>
                         {!readOnly && (
-                          <td className="text-end">
+                          <td className="text-end text-nowrap">
                             <Button
                               variant="link"
                               size="sm"
