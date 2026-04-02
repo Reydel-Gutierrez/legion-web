@@ -26,7 +26,7 @@ async function createEquipment(floorId, data) {
   const siteId = floor.building.siteId;
   const buildingId = floor.buildingId;
 
-  const { name, code, equipmentType, status, templateName, address } = data;
+  const { name, code, equipmentType, status, templateName, address, instanceNumber } = data;
   if (!name || !code || !equipmentType) {
     throw new HttpError(400, 'name, code, and equipmentType are required');
   }
@@ -34,6 +34,11 @@ async function createEquipment(floorId, data) {
   const template =
     templateName != null && String(templateName).trim() !== ''
       ? String(templateName).trim()
+      : null;
+
+  const inst =
+    instanceNumber != null && String(instanceNumber).trim() !== ''
+      ? String(instanceNumber).trim()
       : null;
 
   return prisma.equipment.create({
@@ -49,6 +54,7 @@ async function createEquipment(floorId, data) {
       ...(address != null && String(address).trim() !== ''
         ? { address: String(address).trim() }
         : {}),
+      ...(inst ? { instanceNumber: inst } : {}),
     },
   });
 }
@@ -70,11 +76,11 @@ async function getEquipmentById(id) {
 
 async function updateEquipment(id, data) {
   await getEquipmentById(id);
-  const allowed = ['name', 'code', 'equipmentType', 'status', 'templateName', 'address'];
+  const allowed = ['name', 'code', 'equipmentType', 'status', 'templateName', 'address', 'instanceNumber'];
   const update = {};
   for (const key of allowed) {
     if (data[key] !== undefined) {
-      if (key === 'templateName' || key === 'address') {
+      if (key === 'templateName' || key === 'address' || key === 'instanceNumber') {
         const v = data[key];
         update[key] =
           v === null || v === '' ? null : typeof v === 'string' ? v.trim() : v;

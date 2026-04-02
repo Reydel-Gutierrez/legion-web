@@ -435,6 +435,8 @@ export default function EquipmentEditorPanel({
               size="sm"
               className="legion-hero-btn legion-hero-btn--primary ms-auto"
               onClick={handleSave}
+              disabled={instanceConflict}
+              title={instanceConflict ? "Resolve duplicate instance number first" : undefined}
             >
               Save Node
             </Button>

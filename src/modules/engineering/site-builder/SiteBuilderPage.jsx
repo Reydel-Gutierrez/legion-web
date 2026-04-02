@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect } from "react";
-import { Container, Row, Col, Card, Button, Dropdown, Modal } from "@themesberg/react-bootstrap";
+import { Container, Row, Col, Card, Button, Dropdown, Modal, Form } from "@themesberg/react-bootstrap";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faPlus,
@@ -11,6 +11,7 @@ import {
   faBoxOpen,
   faExpandAlt,
   faCompressAlt,
+  faMagic,
 } from "@fortawesome/free-solid-svg-icons";
 
 import { useSite } from "../../../app/providers/SiteProvider";
@@ -26,12 +27,26 @@ import { USE_HIERARCHY_API } from "../../../lib/data/config";
 import { isBackendSiteId } from "../../../lib/data/siteIdUtils";
 import * as hierarchyRepository from "../../../lib/data/repositories/hierarchyRepository";
 import { selectSiteTree, siteTreeToWorkingSite } from "../../../hooks/useWorkingVersion";
+import { WORKING_VERSION_ACTIONS } from "../working-version/workingVersionReducer";
+import { normalizeWorkingVersionNetworkConfig } from "../network/networkConfigModel";
 import {
   reorderAfterDrag,
   sortEquipmentOnFloorByField,
   moveEquipmentRelative,
   insertDuplicateAfterSource,
+  getEquipmentOrderedForSiteWide,
+  buildSequentialValueFormatter,
+  toApiEquipmentUpdatePayload,
 } from "./siteBuilderEquipmentUtils";
+
+/** Apply full GET/PUT working-version payload so hierarchy fields (e.g. instance #) stay in sync with the API. */
+function resetWorkingVersionFromApiPayload(dispatch, siteKey, payload) {
+  if (!payload) return;
+  dispatch({
+    type: WORKING_VERSION_ACTIONS.RESET_WORKING_VERSION,
+    payload: normalizeWorkingVersionNetworkConfig(payload, siteKey),
+  });
+}
 
 // ---------------------------------------------------------------------------
 // Data helpers: build nested tree from flat structure
@@ -182,6 +197,7 @@ export default function SiteBuilderPage() {
     workingVersion,
     workingState,
     actions,
+    dispatch,
     backendWorkingVersionLoading,
     backendWorkingVersionError,
   } = useWorkingVersion();
@@ -197,6 +213,9 @@ export default function SiteBuilderPage() {
   const [deleteConfirmNode, setDeleteConfirmNode] = useState(null);
   const [selectedEquipmentId, setSelectedEquipmentId] = useState(null);
   const [hierarchyMutationError, setHierarchyMutationError] = useState(null);
+  const [generateModalField, setGenerateModalField] = useState(null);
+  const [generateStartInput, setGenerateStartInput] = useState("");
+  const [generateApplying, setGenerateApplying] = useState(false);
 
   // Expand all and set selected when working version has a site
   useEffect(() => {
@@ -245,8 +264,7 @@ export default function SiteBuilderPage() {
           });
           const payload = await engineeringRepository.fetchWorkingVersion(created.id);
           if (payload) {
-            actions.setSite(payload.site);
-            actions.setEquipment(payload.equipment);
+            resetWorkingVersionFromApiPayload(dispatch, created.id, payload);
           }
           setExpandedIds(new Set());
           setSelectedId(null);
@@ -285,7 +303,7 @@ export default function SiteBuilderPage() {
       setShowCreateModal(false);
       if (data.name && typeof setSite === "function") setSite(data.name.trim() || "New Site");
     },
-    [actions, setSite]
+    [actions, setSite, dispatch]
   );
 
   const handleAddBuilding = useCallback(async () => {
@@ -303,8 +321,7 @@ export default function SiteBuilderPage() {
         });
         const payload = await engineeringRepository.fetchWorkingVersion(workingState.site.id);
         if (payload) {
-          actions.setSite(payload.site);
-          actions.setEquipment(payload.equipment);
+          resetWorkingVersionFromApiPayload(dispatch, workingState.site.id, payload);
         }
         engineeringRepository.notifyEngineeringHierarchyChanged();
       } catch (e) {
@@ -325,7 +342,7 @@ export default function SiteBuilderPage() {
     if (newSite) actions.setSite(newSite);
     setExpandedIds((prev) => new Set([...prev, siteTree.id, id]));
     setSelectedId(id);
-  }, [siteTree, workingState.site, actions]);
+  }, [siteTree, workingState.site, actions, dispatch]);
 
   const handleSaveNode = useCallback(
     async (id, form) => {
@@ -362,8 +379,7 @@ export default function SiteBuilderPage() {
           }
           const payload = await engineeringRepository.fetchWorkingVersion(site);
           if (payload) {
-            actions.setSite(payload.site);
-            actions.setEquipment(payload.equipment);
+            resetWorkingVersionFromApiPayload(dispatch, site, payload);
           }
           engineeringRepository.notifyEngineeringHierarchyChanged();
         } catch (e) {
@@ -394,7 +410,7 @@ export default function SiteBuilderPage() {
       const newSite = siteTreeToWorkingSite(updated);
       if (newSite) actions.setSite(newSite);
     },
-    [siteTree, actions, site]
+    [siteTree, actions, site, dispatch]
   );
 
   const handleDeleteNode = useCallback(
@@ -411,8 +427,7 @@ export default function SiteBuilderPage() {
           }
           const payload = await engineeringRepository.fetchWorkingVersion(site);
           if (payload) {
-            actions.setSite(payload.site);
-            actions.setEquipment(payload.equipment);
+            resetWorkingVersionFromApiPayload(dispatch, site, payload);
           }
           engineeringRepository.notifyEngineeringHierarchyChanged();
           if (selectedId === id) setSelectedId(null);
@@ -433,7 +448,7 @@ export default function SiteBuilderPage() {
       if (selectedId === id) setSelectedId(null);
       setDeleteConfirmNode(null);
     },
-    [siteTree, workingState.equipment, selectedId, actions, site]
+    [siteTree, workingState.equipment, selectedId, actions, site, dispatch]
   );
 
   const handleDeleteConfirm = useCallback((node) => {
@@ -508,8 +523,7 @@ export default function SiteBuilderPage() {
           });
           const payload = await engineeringRepository.fetchWorkingVersion(site);
           if (payload) {
-            actions.setSite(payload.site);
-            actions.setEquipment(payload.equipment);
+            resetWorkingVersionFromApiPayload(dispatch, site, payload);
           }
           engineeringRepository.notifyEngineeringHierarchyChanged();
         } catch (e) {
@@ -555,7 +569,7 @@ export default function SiteBuilderPage() {
 
       setSelectedEquipmentId(newId);
     },
-    [equipmentList, actions, site, siteTree, workingState.mappings, workingState.graphics]
+    [equipmentList, actions, site, siteTree, workingState.mappings, workingState.graphics, dispatch]
   );
 
   const handleSaveEquipment = useCallback(
@@ -565,17 +579,21 @@ export default function SiteBuilderPage() {
         try {
           const tmpl = form.templateName != null && String(form.templateName).trim() ? String(form.templateName).trim() : null;
           const addr = form.address != null && String(form.address).trim() ? String(form.address).trim() : null;
+          const instanceNum =
+            form.instanceNumber != null && String(form.instanceNumber).trim()
+              ? String(form.instanceNumber).trim()
+              : null;
           await hierarchyRepository.updateEquipment(id, {
             name: form.name,
             code: (form.displayLabel && String(form.displayLabel).trim()) || form.name,
             equipmentType: form.equipmentType,
             templateName: tmpl,
             address: addr,
+            instanceNumber: instanceNum,
           });
           const payload = await engineeringRepository.fetchWorkingVersion(site);
           if (payload) {
-            actions.setSite(payload.site);
-            actions.setEquipment(payload.equipment);
+            resetWorkingVersionFromApiPayload(dispatch, site, payload);
           }
           engineeringRepository.notifyEngineeringHierarchyChanged();
         } catch (e) {
@@ -615,7 +633,7 @@ export default function SiteBuilderPage() {
       const next = (workingState.equipment || []).map((e) => (e.id === id ? { ...e, ...updates } : e));
       actions.setEquipment(next);
     },
-    [workingState.equipment, actions, site, siteTree]
+    [workingState.equipment, actions, site, siteTree, dispatch]
   );
 
   const handleGraphicChange = useCallback(
@@ -663,8 +681,7 @@ export default function SiteBuilderPage() {
           await hierarchyRepository.deleteEquipment(id);
           const payload = await engineeringRepository.fetchWorkingVersion(site);
           if (payload) {
-            actions.setSite(payload.site);
-            actions.setEquipment(payload.equipment);
+            resetWorkingVersionFromApiPayload(dispatch, site, payload);
           }
           engineeringRepository.notifyEngineeringHierarchyChanged();
           setSelectedEquipmentId(null);
@@ -677,7 +694,7 @@ export default function SiteBuilderPage() {
       actions.setEquipment(next);
       setSelectedEquipmentId(null);
     },
-    [workingState.equipment, actions, site]
+    [workingState.equipment, actions, site, dispatch]
   );
 
   const handleAddChild = useCallback(
@@ -692,8 +709,7 @@ export default function SiteBuilderPage() {
             });
             const payload = await engineeringRepository.fetchWorkingVersion(site);
             if (payload) {
-              actions.setSite(payload.site);
-              actions.setEquipment(payload.equipment);
+              resetWorkingVersionFromApiPayload(dispatch, site, payload);
             }
             engineeringRepository.notifyEngineeringHierarchyChanged();
           } catch (e) {
@@ -719,7 +735,7 @@ export default function SiteBuilderPage() {
         setSelectedId(id);
       }
     },
-    [handleAddBuilding, siteTree, actions, site]
+    [handleAddBuilding, siteTree, actions, site, dispatch]
   );
 
   const handleValidate = useCallback(() => {
@@ -739,17 +755,21 @@ export default function SiteBuilderPage() {
             (data.name && String(data.name).replace(/\s+/g, "_")) || `EQ-${Date.now()}`;
           const addr =
             data.address != null && String(data.address).trim() ? String(data.address).trim() : undefined;
+          const inst =
+            data.instanceNumber != null && String(data.instanceNumber).trim()
+              ? String(data.instanceNumber).trim()
+              : undefined;
           await hierarchyRepository.createEquipment(floorId, {
             name: data.name,
             code,
             equipmentType: data.equipmentType || "CUSTOM",
             ...(data.templateName ? { templateName: data.templateName } : {}),
             ...(addr ? { address: addr } : {}),
+            ...(inst ? { instanceNumber: inst } : {}),
           });
           const payload = await engineeringRepository.fetchWorkingVersion(site);
           if (payload) {
-            actions.setSite(payload.site);
-            actions.setEquipment(payload.equipment);
+            resetWorkingVersionFromApiPayload(dispatch, site, payload);
           }
           engineeringRepository.notifyEngineeringHierarchyChanged();
         } catch (e) {
@@ -786,7 +806,7 @@ export default function SiteBuilderPage() {
       actions.setEquipment([...(workingState.equipment || []), newEq]);
       setShowAddEquipment(false);
     },
-    [selectedNode, workingState.site, workingState.equipment, actions, site, siteTree]
+    [selectedNode, workingState.site, workingState.equipment, actions, site, siteTree, dispatch]
   );
 
   const handleExpandAll = useCallback(() => {
@@ -803,6 +823,95 @@ export default function SiteBuilderPage() {
   const handleCollapseAll = useCallback(() => {
     setExpandedIds(new Set());
   }, []);
+
+  const closeGenerateModal = useCallback(() => {
+    setGenerateModalField(null);
+    setGenerateStartInput("");
+  }, []);
+
+  const handleApplyBulkGenerate = useCallback(async () => {
+    if (!generateModalField || !siteTree) return;
+    const list = workingState.equipment || [];
+    if (!list.length) {
+      closeGenerateModal();
+      return;
+    }
+    const parsed = buildSequentialValueFormatter(generateStartInput);
+    if (!parsed.ok) {
+      window.alert(parsed.message);
+      return;
+    }
+    const confirmMsg =
+      generateModalField === "instanceNumber"
+        ? "This will replace every instance number on this site with new sequential values. All current instance numbers will be overwritten. Continue?"
+        : "This will replace every address # on this site with new sequential values. All current address values will be overwritten. Continue?";
+    if (!window.confirm(confirmMsg)) return;
+
+    const ordered = getEquipmentOrderedForSiteWide(siteTree, list);
+
+    if (USE_HIERARCHY_API && isBackendSiteId(site)) {
+      setHierarchyMutationError(null);
+      setGenerateApplying(true);
+      try {
+        if (generateModalField === "instanceNumber") {
+          for (const eqRow of ordered) {
+            await hierarchyRepository.updateEquipment(
+              eqRow.id,
+              toApiEquipmentUpdatePayload(eqRow, { instanceNumber: null })
+            );
+          }
+          for (let i = 0; i < ordered.length; i++) {
+            const val = parsed.format(i);
+            const eqRow = ordered[i];
+            await hierarchyRepository.updateEquipment(
+              eqRow.id,
+              toApiEquipmentUpdatePayload(eqRow, { instanceNumber: val })
+            );
+          }
+        } else {
+          for (let i = 0; i < ordered.length; i++) {
+            const val = parsed.format(i);
+            const eqRow = ordered[i];
+            await hierarchyRepository.updateEquipment(
+              eqRow.id,
+              toApiEquipmentUpdatePayload(eqRow, { address: val })
+            );
+          }
+        }
+        const payload = await engineeringRepository.fetchWorkingVersion(site);
+        if (payload) {
+          resetWorkingVersionFromApiPayload(dispatch, site, payload);
+        }
+        engineeringRepository.notifyEngineeringHierarchyChanged();
+        closeGenerateModal();
+      } catch (e) {
+        setHierarchyMutationError(e?.message || String(e));
+      } finally {
+        setGenerateApplying(false);
+      }
+      return;
+    }
+
+    const orderIndexById = new Map(ordered.map((e, i) => [e.id, i]));
+    const next = list.map((e) => {
+      const idx = orderIndexById.get(e.id);
+      if (idx === undefined) return e;
+      const val = parsed.format(idx);
+      if (generateModalField === "instanceNumber") return { ...e, instanceNumber: val };
+      return { ...e, address: val };
+    });
+    actions.setEquipment(next);
+    closeGenerateModal();
+  }, [
+    generateModalField,
+    generateStartInput,
+    siteTree,
+    workingState.equipment,
+    site,
+    actions,
+    dispatch,
+    closeGenerateModal,
+  ]);
 
   const isEmpty = !siteTree;
   const openCreateModal = useCallback(() => setShowCreateModal(true), []);
@@ -934,6 +1043,42 @@ export default function SiteBuilderPage() {
                   </Dropdown.Item>
                 </Dropdown.Menu>
               </Dropdown>
+              <Dropdown>
+                <Dropdown.Toggle
+                  size="sm"
+                  variant="dark"
+                  className="legion-hero-btn legion-hero-btn--secondary border border-light border-opacity-15"
+                  disabled={!equipmentList.length}
+                >
+                  <FontAwesomeIcon icon={faMagic} className="me-1" />
+                  Generate <FontAwesomeIcon icon={faEllipsisV} className="ms-1" />
+                </Dropdown.Toggle>
+                <Dropdown.Menu
+                  align="end"
+                  className="legion-dropdown-menu bg-dark border border-light border-opacity-10"
+                >
+                  <Dropdown.Item
+                    className="text-white"
+                    disabled={!equipmentList.length}
+                    onClick={() => {
+                      setGenerateModalField("instanceNumber");
+                      setGenerateStartInput("");
+                    }}
+                  >
+                    All Instance Numbers
+                  </Dropdown.Item>
+                  <Dropdown.Item
+                    className="text-white"
+                    disabled={!equipmentList.length}
+                    onClick={() => {
+                      setGenerateModalField("address");
+                      setGenerateStartInput("");
+                    }}
+                  >
+                    All Address Numbers
+                  </Dropdown.Item>
+                </Dropdown.Menu>
+              </Dropdown>
               <span className="text-white-50 small ms-1">
                 {!selectedNode
                   ? "Select a node to edit."
@@ -1025,6 +1170,60 @@ export default function SiteBuilderPage() {
         defaultFloorId={selectedNode?.type === "floor" ? selectedNode?.id : undefined}
         equipmentTemplates={workingState.templates?.equipmentTemplates ?? []}
       />
+
+      <Modal
+        centered
+        show={generateModalField != null}
+        onHide={() => {
+          if (!generateApplying) closeGenerateModal();
+        }}
+        contentClassName="bg-primary border border-light border-opacity-10 text-white"
+      >
+        <Modal.Header closeButton={!generateApplying} className="border-light border-opacity-10">
+          <Modal.Title className="h6 text-white">
+            {generateModalField === "instanceNumber"
+              ? "Generate instance numbers"
+              : generateModalField === "address"
+                ? "Generate address numbers"
+                : ""}
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <p className="small text-warning mb-2">
+            Applying will overwrite existing{" "}
+            {generateModalField === "instanceNumber" ? "instance numbers" : "address numbers"} for
+            every equipment on this site.
+          </p>
+          <p className="small text-white-50 mb-3">
+            Enter a starting value that ends in digits. Each row in site order gets the next number
+            (e.g. 350025, then 350026, 350027). Prefix text is kept; only the trailing digits advance.
+          </p>
+          <Form.Group>
+            <Form.Label className="text-white small">Starting value</Form.Label>
+            <Form.Control
+              size="sm"
+              className="bg-dark bg-opacity-25 border border-light border-opacity-10 text-white"
+              value={generateStartInput}
+              onChange={(e) => setGenerateStartInput(e.target.value)}
+              placeholder={generateModalField === "instanceNumber" ? "e.g. 350025" : "e.g. 1001"}
+              disabled={generateApplying}
+              autoFocus
+            />
+          </Form.Group>
+        </Modal.Body>
+        <Modal.Footer className="border-light border-opacity-10">
+          <Button variant="secondary" onClick={closeGenerateModal} disabled={generateApplying}>
+            Cancel
+          </Button>
+          <Button
+            className="legion-hero-btn legion-hero-btn--primary"
+            onClick={handleApplyBulkGenerate}
+            disabled={generateApplying}
+          >
+            {generateApplying ? "Applying…" : "Apply"}
+          </Button>
+        </Modal.Footer>
+      </Modal>
 
       <Modal
         centered

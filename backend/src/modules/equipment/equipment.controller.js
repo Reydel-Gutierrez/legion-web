@@ -16,10 +16,8 @@ async function createForFloor(req, res) {
 }
 
 async function update(req, res) {
-  const equipment = await equipmentService.updateEquipment(
-    req.params.id,
-    req.body
-  );
+  const body = req.body && typeof req.body === 'object' ? req.body : {};
+  const equipment = await equipmentService.updateEquipment(req.params.id, body);
   await siteVersionService.syncWorkingPayloadFromDb(equipment.siteId);
   res.json(equipment);
 }

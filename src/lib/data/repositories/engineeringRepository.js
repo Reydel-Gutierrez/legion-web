@@ -70,6 +70,9 @@ export async function fetchWorkingVersion(siteId) {
   return hierarchyRepository.fetchWorkingVersionForEngineering(siteId);
 }
 
+/** @see hierarchyRepository — use after PUT working-version to merge server-synced hierarchy into state */
+export { normalizeWorkingPayloadFromApi } from "./hierarchyRepository";
+
 /** @deprecated use fetchWorkingVersion */
 export async function fetchEngineeringSiteDraftFromApi(siteId) {
   return fetchWorkingVersion(siteId);

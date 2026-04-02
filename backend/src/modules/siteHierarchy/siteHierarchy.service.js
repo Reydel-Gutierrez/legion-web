@@ -79,7 +79,8 @@ async function buildWorkingSiteEquipmentFromDb(siteId) {
           orderBy: { pointCode: 'asc' },
         });
         const livePoints = points.map((p) => pointToWorkspaceRow(eq.id, eq.name, p));
-        const engStatus = eq.status === 'ACTIVE' ? 'CONTROLLER_ASSIGNED' : 'DRAFT';
+        // EntityStatus (ACTIVE/…) is lifecycle, not BACnet assignment. Controller is not stored on Equipment yet.
+        const engStatus = eq.status === 'ACTIVE' ? 'MISSING_CONTROLLER' : 'DRAFT';
         allEquipment.push({
           id: eq.id,
           floorId: eq.floorId,
@@ -88,7 +89,7 @@ async function buildWorkingSiteEquipmentFromDb(siteId) {
           name: eq.name,
           displayLabel: eq.name,
           type: eq.equipmentType,
-          instanceNumber: null,
+          instanceNumber: eq.instanceNumber ?? null,
           equipmentType: eq.equipmentType,
           address: eq.address || '',
           locationLabel: '',

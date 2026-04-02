@@ -1,6 +1,7 @@
 // Legion Web — Building Automation Systems (BAS) frontend.
 // Operator and Engineering modes; data layer in src/lib/data.
 
+import "./setupProcessEnv";
 import React from "react";
 import ReactDOM from "react-dom";
 import { HashRouter } from "react-router-dom";

@@ -119,7 +119,7 @@ export async function buildOperatorDeploymentSnapshot(siteId) {
           name: eq.name,
           displayLabel: eq.name,
           type: eq.equipmentType,
-          instanceNumber: null,
+          instanceNumber: eq.instanceNumber ?? null,
           equipmentType: eq.equipmentType,
           address: eq.address || "",
           locationLabel: "",
@@ -127,7 +127,7 @@ export async function buildOperatorDeploymentSnapshot(siteId) {
           protocol: "API",
           templateName: eq.templateName ?? null,
           pointsDefined: points.length,
-          status: eq.engineeringStatus || "CONTROLLER_ASSIGNED",
+          status: eq.engineeringStatus || "MISSING_CONTROLLER",
           notes: "",
           livePoints,
         });
@@ -180,7 +180,7 @@ export async function buildOperatorDeploymentSnapshot(siteId) {
  * Maps GET /working-version payload JSON into flat engineering reducer state.
  * Hierarchy (site.buildings / equipment) comes from the server after DB sync.
  */
-function normalizeWorkingPayloadFromApi(p) {
+export function normalizeWorkingPayloadFromApi(p) {
   if (!p || typeof p !== "object") return null;
   const s = p.site;
   const equipmentRaw = Array.isArray(p.equipment) ? p.equipment : [];
@@ -203,7 +203,7 @@ function normalizeWorkingPayloadFromApi(p) {
     protocol: eq.protocol || "API",
     templateName: eq.templateName ?? null,
     pointsDefined: eq.pointsDefined ?? 0,
-    status: eq.status || "CONTROLLER_ASSIGNED",
+    status: eq.status || "MISSING_CONTROLLER",
     notes: eq.notes || "",
     livePoints: Array.isArray(eq.livePoints) ? eq.livePoints : [],
   }));

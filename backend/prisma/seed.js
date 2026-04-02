@@ -65,7 +65,7 @@ async function buildDemoDeploymentSnapshot(siteId) {
         });
         const livePoints = points.map((p) => pointToWorkspaceRow(eq.id, eq.name, p));
         const engStatus =
-          eq.status === 'ACTIVE' ? 'CONTROLLER_ASSIGNED' : 'DRAFT';
+          eq.status === 'ACTIVE' ? 'MISSING_CONTROLLER' : 'DRAFT';
         allEquipment.push({
           id: eq.id,
           floorId: eq.floorId,
@@ -74,7 +74,7 @@ async function buildDemoDeploymentSnapshot(siteId) {
           name: eq.name,
           displayLabel: eq.name,
           type: eq.equipmentType,
-          instanceNumber: null,
+          instanceNumber: eq.instanceNumber ?? null,
           equipmentType: eq.equipmentType,
           locationLabel: '',
           controllerRef: null,

@@ -19,7 +19,8 @@ function mapBuildingLayoutStatus(raw) {
 
 function mapEquipmentEngineeringStatus(raw) {
   const s = (raw || "").toString().toUpperCase();
-  if (s === "ACTIVE") return "CONTROLLER_ASSIGNED";
+  // API Equipment.status is EntityStatus (row active), not "BACnet controller assigned".
+  if (s === "ACTIVE") return "MISSING_CONTROLLER";
   if (s === "INACTIVE") return "DRAFT";
   if (s === "ARCHIVED") return "DRAFT";
   return "DRAFT";
@@ -78,6 +79,7 @@ export function normalizeEquipment(api) {
     equipmentType: api.equipmentType,
     templateName: api.templateName ?? null,
     address: api.address ?? null,
+    instanceNumber: api.instanceNumber ?? null,
     status: api.status,
     engineeringStatus: mapEquipmentEngineeringStatus(api.status),
   };
