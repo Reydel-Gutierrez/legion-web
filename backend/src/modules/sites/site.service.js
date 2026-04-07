@@ -1,5 +1,13 @@
 const prisma = require('../../lib/prisma');
 const { HttpError } = require('../../lib/httpError');
+const { sortBySortOrderThenName } = require('../../lib/hierarchySort');
+const { normalizeEntityStatusForDb } = require('../siteHierarchy/siteHierarchy.service');
+
+function strOrNull(v) {
+  if (v == null) return null;
+  const s = String(v).trim();
+  return s.length ? s : null;
+}
 
 async function listSites() {
   return prisma.site.findMany({
@@ -25,6 +33,7 @@ async function getSiteById(id) {
   if (!site) {
     throw new HttpError(404, 'Site not found');
   }
+  if (site.buildings) sortBySortOrderThenName(site.buildings);
   return site;
 }
 
@@ -33,20 +42,51 @@ async function createSite(data) {
   if (!name || typeof name !== 'string') {
     throw new HttpError(400, 'name is required');
   }
+  const extra = {};
+  const textFields = [
+    'timezone',
+    'siteType',
+    'description',
+    'displayLabel',
+    'engineeringNotes',
+    'icon',
+  ];
+  for (const key of textFields) {
+    if (data[key] !== undefined) extra[key] = strOrNull(data[key]);
+  }
+  let entityStatus;
+  if (data.status !== undefined) {
+    entityStatus = normalizeEntityStatusForDb(data.status);
+  }
   return prisma.site.create({
     data: {
       name: name.trim(),
-      ...(status ? { status } : {}),
+      ...(entityStatus ? { status: entityStatus } : {}),
+      ...extra,
     },
   });
 }
 
 async function updateSite(id, data) {
   await getSiteById(id);
-  const { name, status } = data;
+  const allowedScalar = [
+    'name',
+    'timezone',
+    'siteType',
+    'description',
+    'displayLabel',
+    'engineeringNotes',
+    'icon',
+  ];
   const update = {};
-  if (name !== undefined) update.name = String(name).trim();
-  if (status !== undefined) update.status = status;
+  for (const key of allowedScalar) {
+    if (data[key] !== undefined) {
+      update[key] = strOrNull(data[key]);
+    }
+  }
+  if (data.status !== undefined) {
+    update.status = normalizeEntityStatusForDb(data.status);
+  }
   if (Object.keys(update).length === 0) {
     throw new HttpError(400, 'No fields to update');
   }

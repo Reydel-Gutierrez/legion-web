@@ -52,6 +52,7 @@ export function getSiteLayoutBuildingsList(activeDeployment) {
     const hasGeo = Number.isFinite(lat) && Number.isFinite(lng);
     const cityState = [b.city || fallback.city, b.state || fallback.state].filter(Boolean).join(", ");
     const addressLine = [b.address || fallback.address, cityState].filter(Boolean).join(" · ");
+    const floors = Array.isArray(b.floors) ? b.floors : [];
     return {
       id: b.id,
       siteId,
@@ -64,8 +65,10 @@ export function getSiteLayoutBuildingsList(activeDeployment) {
       hasGeo,
       addressLine: addressLine || "",
       status: normalizeBuildingLayoutStatus(b.status ?? fallback.status),
-      hasFloors: b.hasFloors !== false && (b.floors?.length ?? 0) > 0,
+      hasFloors: b.hasFloors !== false && floors.length > 0,
       thumbnail: b.thumbnail ?? null,
+      buildingType: b.buildingType != null && String(b.buildingType).trim() ? String(b.buildingType).trim() : "",
+      floorCount: floors.length,
     };
   });
 }

@@ -9,7 +9,6 @@ const {
   isPlainObject,
 } = require('./siteVersion.payload');
 const { buildWorkingSiteEquipmentFromDb } = require('../siteHierarchy/siteHierarchy.service');
-const { mergeStarterEquipmentTemplatesIfEmpty } = require('../../lib/legionStarterEquipmentTemplates');
 
 const versionInclude = {
   payload: true,
@@ -91,9 +90,6 @@ async function getOrCreateWorkingVersion(siteId) {
   initialPayload.templates.graphicTemplates = Array.isArray(initialPayload.templates.graphicTemplates)
     ? initialPayload.templates.graphicTemplates
     : [];
-  initialPayload.templates.equipmentTemplates = mergeStarterEquipmentTemplatesIfEmpty(
-    initialPayload.templates.equipmentTemplates
-  );
 
   try {
     return await prisma.$transaction(async (tx) => {
@@ -152,9 +148,6 @@ async function syncWorkingPayloadFromDb(siteId) {
   merged.templates.graphicTemplates = Array.isArray(merged.templates.graphicTemplates)
     ? merged.templates.graphicTemplates
     : [];
-  merged.templates.equipmentTemplates = mergeStarterEquipmentTemplatesIfEmpty(
-    merged.templates.equipmentTemplates
-  );
   return prisma.siteVersion.update({
     where: { id: working.id },
     data: {

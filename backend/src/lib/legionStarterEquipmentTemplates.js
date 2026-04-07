@@ -5,10 +5,10 @@
  *
  * Used for:
  * - Prisma GlobalEquipmentTemplate seed (company library)
- * - Site working-version payload when equipmentTemplates is empty (Template Library + equipment assignment)
+ * - ensureGlobalEquipmentStartersInDb (global library API)
+ *
+ * Site project Template Library starts empty; users import from the global library when needed.
  */
-
-const { randomUUID } = require('crypto');
 
 /** Stable UUIDs for idempotent GlobalEquipmentTemplate upserts */
 const GLOBAL_IDS = {
@@ -18,8 +18,6 @@ const GLOBAL_IDS = {
   FCU: 'e0000001-0000-4000-8000-000000000004',
   RTU: 'e0000001-0000-4000-8000-000000000005',
 };
-
-const SITE_TEMPLATE_SOURCE = 'Legion Starter';
 
 function pt(key, label, expectedType, commandType, commandConfig = null, notes = null) {
   const id = `legion-pt-${key}`;
@@ -278,49 +276,7 @@ function getGlobalStarterTemplateSeedRows() {
   }));
 }
 
-function clonePointsWithNewIds(points) {
-  return points.map((p) => ({
-    ...p,
-    id: randomUUID(),
-  }));
-}
-
-/**
- * Site working-version equipmentTemplates entries (fresh UUIDs for template + points).
- */
-function buildSiteEquipmentTemplatesFromStarters() {
-  const now = new Date().toISOString().slice(0, 10);
-  return DEFINITIONS.map((d) => {
-    const points = clonePointsWithNewIds(d.points);
-    return {
-      id: randomUUID(),
-      name: d.name,
-      equipmentType: d.equipmentType,
-      description: d.description,
-      defaultGraphic: null,
-      pointCount: points.length,
-      points,
-      source: SITE_TEMPLATE_SOURCE,
-      lastUpdated: now,
-    };
-  });
-}
-
-/**
- * If the site has no equipment templates yet, return Legion starters; otherwise return existing.
- * @param {unknown} existing
- */
-function mergeStarterEquipmentTemplatesIfEmpty(existing) {
-  if (Array.isArray(existing) && existing.length > 0) {
-    return existing;
-  }
-  return buildSiteEquipmentTemplatesFromStarters();
-}
-
 module.exports = {
   GLOBAL_IDS,
   getGlobalStarterTemplateSeedRows,
-  buildSiteEquipmentTemplatesFromStarters,
-  mergeStarterEquipmentTemplatesIfEmpty,
-  SITE_TEMPLATE_SOURCE,
 };

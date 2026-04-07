@@ -35,7 +35,6 @@ function buildSiteFromTree(siteTree) {
     mode: "working",
     status: "editing",
     siteType: siteTree.siteType,
-    address: siteTree.address,
     timezone: siteTree.timezone,
     buildings,
   });

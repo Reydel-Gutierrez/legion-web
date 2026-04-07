@@ -20,8 +20,9 @@ export default function LegionFormSelect({
   const [show, setShow] = useState(false);
   const containerRef = useRef(null);
 
-  const selectedOption = options.find((o) => String(o.value) === String(value));
-  const displayLabel = selectedOption ? selectedOption.label : placeholder;
+  const strVal = value !== undefined && value !== null ? String(value) : "";
+  const selectedOption = options.find((o) => String(o.value) === strVal);
+  const displayLabel = selectedOption ? selectedOption.label : strVal.trim() ? strVal : placeholder;
 
   const handleSelect = (opt) => {
     if (onChange) onChange({ target: { value: opt.value } });
@@ -60,7 +61,7 @@ export default function LegionFormSelect({
             minHeight: height,
           }}
         >
-          <span className={!selectedOption ? "text-white-50" : ""}>
+          <span className={!selectedOption && !strVal.trim() ? "text-white-50" : ""}>
             {displayLabel}
           </span>
           <span className="legion-form-select-chevron">▾</span>
@@ -74,7 +75,7 @@ export default function LegionFormSelect({
           {options.map((opt) => (
             <Dropdown.Item
               key={opt.value}
-              active={String(opt.value) === String(value)}
+              active={String(opt.value) === strVal}
               onClick={() => handleSelect(opt)}
             >
               {opt.label}

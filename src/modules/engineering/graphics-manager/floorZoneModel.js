@@ -78,10 +78,11 @@ export function createDefaultWedgeFields() {
   return [
     { key: "zoneName", enabled: true },
     { key: "equipmentName", enabled: true },
+    { key: "zoneTemp", enabled: true },
     { key: "spaceTemp", enabled: true },
     { key: "setpoint", enabled: true },
-    { key: "occupancy", enabled: true },
-    { key: "alarmState", enabled: true },
+    { key: "occupancy", enabled: false },
+    { key: "alarmState", enabled: false },
     { key: "statusChip", enabled: true },
   ];
 }
@@ -103,10 +104,15 @@ export function createDefaultZoneConfig() {
     wedgeCompact: false,
     wedgeMaxWidth: 280,
     wedgePlacement: "auto",
+    /** Degrees: green when |zone temp − setpoint| ≤ this; red hotter; blue colder. Default 3. */
+    temperatureBandDeg: 3,
+    /** `temperature` = fill color from zone temp vs setpoint (band). `legacy` = alarm/mode/comms heuristics. */
+    zoneVisualMode: "temperature",
     visualStateSource: { mode: "point" },
-    stateColors: createDefaultStateColors(),
+    stateColors: { ...createDefaultStateColors(), ...applyTemperatureSimpleVisualPreset() },
     wedgeFields: createDefaultWedgeFields(),
     pointBindings: {
+      zoneTemp: "",
       spaceTemp: "",
       setpoint: "",
       occupancy: "",
@@ -123,13 +129,9 @@ export function createDefaultZoneConfig() {
   };
 }
 
+/** Preset colors for temperature band mode (band width is set separately). */
 export const VISUAL_PRESETS = {
-  cooling_zone: "Cooling Zone",
-  heating_zone: "Heating Zone",
-  normal_zone: "Normal Zone",
-  alarm_zone: "Alarm Zone",
-  offline_zone: "Offline Zone",
-  neutral_blueprint: "Neutral Blueprint Zone",
+  temperature_simple: "Temperature band colors",
 };
 
 export const WEDGE_PRESETS = {
@@ -140,10 +142,7 @@ export const WEDGE_PRESETS = {
 };
 
 export const DATA_PRESETS = {
-  vav_zone: "VAV Zone",
-  ahu_area: "AHU Area Summary",
-  generic_room: "Generic Room",
-  fcu_zone: "FCU Zone",
+  generic_room: "Generic room / VAV",
 };
 
 function pickStateColors(partial) {
@@ -154,37 +153,52 @@ function pickStateColors(partial) {
   return base;
 }
 
+/** Green = within band of setpoint; red = zone hotter; blue = zone colder. */
+export function applyTemperatureSimpleVisualPreset() {
+  return pickStateColors({
+    normal: {
+      fill: "rgba(39, 174, 96, 0.22)",
+      borderColor: "rgba(88, 214, 141, 0.85)",
+      glowColor: "rgba(39, 174, 96, 0.4)",
+      glowIntensity: 0.45,
+    },
+    heating: {
+      fill: "rgba(231, 76, 60, 0.28)",
+      borderColor: "rgba(236, 112, 99, 0.95)",
+      glowColor: "rgba(231, 76, 60, 0.5)",
+      glowIntensity: 0.55,
+    },
+    cooling: {
+      fill: "rgba(52, 152, 219, 0.26)",
+      borderColor: "rgba(93, 173, 226, 0.95)",
+      glowColor: "rgba(52, 152, 219, 0.45)",
+      glowIntensity: 0.5,
+    },
+    offline: {
+      fill: "rgba(127, 140, 141, 0.28)",
+      borderColor: "rgba(149, 165, 166, 0.7)",
+      glowColor: "rgba(127, 140, 141, 0.3)",
+    },
+    hover: {
+      fill: "rgba(13, 202, 240, 0.18)",
+      borderColor: "rgba(13, 202, 240, 0.75)",
+      glowColor: "rgba(13, 202, 240, 0.45)",
+      glowIntensity: 0.45,
+    },
+    selected: {
+      fill: "rgba(13, 202, 240, 0.26)",
+      borderColor: "rgba(13, 202, 240, 0.95)",
+      glowColor: "rgba(13, 202, 240, 0.55)",
+      glowIntensity: 0.55,
+    },
+  });
+}
+
 export function applyVisualPreset(presetKey) {
-  switch (presetKey) {
-    case "cooling_zone":
-      return pickStateColors({
-        normal: { fill: "rgba(52, 152, 219, 0.2)", borderColor: "rgba(93, 173, 226, 0.8)" },
-        cooling: { fill: "rgba(41, 128, 185, 0.35)", borderColor: "rgba(133, 193, 233, 0.95)", glowIntensity: 0.55 },
-      });
-    case "heating_zone":
-      return pickStateColors({
-        normal: { fill: "rgba(231, 76, 60, 0.15)", borderColor: "rgba(236, 112, 99, 0.75)" },
-        heating: { fill: "rgba(192, 57, 43, 0.32)", borderColor: "rgba(231, 76, 60, 0.95)", glowIntensity: 0.55 },
-      });
-    case "alarm_zone":
-      return pickStateColors({
-        alarm: { fill: "rgba(192, 57, 43, 0.4)", borderColor: "rgba(255, 87, 66, 1)", pulse: true, glowIntensity: 0.7 },
-        warning: { fill: "rgba(241, 196, 15, 0.3)", borderColor: "rgba(245, 203, 92, 0.95)" },
-      });
-    case "offline_zone":
-      return pickStateColors({
-        offline: { fill: "rgba(100, 100, 110, 0.35)", borderColor: "rgba(160, 160, 170, 0.6)" },
-        normal: { fill: "rgba(90, 90, 98, 0.2)", borderColor: "rgba(140, 140, 150, 0.5)" },
-      });
-    case "neutral_blueprint":
-      return pickStateColors({
-        normal: { fill: "rgba(200, 210, 220, 0.08)", borderColor: "rgba(180, 190, 200, 0.35)", glowIntensity: 0.15 },
-        hover: { fill: "rgba(200, 210, 220, 0.14)", borderColor: "rgba(200, 210, 220, 0.5)" },
-      });
-    case "normal_zone":
-    default:
-      return createDefaultStateColors();
+  if (presetKey === "temperature_simple") {
+    return applyTemperatureSimpleVisualPreset();
   }
+  return createDefaultStateColors();
 }
 
 export function applyWedgePreset(presetKey) {
@@ -195,7 +209,7 @@ export function applyWedgePreset(presetKey) {
         ...base,
         wedgeFields: createDefaultWedgeFields().map((f) => ({
           ...f,
-          enabled: ["zoneName", "equipmentName"].includes(f.key),
+          enabled: ["zoneName", "equipmentName", "zoneTemp", "setpoint"].includes(f.key),
         })),
         wedgeCompact: true,
         wedgeMaxWidth: 220,
@@ -229,6 +243,7 @@ export function applyWedgePreset(presetKey) {
 
 export function applyDataPreset(presetKey) {
   const pb = {
+    zoneTemp: "",
     spaceTemp: "",
     setpoint: "",
     occupancy: "",
@@ -238,12 +253,6 @@ export function applyDataPreset(presetKey) {
     comms: "",
   };
   switch (presetKey) {
-    case "vav_zone":
-      return { pointBindings: pb, zoneType: "vav" };
-    case "ahu_area":
-      return { pointBindings: pb, zoneType: "ahu" };
-    case "fcu_zone":
-      return { pointBindings: pb, zoneType: "fcu" };
     case "generic_room":
     default:
       return { pointBindings: pb, zoneType: "room" };
@@ -274,6 +283,13 @@ export function mergeZoneConfig(existing, patch) {
   if (patch.visualStateSource) {
     next.visualStateSource = { ...def.visualStateSource, ...patch.visualStateSource };
   }
+  if (patch.zoneVisualMode !== undefined) {
+    next.zoneVisualMode = patch.zoneVisualMode;
+  }
+  if (next.zoneVisualMode == null || next.zoneVisualMode === "") {
+    next.zoneVisualMode = def.zoneVisualMode;
+  }
+  next.temperatureBandDeg = clampTemperatureBandDeg(next.temperatureBandDeg ?? def.temperatureBandDeg);
   return next;
 }
 
@@ -299,12 +315,51 @@ export function getStyleForZoneState(zoneConfig, stateKey) {
   };
 }
 
+/** Parse a numeric temperature from display strings like "72.0°F" or "21.5". */
+export function parseTemperatureNumber(raw) {
+  if (raw == null || raw === "—") return null;
+  if (typeof raw === "number" && !Number.isNaN(raw)) return raw;
+  const m = String(raw).match(/-?\d+(?:\.\d+)?/);
+  if (!m) return null;
+  const n = parseFloat(m[0]);
+  return Number.isFinite(n) ? n : null;
+}
+
+/** Comfort band in degrees (±). Clamped to 0.5–50; invalid → 3. */
+export function clampTemperatureBandDeg(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n) || n <= 0) return 3;
+  return Math.min(50, Math.max(0.5, Math.round(n * 10) / 10));
+}
+
+/**
+ * Zone fill color from zone temp vs heating/cooling setpoint (±temperatureBandDeg).
+ */
+function deriveZoneTemperatureVisualState(zoneConfig, pointValuesByKey = {}) {
+  const band = clampTemperatureBandDeg(zoneConfig?.temperatureBandDeg);
+  const ztHas = pointValuesByKey.zoneTemp != null && String(pointValuesByKey.zoneTemp).trim() !== "";
+  const zt = ztHas
+    ? parseTemperatureNumber(pointValuesByKey.zoneTemp)
+    : parseTemperatureNumber(pointValuesByKey.spaceTemp);
+  const sp = parseTemperatureNumber(pointValuesByKey.setpoint);
+  if (zt == null || sp == null) return ZONE_RUNTIME_STATES.OFFLINE;
+  const diff = zt - sp;
+  if (diff > band) return ZONE_RUNTIME_STATES.HEATING;
+  if (diff < -band) return ZONE_RUNTIME_STATES.COOLING;
+  return ZONE_RUNTIME_STATES.NORMAL;
+}
+
 /**
  * Simulated / derived runtime state for preview when live points are missing.
  * @param {object} zoneConfig
  * @param {Record<string, string>} pointValuesByKey — keys match pointBindings fields
  */
 export function deriveZoneVisualState(zoneConfig, pointValuesByKey = {}) {
+  const mode = zoneConfig?.zoneVisualMode !== "legacy" ? "temperature" : "legacy";
+  if (mode === "temperature") {
+    return deriveZoneTemperatureVisualState(zoneConfig, pointValuesByKey);
+  }
+
   const pb = zoneConfig?.pointBindings || {};
   const alarm =
     pointValuesByKey.alarmState ||
@@ -312,7 +367,7 @@ export function deriveZoneVisualState(zoneConfig, pointValuesByKey = {}) {
   const comms =
     pointValuesByKey.comms ||
     (pb.comms && pointValuesByKey[pb.comms] ? pointValuesByKey[pb.comms] : "");
-  const mode =
+  const m =
     pointValuesByKey.mode || (pb.mode && pointValuesByKey[pb.mode] ? pointValuesByKey[pb.mode] : "");
 
   const alarmStr = String(alarm || "").toLowerCase();
@@ -323,7 +378,7 @@ export function deriveZoneVisualState(zoneConfig, pointValuesByKey = {}) {
   if (commsStr.includes("offline") || commsStr.includes("down") || commsStr === "false" || commsStr === "0")
     return ZONE_RUNTIME_STATES.OFFLINE;
 
-  const modeStr = String(mode || "").toLowerCase();
+  const modeStr = String(m || "").toLowerCase();
   if (modeStr.includes("cool")) return ZONE_RUNTIME_STATES.COOLING;
   if (modeStr.includes("heat")) return ZONE_RUNTIME_STATES.HEATING;
 
@@ -332,8 +387,9 @@ export function deriveZoneVisualState(zoneConfig, pointValuesByKey = {}) {
 
 export function buildSimulatedPointValues(zoneConfig) {
   return {
+    zoneTemp: "72.0°F",
     spaceTemp: "72.0°F",
-    setpoint: "74°F",
+    setpoint: "72°F",
     occupancy: "Occupied",
     alarmState: "Normal",
     mode: "Cooling",
@@ -351,10 +407,12 @@ export function buildSimulatedPointValuesForObjectId(objectId) {
     h = (Math.imul(31, h) + objectId.charCodeAt(i)) | 0;
   }
   const t = 69 + (Math.abs(h) % 7);
+  const sp = Math.min(t + 2, 78);
   return {
     ...base,
+    zoneTemp: `${t}.0°F`,
     spaceTemp: `${t}.0°F`,
-    setpoint: `${Math.min(t + 2, 78)}°F`,
+    setpoint: `${sp}°F`,
   };
 }
 

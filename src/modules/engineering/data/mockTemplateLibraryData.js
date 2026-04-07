@@ -7,7 +7,7 @@
 export const SOURCE = {
   GLOBAL_IMPORTED: "Global Imported",
   SITE_CUSTOM: "Site Custom",
-  /** Injected from backend when a site has no equipment templates yet */
+  /** Canonical starters in the Global Template Library (import to add to a site) */
   LEGION_STARTER: "Legion Starter",
   /** User-created equipment graphics (from Graphics Manager) shown in Graphic Templates tab */
   SITE_CREATED: "Site created",

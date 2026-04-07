@@ -1,15 +1,19 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { Modal, Button, Form, Nav } from "@themesberg/react-bootstrap";
 import SearchablePointSelect from "./SearchablePointSelect";
+import * as engineeringRepository from "../../../../lib/data/repositories/engineeringRepository";
 import {
   mergeZoneConfig,
   createDefaultZoneConfig,
+  createDefaultStateColors,
   VISUAL_PRESETS,
   WEDGE_PRESETS,
   DATA_PRESETS,
   applyVisualPreset,
+  applyTemperatureSimpleVisualPreset,
   applyWedgePreset,
   applyDataPreset,
+  clampTemperatureBandDeg,
 } from "../floorZoneModel";
 import { Routes } from "../../../../routes";
 
@@ -18,6 +22,7 @@ const STATE_KEYS = ["normal", "cooling", "heating", "warning", "alarm", "offline
 const WEDGE_FIELD_DEFS = [
   { key: "zoneName", label: "Zone name" },
   { key: "equipmentName", label: "Equipment name" },
+  { key: "zoneTemp", label: "Zone temperature" },
   { key: "spaceTemp", label: "Space temperature" },
   { key: "setpoint", label: "Setpoint" },
   { key: "occupancy", label: "Occupancy" },
@@ -25,17 +30,24 @@ const WEDGE_FIELD_DEFS = [
   { key: "statusChip", label: "Quick status chip" },
 ];
 
+/** Point bindings shown in Data bindings tab (zone fill uses zone temp vs setpoint). */
+const POINT_BINDING_FIELDS = [
+  ["zoneTemp", "Zone temperature"],
+  ["setpoint", "Zone setpoint"],
+];
+
 export default function ZoneConfigurationModal({
   show,
   onHide,
   zoneConfig,
   onSave,
-  availablePoints = [],
   equipmentList = [],
+  templates = null,
   initialTab = "general",
 }) {
   const [local, setLocal] = useState(() => mergeZoneConfig(null, {}));
   const [tab, setTab] = useState(initialTab);
+  const [showLegacyVisualColors, setShowLegacyVisualColors] = useState(false);
 
   useEffect(() => {
     if (show) {
@@ -52,6 +64,17 @@ export default function ZoneConfigurationModal({
       })),
     [equipmentList]
   );
+
+  const linkedEquipment = useMemo(() => {
+    const id = (local.linkedEquipmentId || "").trim();
+    if (!id) return null;
+    return equipmentList.find((e) => e.id === id) || null;
+  }, [local.linkedEquipmentId, equipmentList]);
+
+  const bindingPoints = useMemo(() => {
+    if (!linkedEquipment) return [];
+    return engineeringRepository.getPointDisplayInfoForEquipment(linkedEquipment, templates);
+  }, [linkedEquipment, templates]);
 
   const update = (patch) => {
     setLocal((prev) => mergeZoneConfig(prev, patch));
@@ -74,7 +97,7 @@ export default function ZoneConfigurationModal({
   };
 
   const applyVisualPresetKey = (key) => {
-    update({ stateColors: applyVisualPreset(key) });
+    update({ stateColors: { ...createDefaultStateColors(), ...applyVisualPreset(key) } });
   };
 
   const applyWedgePresetKey = (key) => {
@@ -93,6 +116,9 @@ export default function ZoneConfigurationModal({
       pointBindings: { ...createDefaultZoneConfig().pointBindings, ...p.pointBindings },
     });
   };
+
+  const zoneVisualMode = local.zoneVisualMode !== "legacy" ? "temperature" : "legacy";
+  const bandDeg = clampTemperatureBandDeg(local.temperatureBandDeg);
 
   return (
     <Modal show={show} onHide={onHide} size="lg" centered className="zone-config-modal">
@@ -169,6 +195,9 @@ export default function ZoneConfigurationModal({
                   </option>
                 ))}
               </Form.Select>
+              <Form.Text className="text-white-50">
+                Data bindings use that equipment&apos;s template points (zone temperature and zone setpoint).
+              </Form.Text>
             </Form.Group>
             <Form.Group className="mb-2">
               <Form.Label>Badge / icon hint (optional)</Form.Label>
@@ -195,30 +224,29 @@ export default function ZoneConfigurationModal({
 
         {tab === "bindings" && (
           <div className="text-white small">
-            <p className="text-white-50">
-              Bind template or mapped points for live values. Preview uses simulated values when points are empty.
-            </p>
-            {[
-              ["spaceTemp", "Space temperature"],
-              ["setpoint", "Setpoint"],
-              ["occupancy", "Occupancy"],
-              ["mode", "Mode (heat/cool)"],
-              ["alarmState", "Alarm / fault"],
-              ["comms", "Communication / offline"],
-              ["zoneStatus", "Zone status summary"],
-            ].map(([field, label]) => (
+            {!linkedEquipment ? (
+              <p className="text-warning">Select linked equipment on the General tab to load template points.</p>
+            ) : (
+              <p className="text-white-50 mb-3">
+                Template points from <strong>{linkedEquipment.displayLabel || linkedEquipment.name}</strong>. Bind{" "}
+                <strong>zone temperature</strong> and <strong>zone setpoint</strong>. Zone fill is green within ±{bandDeg}
+                °, red if hotter than setpoint, blue if colder (band is set under Visual states).
+              </p>
+            )}
+            <div className="fw-semibold text-white mb-2">Point bindings</div>
+            {POINT_BINDING_FIELDS.map(([field, label]) => (
               <Form.Group className="mb-2" key={field}>
                 <Form.Label>{label}</Form.Label>
                 <SearchablePointSelect
-                  points={availablePoints}
+                  points={bindingPoints}
                   value={(local.pointBindings || {})[field] || ""}
                   onChange={(id) =>
                     update({
                       pointBindings: { ...(local.pointBindings || {}), [field]: id || "" },
                     })
                   }
-                  placeholder="Optional point…"
-                  disabled={!availablePoints.length}
+                  placeholder="Select template point…"
+                  disabled={!bindingPoints.length}
                 />
               </Form.Group>
             ))}
@@ -227,17 +255,69 @@ export default function ZoneConfigurationModal({
 
         {tab === "visual" && (
           <div className="text-white small">
-            <div className="mb-3">
-              <div className="text-white-50 mb-1">Visual presets</div>
-              <div className="d-flex flex-wrap gap-1">
-                {Object.entries(VISUAL_PRESETS).map(([k, label]) => (
-                  <Button key={k} size="sm" variant="outline-secondary" className="text-white-50" onClick={() => applyVisualPresetKey(k)}>
-                    {label}
-                  </Button>
-                ))}
-              </div>
-            </div>
-            {STATE_KEYS.map((sk) => (
+            <Form.Group className="mb-3">
+              <Form.Label>Zone fill logic</Form.Label>
+              <Form.Select
+                size="sm"
+                className="bg-dark border-light border-opacity-10 text-white"
+                value={zoneVisualMode}
+                onChange={(e) => update({ zoneVisualMode: e.target.value === "legacy" ? "legacy" : "temperature" })}
+              >
+                <option value="temperature">Temperature — band vs setpoint (green / red / blue)</option>
+                <option value="legacy">Legacy — alarm / mode / comms heuristics</option>
+              </Form.Select>
+            </Form.Group>
+            {zoneVisualMode === "temperature" && (
+              <>
+                <Form.Group className="mb-3">
+                  <Form.Label>Comfort band (±°)</Form.Label>
+                  <Form.Control
+                    size="sm"
+                    type="number"
+                    min={0.5}
+                    max={50}
+                    step={0.5}
+                    className="bg-dark border-light border-opacity-10 text-white"
+                    style={{ maxWidth: 120 }}
+                    value={bandDeg}
+                    onChange={(e) =>
+                      update({ temperatureBandDeg: clampTemperatureBandDeg(e.target.value) })
+                    }
+                  />
+                  <Form.Text className="text-white-50">
+                    Green when |zone temp − setpoint| ≤ this value (e.g. 3 or 5). Red if zone is hotter; blue if colder.
+                  </Form.Text>
+                </Form.Group>
+                <div className="mb-3 p-2 rounded border border-light border-opacity-10">
+                  <p className="text-white-50 mb-2 small">
+                    Fill uses <strong>zone temp</strong> minus <strong>setpoint</strong>: within ±{bandDeg}° green, above +
+                    {bandDeg}° warm red, below −{bandDeg}° cool blue. Reset colors if needed.
+                  </p>
+                  <div className="d-flex flex-wrap gap-1 align-items-center">
+                    {Object.entries(VISUAL_PRESETS).map(([k, label]) => (
+                      <Button key={k} size="sm" variant="outline-secondary" className="text-white-50" onClick={() => applyVisualPresetKey(k)}>
+                        {label}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
+            {zoneVisualMode === "legacy" && (
+              <p className="text-white-50 small mb-2">Legacy mode uses occupancy/alarm/mode bindings for fill state when configured.</p>
+            )}
+            {zoneVisualMode === "temperature" && (
+              <Form.Check
+                type="checkbox"
+                id="show-adv-colors"
+                className="mb-3 text-white-50"
+                label="Edit per-state colors (advanced)"
+                checked={showLegacyVisualColors}
+                onChange={(e) => setShowLegacyVisualColors(e.target.checked)}
+              />
+            )}
+            {(zoneVisualMode === "legacy" || showLegacyVisualColors) &&
+              STATE_KEYS.map((sk) => (
               <div key={sk} className="mb-3 p-2 rounded border border-light border-opacity-10">
                 <div className="fw-semibold mb-2 text-capitalize">{sk}</div>
                 <div className="row g-2">

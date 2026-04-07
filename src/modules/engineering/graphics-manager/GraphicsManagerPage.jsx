@@ -31,6 +31,7 @@ import {
   createDefaultZoneConfig,
   mergeZoneConfig,
   createDefaultStateColors,
+  applyTemperatureSimpleVisualPreset,
   isZoneShape,
 } from "./floorZoneModel";
 
@@ -963,7 +964,9 @@ export default function GraphicsManagerPage() {
     if (!selectedObject || !isZoneShape(selectedObject)) return;
     handleUpdateObject(selectedObject.id, {
       ...selectedObject,
-      zoneConfig: mergeZoneConfig(selectedObject.zoneConfig, { stateColors: createDefaultStateColors() }),
+      zoneConfig: mergeZoneConfig(selectedObject.zoneConfig, {
+        stateColors: { ...createDefaultStateColors(), ...applyTemperatureSimpleVisualPreset() },
+      }),
     });
   }, [selectedObject, handleUpdateObject]);
 
@@ -1597,6 +1600,8 @@ export default function GraphicsManagerPage() {
               onUpdateBackgroundImage={handleBackgroundStyleChange}
               onDeleteObject={handleDeleteObject}
               availablePoints={selectedLayoutNodeId ? [] : availablePoints}
+              equipmentList={equipmentList}
+              templates={workingState?.templates}
               previewMode={false}
               canvasWidth={canvasWidth}
               canvasHeight={canvasHeight}
@@ -1686,8 +1691,8 @@ export default function GraphicsManagerPage() {
             graphicElementType: "zone",
           });
         }}
-        availablePoints={availablePoints}
         equipmentList={equipmentList}
+        templates={workingState?.templates}
         initialTab={zoneModalInitialTab}
       />
 

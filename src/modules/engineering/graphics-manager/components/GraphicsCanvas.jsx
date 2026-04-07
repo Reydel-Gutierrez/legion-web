@@ -13,6 +13,7 @@ import {
   faExternalLinkAlt,
 } from "@fortawesome/free-solid-svg-icons";
 import FloorZoneGlassChip from "./FloorZoneGlassChip";
+import * as engineeringRepository from "../../../../lib/data/repositories/engineeringRepository";
 import {
   isZoneShape,
   getStyleForZoneState,
@@ -437,6 +438,8 @@ export default function GraphicsCanvas({
   onUpdateBackgroundImage,
   onDeleteObject,
   availablePoints = [],
+  equipmentList = [],
+  templates = null,
   previewMode = false,
   emptyMessage = "Select a graphic from the library to edit",
   canvasWidth = 800,
@@ -488,12 +491,20 @@ export default function GraphicsCanvas({
     const map = {};
     objects.forEach((o) => {
       if (!isZoneShape(o)) return;
-      const raw = resolveZonePointValuesForDisplay(o.zoneConfig, availablePoints);
+      const eqId = o.zoneConfig?.linkedEquipmentId;
+      let pts = availablePoints;
+      if (eqId && Array.isArray(equipmentList) && equipmentList.length) {
+        const eq = equipmentList.find((e) => e.id === eqId);
+        if (eq) {
+          pts = engineeringRepository.getPointDisplayInfoForEquipment(eq, templates);
+        }
+      }
+      const raw = resolveZonePointValuesForDisplay(o.zoneConfig, pts);
       const sim = buildSimulatedPointValuesForObjectId(o.id);
       map[o.id] = { ...sim, ...raw };
     });
     return map;
-  }, [objects, availablePoints]);
+  }, [objects, availablePoints, equipmentList, templates]);
 
   const getZoneShapeAppearance = useCallback(
     (obj) => {

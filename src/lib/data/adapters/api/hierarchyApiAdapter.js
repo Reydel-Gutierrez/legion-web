@@ -32,7 +32,8 @@ export function normalizeSite(api) {
   return {
     id: api.id,
     name: api.name,
-    timezone: undefined,
+    timezone: api.timezone ?? undefined,
+    description: api.description != null ? String(api.description) : "",
     status: api.status === "ACTIVE" ? "Active" : api.status || "Active",
     createdByUser: api.createdByUser ?? null,
   };
@@ -54,6 +55,10 @@ export function normalizeBuilding(api) {
     longitude: api.longitude,
     status: api.status,
     layoutStatus: mapBuildingLayoutStatus(api.status),
+    buildingType: api.buildingType ?? "",
+    buildingCode: api.buildingCode ?? "",
+    description: api.description != null ? String(api.description) : "",
+    sortOrder: api.sortOrder ?? 0,
   };
 }
 
@@ -64,6 +69,9 @@ export function normalizeFloor(api) {
     buildingId: api.buildingId,
     name: api.name,
     status: api.status,
+    floorType: api.floorType ?? "",
+    occupancyType: api.occupancyType ?? "",
+    sortOrder: api.sortOrder ?? 0,
   };
 }
 

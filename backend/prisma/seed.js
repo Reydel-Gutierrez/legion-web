@@ -1,8 +1,5 @@
 const { PrismaClient } = require('@prisma/client');
-const {
-  getGlobalStarterTemplateSeedRows,
-  mergeStarterEquipmentTemplatesIfEmpty,
-} = require('../src/lib/legionStarterEquipmentTemplates');
+const { getGlobalStarterTemplateSeedRows } = require('../src/lib/legionStarterEquipmentTemplates');
 
 const prisma = new PrismaClient();
 
@@ -118,13 +115,12 @@ async function buildDemoDeploymentSnapshot(siteId) {
       id: siteRow.id,
       name: siteRow.name,
       siteType: 'Site',
-      address: '',
       timezone: '',
       buildings: siteBuildings,
     },
     equipment: allEquipment,
     templates: {
-      equipmentTemplates: mergeStarterEquipmentTemplatesIfEmpty([]),
+      equipmentTemplates: [],
       graphicTemplates: [],
     },
     mappings: {},

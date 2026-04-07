@@ -7,7 +7,47 @@ import {
   createLeafletBasemapTileLayer,
   getLeafletBasemapConfig,
 } from "../../../../lib/siteLayout/leafletBasemapConfig";
-import SiteLayoutBuildingsPanel from "./SiteLayoutBuildingsPanel";
+import { formatBuildingHeroTitle } from "../../../../lib/siteBuildingOverviewUtils";
+import SiteQuickNavigation from "./SiteQuickNavigation";
+
+const MAP_POPUP_BLDG_SVG = `<svg class="site-layout-map-popup__bldg-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" width="20" height="20" aria-hidden="true" focusable="false"><path fill="currentColor" d="M64 32C28.7 32 0 60.7 0 96V416c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V96c0-35.3-28.7-64-64-64H64zm48 64h32V224H112V96zm64 0h32V320h-32V96zm64 0h32V192h-32V96zm64 0h32V256h-32V96z"/></svg>`;
+const MAP_POPUP_CTA_GRID = `<span class="site-layout-map-popup__cta-grid" aria-hidden="true"><span></span><span></span><span></span><span></span></span>`;
+
+function buildMapMarkerPopupHtml(b) {
+  const title = escapeHtml(formatBuildingHeroTitle(b.name || "Building"));
+  const typeLine = escapeHtml(b.buildingType && String(b.buildingType).trim() ? b.buildingType : "Building");
+  const address = escapeHtml(b.addressLine || "—");
+  const fc = Number(b.floorCount) || 0;
+  const meta =
+    fc === 0
+      ? "No floors yet — add floors in Site Builder"
+      : `${fc} floor${fc !== 1 ? "s" : ""} · Open to plan & monitor`;
+  const metaEsc = escapeHtml(meta);
+  const idEsc = escapeHtml(b.id);
+  return `
+    <div class="site-layout-map-popup">
+      <div class="site-layout-map-popup__accent" aria-hidden="true"></div>
+      <div class="site-layout-map-popup__main">
+        <div class="site-layout-map-popup__top">
+          <span class="site-layout-map-popup__icon-wrap" aria-hidden="true">${MAP_POPUP_BLDG_SVG}</span>
+          <div class="site-layout-map-popup__copy">
+            <div class="site-layout-map-popup__title">${title}</div>
+            <div class="site-layout-map-popup__type">${typeLine}</div>
+            <div class="site-layout-map-popup__address">${address}</div>
+            <div class="site-layout-map-popup__meta">${metaEsc}</div>
+          </div>
+        </div>
+        <div class="site-layout-map-popup__badge-row">
+          <span class="site-layout-map-popup__badge badge rounded-pill ${statusClass(b.status)}">${statusLabel(b.status)}</span>
+        </div>
+        <button type="button" class="site-layout-map-popup__cta site-layout-open-building" data-building-id="${idEsc}">
+          ${MAP_POPUP_CTA_GRID}
+          <span class="site-layout-map-popup__cta-label">Open building</span>
+        </button>
+      </div>
+    </div>
+  `;
+}
 
 function escapeHtml(text) {
   return String(text)
@@ -103,21 +143,13 @@ export default function SiteGlobalMapView({
     const markerById = new Map();
     mapBuildings.forEach((b) => {
       const m = L.marker([b.lat, b.lng]).addTo(map);
-      const html = `
-        <div class="site-layout-popup-inner text-dark small">
-          <div class="fw-semibold mb-1">${escapeHtml(b.name)}</div>
-          <div class="text-muted mb-2">${escapeHtml(b.addressLine)}</div>
-          <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
-            <span class="badge rounded-pill ${statusClass(b.status)}">${statusLabel(b.status)}</span>
-          </div>
-          <button type="button" class="btn btn-sm btn-primary w-100 site-layout-open-building" data-building-id="${escapeHtml(
-            b.id
-          )}">
-            Open building
-          </button>
-        </div>
-      `;
-      m.bindPopup(html, { minWidth: 260, className: "site-layout-popup shadow" });
+      const html = buildMapMarkerPopupHtml(b);
+      m.bindPopup(html, {
+        minWidth: 280,
+        maxWidth: 340,
+        className: "site-layout-popup--legion",
+        closeButton: true,
+      });
       m.on("click", () => {
         onSelectRef.current(b.id);
       });
@@ -227,14 +259,17 @@ export default function SiteGlobalMapView({
           )}
         </div>
 
-        <SiteLayoutBuildingsPanel
+        <SiteQuickNavigation
+          variant="map"
+          activeReleaseData={activeReleaseData}
+          selectedBuildingId={selectedBuildingId}
+          onOpenBuilding={onOpenBuilding}
+          siteDisplayName={siteDisplayName}
           buildings={filtered}
-          allCount={panelBuildings.length}
+          allBuildingsCount={panelBuildings.length}
           search={search}
           onSearchChange={setSearch}
-          selectedBuildingId={selectedBuildingId}
           onSelectBuilding={onSelectBuilding}
-          onOpenBuilding={onOpenBuilding}
         />
 
         <div className="site-layout-global-map-badge d-flex align-items-center gap-2">

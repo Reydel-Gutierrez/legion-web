@@ -58,7 +58,6 @@ const MIAMI_HQ_SITE = {
   id: "site-miami-hq",
   name: "Miami HQ",
   siteType: "Office",
-  address: "100 Legion Way, Miami, FL",
   timezone: "America/New_York",
   buildings: [
     {
@@ -127,7 +126,6 @@ const BRIGHTLINE_SITE = {
   id: "site-brightline",
   name: "Brightline Trains",
   siteType: "Transit",
-  address: "Florida higher-speed rail corridor",
   timezone: "America/New_York",
   buildings: [
     {
@@ -554,7 +552,6 @@ function mockSiteToTree(siteData, equipmentList = []) {
     type: "site",
     name: siteData.name,
     siteType: siteData.siteType,
-    address: siteData.address,
     timezone: siteData.timezone,
     status: siteData.status,
     parentId: null,

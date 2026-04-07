@@ -45,6 +45,7 @@ function buildDetailRows(zoneConfig, equipmentLabel, values) {
   const rows = [];
   if (fieldEnabled(wf, "zoneName")) rows.push({ label: "Zone", value: zoneConfig?.zoneName || "—" });
   if (fieldEnabled(wf, "equipmentName")) rows.push({ label: "Equipment", value: equipmentLabel || "—" });
+  if (fieldEnabled(wf, "zoneTemp")) rows.push({ label: "Zone temp", value: values.zoneTemp ?? "—" });
   if (fieldEnabled(wf, "spaceTemp")) rows.push({ label: "Space", value: values.spaceTemp ?? "—" });
   if (fieldEnabled(wf, "setpoint")) rows.push({ label: "Setpoint", value: values.setpoint ?? "—" });
   if (fieldEnabled(wf, "occupancy")) rows.push({ label: "Occupancy", value: values.occupancy ?? "—" });
@@ -80,13 +81,18 @@ export default function FloorZoneGlassChip({
   );
   const detailRows = useMemo(() => buildDetailRows(zc, eqTitle, values), [zc, eqTitle, values]);
   const runtimeState = deriveZoneVisualState(zc, values);
+  const zoneVisualMode = zc.zoneVisualMode !== "legacy" ? "temperature" : "legacy";
 
   if (zc.enabled !== true) return null;
   if (zc.showGlassOverviewChip === false) return null;
 
   const detailsAllowed = zc.wedgeEnabled !== false;
 
-  const { main: tempMain, unit: tempUnit } = parseTempMainDisplay(values.spaceTemp);
+  const primaryTemp =
+    zoneVisualMode !== "legacy" && (values.zoneTemp && String(values.zoneTemp).trim())
+      ? values.zoneTemp
+      : values.spaceTemp;
+  const { main: tempMain, unit: tempUnit } = parseTempMainDisplay(primaryTemp);
   const targetLabel = targetPillText(values.setpoint);
 
   const zx = zoneObject.x ?? 0;

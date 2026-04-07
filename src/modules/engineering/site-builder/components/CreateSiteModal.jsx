@@ -3,12 +3,11 @@ import { Modal, Button, Form } from "@themesberg/react-bootstrap";
 
 /**
  * Modal for creating a new site.
- * Fields: Site Name, Address (optional), Description (optional),
- * Default Building Name, Timezone (optional)
+ * Fields: Site Name, Description (optional), Default Building Name, Timezone (optional).
+ * Street address is captured per building in Site Builder, not on the site.
  */
 export default function CreateSiteModal({ show, onHide, onCreate }) {
   const [siteName, setSiteName] = useState("");
-  const [address, setAddress] = useState("");
   const [description, setDescription] = useState("");
   const [defaultBuildingName, setDefaultBuildingName] = useState("Building 1");
   const [timezone, setTimezone] = useState("America/New_York");
@@ -18,13 +17,11 @@ export default function CreateSiteModal({ show, onHide, onCreate }) {
     if (!siteName.trim()) return;
     onCreate({
       name: siteName.trim(),
-      address: address.trim() || undefined,
       description: description.trim() || undefined,
       defaultBuildingName: defaultBuildingName.trim() || "Building 1",
       timezone: timezone.trim() || undefined,
     });
     setSiteName("");
-    setAddress("");
     setDescription("");
     setDefaultBuildingName("Building 1");
     setTimezone("America/New_York");
@@ -33,7 +30,6 @@ export default function CreateSiteModal({ show, onHide, onCreate }) {
 
   const handleClose = () => {
     setSiteName("");
-    setAddress("");
     setDescription("");
     setDefaultBuildingName("Building 1");
     setTimezone("America/New_York");
@@ -61,16 +57,6 @@ export default function CreateSiteModal({ show, onHide, onCreate }) {
               placeholder="e.g. Miami HQ"
               value={siteName}
               onChange={(e) => setSiteName(e.target.value)}
-            />
-          </Form.Group>
-          <Form.Group className="mb-3">
-            <Form.Label className="text-white small">Address (optional)</Form.Label>
-            <Form.Control
-              size="sm"
-              className="bg-dark border border-light border-opacity-10 text-white"
-              placeholder="Street, City, State"
-              value={address}
-              onChange={(e) => setAddress(e.target.value)}
             />
           </Form.Group>
           <Form.Group className="mb-3">

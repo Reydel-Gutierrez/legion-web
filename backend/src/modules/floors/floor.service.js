@@ -1,5 +1,7 @@
 const prisma = require('../../lib/prisma');
 const { HttpError } = require('../../lib/httpError');
+const { sortBySortOrderThenName } = require('../../lib/hierarchySort');
+const { normalizeEntityStatusForDb } = require('../siteHierarchy/siteHierarchy.service');
 
 async function assertBuildingExists(buildingId) {
   const building = await prisma.building.findUnique({
@@ -12,24 +14,37 @@ async function assertBuildingExists(buildingId) {
 
 async function listFloorsByBuilding(buildingId) {
   await assertBuildingExists(buildingId);
-  return prisma.floor.findMany({
-    where: { buildingId },
-    orderBy: { name: 'asc' },
-    include: { _count: { select: { equipment: true } } },
-  });
+  return sortBySortOrderThenName(
+    await prisma.floor.findMany({
+      where: { buildingId },
+      orderBy: { name: 'asc' },
+      include: { _count: { select: { equipment: true } } },
+    })
+  );
 }
 
 async function createFloor(buildingId, data) {
   await assertBuildingExists(buildingId);
-  const { name, status } = data;
+  const { name } = data;
   if (!name || typeof name !== 'string') {
     throw new HttpError(400, 'name is required');
   }
+  const sortOrder =
+    data.sortOrder !== undefined && data.sortOrder !== null && data.sortOrder !== ''
+      ? Number(data.sortOrder)
+      : 0;
   return prisma.floor.create({
     data: {
       buildingId,
       name: name.trim(),
-      ...(status ? { status } : {}),
+      ...(data.status !== undefined ? { status: normalizeEntityStatusForDb(data.status) } : {}),
+      ...(data.floorType != null && String(data.floorType).trim()
+        ? { floorType: String(data.floorType).trim() }
+        : {}),
+      ...(data.occupancyType != null && String(data.occupancyType).trim()
+        ? { occupancyType: String(data.occupancyType).trim() }
+        : {}),
+      sortOrder: Number.isFinite(sortOrder) ? sortOrder : 0,
     },
     include: { building: true },
   });
@@ -43,13 +58,24 @@ async function updateFloor(id, data) {
   if (!existing) {
     throw new HttpError(404, 'Floor not found');
   }
-  const allowed = ['name', 'status'];
   const update = {};
-  for (const key of allowed) {
-    if (data[key] !== undefined) {
-      update[key] =
-        key === 'name' ? String(data[key]).trim() : data[key];
-    }
+  if (data.name !== undefined) {
+    update.name = String(data.name).trim();
+  }
+  if (data.status !== undefined) {
+    update.status = normalizeEntityStatusForDb(data.status);
+  }
+  if (data.floorType !== undefined) {
+    const s = data.floorType == null ? '' : String(data.floorType).trim();
+    update.floorType = s.length ? s : null;
+  }
+  if (data.occupancyType !== undefined) {
+    const s = data.occupancyType == null ? '' : String(data.occupancyType).trim();
+    update.occupancyType = s.length ? s : null;
+  }
+  if (data.sortOrder !== undefined) {
+    const n = Number(data.sortOrder);
+    update.sortOrder = Number.isFinite(n) ? n : 0;
   }
   if (Object.keys(update).length === 0) {
     throw new HttpError(400, 'No fields to update');

@@ -4,12 +4,15 @@ import { useSiteDisplayLabel } from "../../../hooks/useSiteDisplayLabel";
 import { useActiveDeployment } from "../../../hooks/useWorkingVersion";
 import { Container, Card, Button } from "@themesberg/react-bootstrap";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faChevronRight, faBoxOpen, faExclamationTriangle } from "@fortawesome/free-solid-svg-icons";
+import { faChevronRight, faExclamationTriangle } from "@fortawesome/free-solid-svg-icons";
 import LegionHeroHeader from "../../../components/legion/LegionHeroHeader";
 import DeployedGraphicPreview, { DEPLOYED_GRAPHIC_PRESENTATION } from "../equipment/DeployedGraphicPreview";
 import SiteGlobalMapView from "./layout/SiteGlobalMapView";
+import SiteBuildingOverview from "./layout/SiteBuildingOverview";
 import { Routes } from "../../../routes";
 import { getSummaryFromActiveRelease } from "../../../lib/activeReleaseUtils";
+import { findBuildingInRelease } from "../../../lib/siteBuildingOverviewUtils";
+import SiteQuickNavigation from "./layout/SiteQuickNavigation";
 
 /** Path segment for breadcrumb */
 function pathSegment(id, label) {
@@ -149,7 +152,29 @@ export default function SitePage() {
     [goToLevelByPathId]
   );
 
+  const backToSiteMap = useCallback(() => {
+    const siteLev = layoutLevels.find((l) => l.type === "site");
+    if (siteLev) goToLevelByPathId(siteLev.id);
+    setSelectedBuildingId(null);
+  }, [layoutLevels, goToLevelByPathId]);
+
+  const floorQuickNavContext = useMemo(() => {
+    if (selectedLevel?.type !== "floor") return null;
+    const bSeg = selectedLevel.breadcrumb?.[1];
+    if (!bSeg?.id) return null;
+    const bModel = findBuildingInRelease(activeReleaseData, bSeg.id);
+    const floorModel =
+      bModel?.floors?.find((f) => String(f.id) === String(selectedLevel.id)) ||
+      ({ id: selectedLevel.id, name: selectedLevel.label });
+    return {
+      buildingId: bSeg.id,
+      buildingName: bSeg.label,
+      floor: floorModel,
+    };
+  }, [selectedLevel, activeReleaseData]);
+
   const isGlobalSiteView = Boolean(hasLevels && selectedLevel?.type === "site" && levelIndex === 0);
+  const isBuildingLayoutView = Boolean(hasLevels && selectedLevel?.type === "building");
 
   const goToEquipmentDetail = (equipmentId) => {
     const path = Routes.LegionEquipmentDetail.path.replace(":equipmentId", encodeURIComponent(equipmentId));
@@ -189,26 +214,28 @@ export default function SitePage() {
             {releaseError}
           </div>
         )}
-        {/* Breadcrumb — compact, single row */}
-        <nav aria-label="Site location" className="d-flex align-items-center flex-wrap gap-1 text-white-50 small mb-3">
-          <span className="text-white-50">Site Layout</span>
-          {breadcrumb.length > 0 && breadcrumb.map((seg, i) => (
-            <span key={seg.id} className="d-flex align-items-center gap-1">
-              <FontAwesomeIcon icon={faChevronRight} className="fa-xs opacity-50" />
-              {i < breadcrumb.length - 1 ? (
-                <button
-                  type="button"
-                  className="btn btn-link p-0 text-white-50 small text-decoration-none"
-                  onClick={() => goToLevelByPathId(seg.id)}
-                >
-                  {seg.label}
-                </button>
-              ) : (
-                <span className="text-white">{seg.label}</span>
-              )}
-            </span>
-          ))}
-        </nav>
+        {/* Breadcrumb — hidden on building main page (hero + floor nav replace it) */}
+        {!isBuildingLayoutView ? (
+          <nav aria-label="Site location" className="d-flex align-items-center flex-wrap gap-1 text-white-50 small mb-3">
+            <span className="text-white-50">Site Layout</span>
+            {breadcrumb.length > 0 && breadcrumb.map((seg, i) => (
+              <span key={seg.id} className="d-flex align-items-center gap-1">
+                <FontAwesomeIcon icon={faChevronRight} className="fa-xs opacity-50" />
+                {i < breadcrumb.length - 1 ? (
+                  <button
+                    type="button"
+                    className="btn btn-link p-0 text-white-50 small text-decoration-none"
+                    onClick={() => goToLevelByPathId(seg.id)}
+                  >
+                    {seg.label}
+                  </button>
+                ) : (
+                  <span className="text-white">{seg.label}</span>
+                )}
+              </span>
+            ))}
+          </nav>
+        ) : null}
 
         <div className="site-layout-full-card-wrap">
           {isGlobalSiteView ? (
@@ -242,7 +269,34 @@ export default function SitePage() {
           ) : (
             <Card className="site-layout-full-card bg-primary border border-light border-opacity-10 shadow-sm overflow-hidden">
               <Card.Body className="p-0 position-relative">
-                <div className="legion-map-wrapper site-layout-map-area">
+                <div
+                  className={[
+                    "legion-map-wrapper site-layout-map-area",
+                    isBuildingLayoutView ? "site-layout-map-area--building-overview" : "",
+                  ]
+                    .filter(Boolean)
+                    .join(" ")}
+                >
+                  {isBuildingLayoutView && selectedNodeId ? (
+                    <SiteBuildingOverview
+                      releaseData={activeReleaseData}
+                      buildingId={selectedNodeId}
+                      onSelectFloor={(floorId) => goToLevelByPathId(floorId)}
+                      onBackToMap={backToSiteMap}
+                    />
+                  ) : null}
+                  {selectedLevel?.type === "floor" && floorQuickNavContext ? (
+                    <SiteQuickNavigation
+                      variant="floor"
+                      releaseData={activeReleaseData}
+                      floor={floorQuickNavContext.floor}
+                      buildingName={floorQuickNavContext.buildingName}
+                      equipment={equipmentOnFloor}
+                      onOpenEquipmentDetail={goToEquipmentDetail}
+                      onBackToBuilding={() => goToLevelByPathId(floorQuickNavContext.buildingId)}
+                      onBackToMap={backToSiteMap}
+                    />
+                  ) : null}
                   {hasLayoutGraphic ? (
                     <DeployedGraphicPreview
                       graphic={layoutGraphic}
@@ -257,9 +311,11 @@ export default function SitePage() {
                       No deployed site layout graphic for this {selectedLevel?.type || "layout"}.
                     </div>
                   )}
-                  <div className="legion-map-badge">
-                    {siteDisplayName} • {levelLabel}
-                  </div>
+                  {!isBuildingLayoutView ? (
+                    <div className="legion-map-badge">
+                      {siteDisplayName} • {levelLabel}
+                    </div>
+                  ) : null}
 
                   {(summary.activeAlarms > 0 || summary.unackedAlarms > 0) && (
                     <div className="site-layout-red-zones-strip">
@@ -279,35 +335,6 @@ export default function SitePage() {
                       </Button>
                     </div>
                   )}
-                </div>
-              </Card.Body>
-            </Card>
-          )}
-
-          {selectedLevel?.type === "floor" && equipmentOnFloor.length > 0 && (
-            <Card className="bg-primary border border-light border-opacity-10 shadow-sm mt-3">
-              <Card.Header className="bg-transparent border-light border-opacity-10 py-2">
-                <span className="text-white fw-semibold small">
-                  <FontAwesomeIcon icon={faBoxOpen} className="me-2" />
-                  Equipment on this floor
-                </span>
-              </Card.Header>
-              <Card.Body className="py-2">
-                <div className="d-flex flex-wrap gap-2">
-                  {equipmentOnFloor.map((eq) => (
-                    <Button
-                      key={eq.id}
-                      size="sm"
-                      variant="outline-secondary"
-                      className="text-white-50 border-secondary border-opacity-50"
-                      onClick={() => goToEquipmentDetail(eq.id)}
-                    >
-                      {eq.displayLabel || eq.name || eq.id}
-                    </Button>
-                  ))}
-                </div>
-                <div className="text-white-50 small mt-2">
-                  Click an equipment to open its detail page.
                 </div>
               </Card.Body>
             </Card>

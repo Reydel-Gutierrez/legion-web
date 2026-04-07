@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { Card, Button, Form, Table, Dropdown } from "@themesberg/react-bootstrap";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
@@ -8,6 +8,7 @@ import {
   faSave,
   faTimes,
   faCopy as faDuplicate,
+  faGripVertical,
 } from "@fortawesome/free-solid-svg-icons";
 import LegionFormSelect from "../../../../components/legion/LegionFormSelect";
 import { engineeringRepository } from "../../../../lib/data";
@@ -200,6 +201,8 @@ export default function EquipmentTemplateEditorPanel({
   const [defaultGraphic, setDefaultGraphic] = useState("");
   const [points, setPoints] = useState([]);
   const [errors, setErrors] = useState({});
+  const [dragOverPointId, setDragOverPointId] = useState(null);
+  const dragSourceIdRef = useRef(null);
 
   const pointCount = points.length;
   const graphicSelectOptions = useMemo(
@@ -276,6 +279,24 @@ export default function EquipmentTemplateEditorPanel({
       return [...prev, row];
     });
   }, [readOnly]);
+
+  const reorderPoints = useCallback((fromId, toId) => {
+    if (readOnly || !fromId || !toId || fromId === toId) return;
+    setPoints((prev) => {
+      const fromIdx = prev.findIndex((p) => p.id === fromId);
+      const toIdx = prev.findIndex((p) => p.id === toId);
+      if (fromIdx < 0 || toIdx < 0) return prev;
+      const next = [...prev];
+      const [removed] = next.splice(fromIdx, 1);
+      next.splice(toIdx, 0, removed);
+      return next;
+    });
+  }, [readOnly]);
+
+  const clearDragState = useCallback(() => {
+    dragSourceIdRef.current = null;
+    setDragOverPointId(null);
+  }, []);
 
   const loadStarterSet = useCallback(
     (type) => {
@@ -580,6 +601,11 @@ export default function EquipmentTemplateEditorPanel({
                 <Table className="discovery-table equipment-template-points-table equipment-template-points-table--wide mb-0">
                   <thead>
                     <tr>
+                      {!readOnly && (
+                        <th className="equipment-template-col-drag" scope="col" aria-label="Reorder">
+                          <span className="visually-hidden">Reorder</span>
+                        </th>
+                      )}
                       <th className="equipment-template-col-pointkey">Point</th>
                       <th className="equipment-template-col-label">Point description</th>
                       <th className="equipment-template-col-type">Expected type</th>
@@ -590,7 +616,70 @@ export default function EquipmentTemplateEditorPanel({
                   </thead>
                   <tbody>
                     {points.map((p) => (
-                      <tr key={p.id} className="discovery-table-row align-top">
+                      <tr
+                        key={p.id}
+                        className={`discovery-table-row align-top${
+                          !readOnly && dragOverPointId === p.id ? " equipment-template-row--drag-over" : ""
+                        }`}
+                        onDragOver={
+                          readOnly
+                            ? undefined
+                            : (e) => {
+                                e.preventDefault();
+                                e.dataTransfer.dropEffect = "move";
+                                const src = dragSourceIdRef.current;
+                                if (src && src !== p.id) setDragOverPointId(p.id);
+                              }
+                        }
+                        onDragLeave={
+                          readOnly
+                            ? undefined
+                            : (e) => {
+                                if (!e.currentTarget.contains(e.relatedTarget)) {
+                                  setDragOverPointId((cur) => (cur === p.id ? null : cur));
+                                }
+                              }
+                        }
+                        onDrop={
+                          readOnly
+                            ? undefined
+                            : (e) => {
+                                e.preventDefault();
+                                const fromId =
+                                  dragSourceIdRef.current || e.dataTransfer.getData("text/plain");
+                                reorderPoints(fromId, p.id);
+                                clearDragState();
+                              }
+                        }
+                      >
+                        {!readOnly && (
+                          <td className="equipment-template-col-drag align-middle">
+                            <span
+                              role="button"
+                              tabIndex={0}
+                              className="equipment-template-drag-handle"
+                              draggable
+                              aria-label={`Drag to reorder point ${(p.key || p.label || "").trim() || "row"}`}
+                              onDragStart={(e) => {
+                                dragSourceIdRef.current = p.id;
+                                e.dataTransfer.effectAllowed = "move";
+                                e.dataTransfer.setData("text/plain", p.id);
+                              }}
+                              onDragEnd={clearDragState}
+                              onKeyDown={(e) => {
+                                if (e.key !== "ArrowUp" && e.key !== "ArrowDown") return;
+                                e.preventDefault();
+                                const idx = points.findIndex((x) => x.id === p.id);
+                                if (idx < 0) return;
+                                const swapWith = e.key === "ArrowUp" ? idx - 1 : idx + 1;
+                                if (swapWith < 0 || swapWith >= points.length) return;
+                                reorderPoints(p.id, points[swapWith].id);
+                              }}
+                            >
+                              <FontAwesomeIcon icon={faGripVertical} className="text-white-50" />
+                            </span>
+                          </td>
+                        )}
                         <td className="equipment-template-col-pointkey">
                           {readOnly ? (
                             <span className="text-white font-monospace">{(p.key || "").trim() || "—"}</span>

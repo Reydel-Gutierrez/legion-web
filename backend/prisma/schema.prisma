@@ -23,6 +23,13 @@ model Site {
   id        String       @id @default(uuid())
   name      String
   status    EntityStatus @default(ACTIVE)
+  /// Engineering / Site Builder metadata (persisted; working-version sync reads these)
+  timezone         String?
+  siteType         String?
+  description      String?
+  displayLabel     String?
+  engineeringNotes String?
+  icon             String?
   createdAt DateTime     @default(now())
   updatedAt DateTime     @updatedAt
 
@@ -85,6 +92,11 @@ model Building {
   latitude     Float?
   longitude    Float?
   status       EntityStatus @default(ACTIVE)
+  buildingType String?
+  buildingCode String?
+  /// Operator building page hero / tagline (optional; falls back to site description)
+  description  String?
+  sortOrder    Int          @default(0)
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
 
@@ -101,6 +113,9 @@ model Floor {
   buildingId String
   name       String
   status     EntityStatus @default(ACTIVE)
+  floorType       String?
+  occupancyType   String?
+  sortOrder       Int          @default(0)
   createdAt  DateTime     @default(now())
   updatedAt  DateTime     @updatedAt
 

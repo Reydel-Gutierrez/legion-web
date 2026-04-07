@@ -6,6 +6,8 @@ import { faTrashAlt } from "@fortawesome/free-solid-svg-icons";
 import LegionFormSelect from "../../../../components/legion/LegionFormSelect";
 import EquipmentEditorPanel from "../../equipment-builder/components/EquipmentEditorPanel";
 import BuildingLocationMapPicker from "./BuildingLocationMapPicker";
+import BuildingAddressSearchField from "./BuildingAddressSearchField";
+import { isHierarchyApiEnabled } from "../../../../lib/api/apiConfig";
 
 /**
  * Right panel: Edit selected node (Site, Building, or Floor) or Equipment
@@ -29,7 +31,11 @@ export default function NodeEditorPanel({
   discoveredDevices = [],
   onDuplicateEquipment,
   onMoveEquipment,
+  /** `view` = read-only node form (future); Site Builder defaults to editable. */
+  mode = "edit",
 }) {
+  const readOnly = mode === "view";
+
   const [form, setForm] = useState({
     name: "",
     displayLabel: "",
@@ -39,7 +45,6 @@ export default function NodeEditorPanel({
     siteType: "",
     timezone: "America/New_York",
     address: "",
-    status: "Active",
     engineeringNotes: "",
     buildingType: "",
     buildingCode: "",
@@ -61,8 +66,7 @@ export default function NodeEditorPanel({
         sortOrder: node.sortOrder ?? 0,
         siteType: node.siteType || "",
         timezone: node.timezone || "America/New_York",
-        address: node.address || "",
-        status: node.status || "Active",
+        address: node.type === "site" ? "" : node.address || "",
         engineeringNotes: node.engineeringNotes || "",
         buildingType: node.buildingType || "",
         buildingCode: node.buildingCode || "",
@@ -196,6 +200,7 @@ export default function NodeEditorPanel({
                   onChange={(e) => handleChange("siteType", e.target.value)}
                   options={[
                     { value: "", label: "Select..." },
+                    { value: "Site", label: "Site" },
                     { value: "Office", label: "Office" },
                     { value: "Campus", label: "Campus" },
                     { value: "Residential", label: "Residential" },
@@ -220,30 +225,6 @@ export default function NodeEditorPanel({
                     { value: "UTC", label: "UTC" },
                   ]}
                   placeholder="Select timezone"
-                />
-              </Form.Group>
-              <Form.Group className="mb-3">
-                <Form.Label className="text-white small">Address</Form.Label>
-                <Form.Control
-                  size="sm"
-                  className="bg-dark bg-opacity-25 border border-light border-opacity-10 text-white"
-                  value={form.address}
-                  onChange={(e) => handleChange("address", e.target.value)}
-                  placeholder="Street, City, State"
-                />
-              </Form.Group>
-              <Form.Group className="mb-3">
-                <Form.Label className="text-white small">Status</Form.Label>
-                <LegionFormSelect
-                  size="sm"
-                  value={form.status}
-                  onChange={(e) => handleChange("status", e.target.value)}
-                  options={[
-                    { value: "Active", label: "Active" },
-                    { value: "Draft", label: "Draft" },
-                    { value: "Archived", label: "Archived" },
-                  ]}
-                  placeholder="Status"
                 />
               </Form.Group>
             </>
@@ -280,16 +261,34 @@ export default function NodeEditorPanel({
                 />
               </Form.Group>
               <div className="text-white-50 small mb-2">Location (site map)</div>
-              <Form.Group className="mb-3">
-                <Form.Label className="text-white small">Street address</Form.Label>
-                <Form.Control
-                  size="sm"
-                  className="bg-dark bg-opacity-25 border border-light border-opacity-10 text-white"
-                  value={form.address}
-                  onChange={(e) => handleChange("address", e.target.value)}
-                  placeholder="Optional — shown on map list"
-                />
-              </Form.Group>
+              <BuildingAddressSearchField
+                readOnly={readOnly}
+                apiEnabled={isHierarchyApiEnabled()}
+                address={form.address}
+                onAddressChange={(v) => handleChange("address", v)}
+                onPick={(place) => {
+                  setForm((prev) => ({
+                    ...prev,
+                    address: place.addressLine || prev.address,
+                    city:
+                      place.city != null && String(place.city).trim()
+                        ? String(place.city).trim()
+                        : prev.city,
+                    state:
+                      place.state != null && String(place.state).trim()
+                        ? String(place.state).trim()
+                        : prev.state,
+                    lat:
+                      place.lat != null && Number.isFinite(Number(place.lat))
+                        ? String(Number(Number(place.lat).toFixed(6)))
+                        : prev.lat,
+                    lng:
+                      place.lng != null && Number.isFinite(Number(place.lng))
+                        ? String(Number(Number(place.lng).toFixed(6)))
+                        : prev.lng,
+                  }));
+                }}
+              />
               <div className="row g-2 mb-3">
                 <div className="col-6">
                   <Form.Group>
@@ -365,20 +364,6 @@ export default function NodeEditorPanel({
                   className="bg-dark bg-opacity-25 border border-light border-opacity-10 text-white"
                   value={form.sortOrder}
                   onChange={(e) => handleChange("sortOrder", parseInt(e.target.value, 10) || 0)}
-                />
-              </Form.Group>
-              <Form.Group className="mb-3">
-                <Form.Label className="text-white small">Status</Form.Label>
-                <LegionFormSelect
-                  size="sm"
-                  value={form.status}
-                  onChange={(e) => handleChange("status", e.target.value)}
-                  options={[
-                    { value: "Active", label: "Active" },
-                    { value: "Draft", label: "Draft" },
-                    { value: "Archived", label: "Archived" },
-                  ]}
-                  placeholder="Status"
                 />
               </Form.Group>
             </>

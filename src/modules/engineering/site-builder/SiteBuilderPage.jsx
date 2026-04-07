@@ -256,7 +256,7 @@ export default function SiteBuilderPage() {
           const created = await hierarchyRepository.createSite({ name: data.name.trim() });
           await hierarchyRepository.createBuilding(created.id, {
             name: data.defaultBuildingName || "Building 1",
-            addressLine1: (data.address && data.address.trim()) || "TBD",
+            addressLine1: "TBD",
             city: "—",
             state: "—",
             postalCode: "00000",
@@ -289,7 +289,6 @@ export default function SiteBuilderPage() {
         id: siteId,
         type: "site",
         name: data.name,
-        address: data.address,
         description: data.description,
         timezone: data.timezone,
         parentId: null,
@@ -362,20 +361,41 @@ export default function SiteBuilderPage() {
         setHierarchyMutationError(null);
         try {
           if (node.type === "site") {
-            await hierarchyRepository.updateSite(site, { name: form.name });
+            await hierarchyRepository.updateSite(site, {
+              name: form.name.trim(),
+              timezone: form.timezone != null && String(form.timezone).trim() ? String(form.timezone).trim() : null,
+              siteType: form.siteType != null && String(form.siteType).trim() ? String(form.siteType).trim() : null,
+              description: form.description != null && String(form.description).trim() ? String(form.description).trim() : null,
+              displayLabel: form.displayLabel != null && String(form.displayLabel).trim() ? String(form.displayLabel).trim() : null,
+              engineeringNotes:
+                form.engineeringNotes != null && String(form.engineeringNotes).trim()
+                  ? String(form.engineeringNotes).trim()
+                  : null,
+              icon: form.icon != null && String(form.icon).trim() ? String(form.icon).trim() : null,
+            });
           } else if (node.type === "building") {
             await hierarchyRepository.updateBuilding(id, {
-              name: form.name,
-              addressLine1: form.address || "TBD",
-              city: form.city || "—",
-              state: form.state || "—",
+              name: form.name.trim(),
+              addressLine1:
+                form.address != null && String(form.address).trim() ? String(form.address).trim() : "TBD",
+              city: form.city != null && String(form.city).trim() ? String(form.city).trim() : "—",
+              state: form.state != null && String(form.state).trim() ? String(form.state).trim() : "—",
               postalCode: "00000",
               country: "US",
               latitude: parseCoord(form.lat),
               longitude: parseCoord(form.lng),
+              buildingType: form.buildingType != null && String(form.buildingType).trim() ? String(form.buildingType).trim() : null,
+              buildingCode: form.buildingCode != null && String(form.buildingCode).trim() ? String(form.buildingCode).trim() : null,
+              sortOrder: Number.isFinite(Number(form.sortOrder)) ? Number(form.sortOrder) : 0,
             });
           } else {
-            await hierarchyRepository.updateFloor(id, { name: form.name });
+            await hierarchyRepository.updateFloor(id, {
+              name: form.name.trim(),
+              floorType: form.floorType != null && String(form.floorType).trim() ? String(form.floorType).trim() : null,
+              occupancyType:
+                form.occupancyType != null && String(form.occupancyType).trim() ? String(form.occupancyType).trim() : null,
+              sortOrder: Number.isFinite(Number(form.sortOrder)) ? Number(form.sortOrder) : 0,
+            });
           }
           const payload = await engineeringRepository.fetchWorkingVersion(site);
           if (payload) {
@@ -395,8 +415,9 @@ export default function SiteBuilderPage() {
         sortOrder: form.sortOrder,
         siteType: form.siteType,
         timezone: form.timezone,
-        address: form.address,
-        status: form.status,
+        ...(node.type === "site"
+          ? { address: null }
+          : { address: form.address }),
         engineeringNotes: form.engineeringNotes,
         buildingType: form.buildingType,
         buildingCode: form.buildingCode,

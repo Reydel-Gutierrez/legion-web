@@ -100,6 +100,7 @@ export default function BuildingLocationMapPicker({ lat, lng, onPositionChange }
     const cur = markerRef.current.getLatLng();
     if (Math.abs(cur.lat - la) > 1e-7 || Math.abs(cur.lng - ln) > 1e-7) {
       markerRef.current.setLatLng([la, ln]);
+      map.setView([la, ln], ZOOM_WITH_POINT);
     }
   }, [lat, lng]);
 

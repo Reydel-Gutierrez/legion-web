@@ -4,6 +4,40 @@
  */
 
 const prisma = require('../../lib/prisma');
+const { sortBySortOrderThenName } = require('../../lib/hierarchySort');
+
+/** Site Builder form labels (or API enum strings) → Prisma EntityStatus */
+function entityStatusFromFormLabel(label) {
+  const u = String(label || '')
+    .trim()
+    .toUpperCase();
+  if (u === 'INACTIVE' || u === 'DRAFT') return 'INACTIVE';
+  if (u === 'ARCHIVED') return 'ARCHIVED';
+  if (u === 'ACTIVE') return 'ACTIVE';
+  const lower = String(label || '')
+    .trim()
+    .toLowerCase();
+  if (lower === 'draft' || lower === 'inactive') return 'INACTIVE';
+  if (lower === 'archived') return 'ARCHIVED';
+  if (lower === 'active') return 'ACTIVE';
+  return 'ACTIVE';
+}
+
+/** Any client input → Prisma EntityStatus (handles title case, already-enums, etc.) */
+function normalizeEntityStatusForDb(value) {
+  if (value === undefined || value === null) return undefined;
+  const u = String(value).trim().toUpperCase();
+  if (u === 'ACTIVE' || u === 'INACTIVE' || u === 'ARCHIVED') return u;
+  return entityStatusFromFormLabel(value);
+}
+
+/** Prisma EntityStatus → Site Builder form labels */
+function formLabelFromEntityStatus(st) {
+  const u = String(st || '').toUpperCase();
+  if (u === 'INACTIVE') return 'Draft';
+  if (u === 'ARCHIVED') return 'Archived';
+  return 'Active';
+}
 
 function pointToWorkspaceRow(equipmentId, equipmentName, pt) {
   const units = pt.unit || '';
@@ -32,38 +66,47 @@ async function buildWorkingSiteEquipmentFromDb(siteId) {
     return { site: null, equipment: [] };
   }
 
-  const buildings = await prisma.building.findMany({
-    where: { siteId },
-    orderBy: { name: 'asc' },
-  });
+  const buildings = sortBySortOrderThenName(
+    await prisma.building.findMany({
+      where: { siteId },
+      orderBy: { name: 'asc' },
+    })
+  );
 
   const siteBuildings = [];
   const allEquipment = [];
 
   for (const b of buildings) {
-    const floors = await prisma.floor.findMany({
-      where: { buildingId: b.id },
-      orderBy: { name: 'asc' },
-    });
+    const floors = sortBySortOrderThenName(
+      await prisma.floor.findMany({
+        where: { buildingId: b.id },
+        orderBy: { name: 'asc' },
+      })
+    );
     const layoutStatus = b.status === 'ACTIVE' ? 'normal' : 'warning';
-    const floorNodes = floors.map((f, fi) => ({
+    const floorNodes = floors.map((f) => ({
       id: f.id,
       name: f.name,
-      sortOrder: fi,
-      floorType: 'Standard Floor',
+      sortOrder: f.sortOrder ?? 0,
+      floorType: f.floorType || 'Standard Floor',
+      occupancyType: f.occupancyType || '',
     }));
 
     siteBuildings.push({
       id: b.id,
       name: b.name,
-      buildingType: 'Building',
-      buildingCode: '',
+      /** Empty when unset so Site Builder dropdown matches an option (no fake "Building" value). */
+      buildingType: b.buildingType != null && String(b.buildingType).trim() ? String(b.buildingType).trim() : '',
+      buildingCode: b.buildingCode || '',
+      description: b.description != null && String(b.description).trim() ? String(b.description).trim() : '',
       address: b.addressLine1,
       city: b.city,
       state: b.state,
       lat: b.latitude,
       lng: b.longitude,
-      status: layoutStatus,
+      status: formLabelFromEntityStatus(b.status),
+      layoutStatus,
+      sortOrder: b.sortOrder ?? 0,
       hasFloors: floorNodes.length > 0,
       floors: floorNodes,
     });
@@ -79,7 +122,6 @@ async function buildWorkingSiteEquipmentFromDb(siteId) {
           orderBy: { pointCode: 'asc' },
         });
         const livePoints = points.map((p) => pointToWorkspaceRow(eq.id, eq.name, p));
-        // EntityStatus (ACTIVE/…) is lifecycle, not BACnet assignment. Controller is not stored on Equipment yet.
         const engStatus = eq.status === 'ACTIVE' ? 'MISSING_CONTROLLER' : 'DRAFT';
         allEquipment.push({
           id: eq.id,
@@ -110,9 +152,14 @@ async function buildWorkingSiteEquipmentFromDb(siteId) {
     name: siteRow.name,
     mode: 'api',
     status: 'editing',
-    siteType: 'Site',
-    address: '',
-    timezone: '',
+    /** Site Builder "Status" dropdown (maps to Site.status in DB) */
+    nodeStatus: formLabelFromEntityStatus(siteRow.status),
+    siteType: siteRow.siteType || '',
+    timezone: siteRow.timezone || '',
+    displayLabel: siteRow.displayLabel || siteRow.name,
+    description: siteRow.description || '',
+    engineeringNotes: siteRow.engineeringNotes || '',
+    icon: siteRow.icon || '',
     buildings: siteBuildings,
   };
 
@@ -121,4 +168,7 @@ async function buildWorkingSiteEquipmentFromDb(siteId) {
 
 module.exports = {
   buildWorkingSiteEquipmentFromDb,
+  entityStatusFromFormLabel,
+  formLabelFromEntityStatus,
+  normalizeEntityStatusForDb,
 };

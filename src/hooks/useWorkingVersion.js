@@ -141,8 +141,12 @@ export function selectSiteTree(workingVersion) {
     type: "site",
     name: site.name,
     siteType: site.siteType,
-    address: site.address,
     timezone: site.timezone,
+    description: site.description,
+    displayLabel: site.displayLabel || site.name,
+    engineeringNotes: site.engineeringNotes,
+    icon: site.icon,
+    status: site.nodeStatus || "Active",
     parentId: null,
     children: (site.buildings || []).map((b) => {
       const bldgNode = {
@@ -157,6 +161,7 @@ export function selectSiteTree(workingVersion) {
         lat: b.lat,
         lng: b.lng,
         status: b.status,
+        sortOrder: b.sortOrder ?? 0,
         parentId: siteId,
         children: (b.floors || []).map((f) => {
           const floorEq = sortEquipmentForDisplay(equipment.filter((e) => e.floorId === f.id));
@@ -165,6 +170,7 @@ export function selectSiteTree(workingVersion) {
             type: "floor",
             name: f.name,
             floorType: f.floorType,
+            occupancyType: f.occupancyType,
             sortOrder: f.sortOrder ?? 0,
             parentId: b.id,
             equipmentCount: floorEq.length,
@@ -186,9 +192,13 @@ export function siteTreeToWorkingSite(siteTree) {
     name: siteTree.name,
     mode: "working",
     status: "editing",
+    nodeStatus: siteTree.status || "Active",
     siteType: siteTree.siteType,
-    address: siteTree.address,
     timezone: siteTree.timezone,
+    displayLabel: siteTree.displayLabel || siteTree.name,
+    description: siteTree.description,
+    engineeringNotes: siteTree.engineeringNotes,
+    icon: siteTree.icon,
     buildings: (siteTree.children || []).map((b) => ({
       id: b.id,
       name: b.name,
@@ -200,11 +210,13 @@ export function siteTreeToWorkingSite(siteTree) {
       lat: b.lat,
       lng: b.lng,
       status: b.status,
+      sortOrder: b.sortOrder ?? 0,
       floors: (b.children || []).map((f) => ({
         id: f.id,
         name: f.name,
         sortOrder: f.sortOrder ?? 0,
         floorType: f.floorType,
+        occupancyType: f.occupancyType,
       })),
     })),
   };
