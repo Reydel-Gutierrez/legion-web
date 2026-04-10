@@ -5,6 +5,7 @@ const userController = require('../users/user.controller');
 const accessController = require('../access/access.controller');
 const buildingSiteRoutes = require('../buildings/building.site.routes');
 const siteVersionRoutes = require('../siteVersions/siteVersion.routes');
+const alarmController = require('../alarms/alarm.controller');
 
 const router = express.Router();
 
@@ -23,6 +24,35 @@ router.post(
 );
 
 router.use('/:siteId/buildings', buildingSiteRoutes);
+
+router.get(
+  '/:siteId/alarm-definitions',
+  asyncHandler((req, res) => alarmController.listDefinitions(req, res))
+);
+router.post(
+  '/:siteId/alarm-definitions',
+  asyncHandler((req, res) => alarmController.createDefinition(req, res))
+);
+router.patch(
+  '/:siteId/alarm-definitions/:definitionId',
+  asyncHandler((req, res) => alarmController.updateDefinition(req, res))
+);
+router.delete(
+  '/:siteId/alarm-definitions/:definitionId',
+  asyncHandler((req, res) => alarmController.deleteDefinition(req, res))
+);
+router.get(
+  '/:siteId/alarm-events',
+  asyncHandler((req, res) => alarmController.listEvents(req, res))
+);
+router.patch(
+  '/:siteId/alarm-events/:eventId/ack',
+  asyncHandler((req, res) => alarmController.acknowledgeEvent(req, res))
+);
+router.post(
+  '/:siteId/alarm-evaluate',
+  asyncHandler((req, res) => alarmController.postEvaluate(req, res))
+);
 
 router.get('/:id', asyncHandler((req, res) => siteController.getById(req, res)));
 router.patch('/:id', asyncHandler((req, res) => siteController.update(req, res)));

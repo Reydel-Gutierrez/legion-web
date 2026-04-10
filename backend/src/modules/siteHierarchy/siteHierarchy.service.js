@@ -45,9 +45,12 @@ function pointToWorkspaceRow(equipmentId, equipmentName, pt) {
   const valueStr = units ? `${val} ${units}`.trim() : val;
   return {
     id: `${equipmentId}-${pt.pointCode || pt.id}`,
+    databasePointId: pt.id,
     equipmentId,
     equipmentName,
     pointId: pt.pointCode,
+    pointKey: pt.pointCode,
+    pointDescription: pt.pointName,
     pointName: pt.pointName,
     pointReferenceId: pt.pointCode,
     value: valueStr,

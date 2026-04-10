@@ -40,11 +40,13 @@ model Site {
   activeReleaseVersionId String? @unique
   activeReleaseVersion   SiteVersion? @relation("ActiveRelease", fields: [activeReleaseVersionId], references: [id], onDelete: SetNull)
 
-  buildings      Building[]
-  equipment      Equipment[]
-  points         Point[]
-  userSiteAccess UserSiteAccess[]
-  siteVersions   SiteVersion[]
+  buildings         Building[]
+  equipment         Equipment[]
+  points            Point[]
+  userSiteAccess    UserSiteAccess[]
+  siteVersions      SiteVersion[]
+  alarmDefinitions  AlarmDefinition[]
+  alarmEvents       AlarmEvent[]
 }
 
 model SiteVersion {
@@ -148,9 +150,45 @@ model Equipment {
   building Building @relation(fields: [buildingId], references: [id], onDelete: Cascade)
   floor    Floor    @relation(fields: [floorId], references: [id], onDelete: Cascade)
   points   Point[]
+  alarmDefinitions AlarmDefinition[]
+  alarmEvents      AlarmEvent[]
 
   @@unique([siteId, code])
   @@unique([siteId, instanceNumber])
+}
+
+enum AlarmSeverity {
+  CRITICAL
+  MAJOR
+  MINOR
+  WARNING
+}
+
+enum AlarmRuleCategory {
+  BINARY
+  THRESHOLD
+  DEVIATION
+  COMPARISON
+}
+
+enum AlarmOperator {
+  EQ
+  NEQ
+  GT
+  GTE
+  LT
+  LTE
+  IS_ON
+  IS_OFF
+  DELTA_GT
+  DELTA_GTE
+  DELTA_LT
+  DELTA_LTE
+}
+
+enum AlarmEventState {
+  ACTIVE
+  CLEARED
 }
 
 model Point {
@@ -174,7 +212,79 @@ model Point {
   building  Building  @relation(fields: [buildingId], references: [id], onDelete: Cascade)
   floor     Floor     @relation(fields: [floorId], references: [id], onDelete: Cascade)
 
+  alarmDefinitionsAsSource AlarmDefinition[] @relation("AlarmDefinitionSourcePoint")
+  alarmDefinitionsAsTarget AlarmDefinition[] @relation("AlarmDefinitionTargetPoint")
+  alarmEvents              AlarmEvent[]      @relation("AlarmEventPoint")
+
   @@unique([equipmentId, pointCode])
+}
+
+model AlarmDefinition {
+  id               String            @id @default(uuid())
+  siteId           String
+  buildingId       String?
+  floorId          String?
+  equipmentId      String
+  /// Stable template / logical point key (e.g. zoneTemp); source of truth with equipmentId.
+  pointKey         String
+  /// Optional bound Point row when mapped in DB; may be null until discovery/mapping.
+  pointId          String?
+  name             String
+  enabled          Boolean           @default(true)
+  severity         AlarmSeverity     @default(WARNING)
+  category         AlarmRuleCategory
+  operator         AlarmOperator
+  targetValue      Float?
+  targetPointId    String?
+  /// Logical reference on same equipment when target Point is not bound yet.
+  targetPointKey   String?
+  deadband         Float?
+  delaySeconds     Int?
+  messageTemplate  String?
+  autoAcknowledge  Boolean           @default(false)
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  site         Site       @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  equipment    Equipment  @relation(fields: [equipmentId], references: [id], onDelete: Cascade)
+  point        Point?     @relation("AlarmDefinitionSourcePoint", fields: [pointId], references: [id], onDelete: SetNull)
+  targetPoint  Point?     @relation("AlarmDefinitionTargetPoint", fields: [targetPointId], references: [id], onDelete: SetNull)
+  events       AlarmEvent[]
+
+  @@index([siteId])
+  @@index([equipmentId])
+  @@index([pointId])
+  @@index([siteId, equipmentId, pointKey])
+  @@index([siteId, enabled])
+}
+
+model AlarmEvent {
+  id                String          @id @default(uuid())
+  alarmDefinitionId String
+  siteId            String
+  equipmentId       String
+  pointId           String
+  state             AlarmEventState @default(ACTIVE)
+  ack               Boolean         @default(false)
+  occurredAt        DateTime        @default(now())
+  clearedAt         DateTime?
+  lastEvaluatedAt   DateTime?
+  activeValue       String?
+  clearValue        String?
+  message           String
+  durationSeconds   Int?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  definition AlarmDefinition @relation(fields: [alarmDefinitionId], references: [id], onDelete: Cascade)
+  site       Site            @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  equipment  Equipment       @relation(fields: [equipmentId], references: [id], onDelete: Cascade)
+  point      Point           @relation("AlarmEventPoint", fields: [pointId], references: [id], onDelete: Cascade)
+
+  @@index([siteId, state])
+  @@index([alarmDefinitionId, state])
+  @@index([equipmentId])
 }
 
 model User {

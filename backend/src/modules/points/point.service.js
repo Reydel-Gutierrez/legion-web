@@ -40,7 +40,7 @@ async function createPoint(equipmentId, data) {
     throw new HttpError(400, 'pointName, pointCode, and pointType are required');
   }
 
-  return prisma.point.create({
+  const created = await prisma.point.create({
     data: {
       equipmentId,
       siteId,
@@ -56,6 +56,17 @@ async function createPoint(equipmentId, data) {
       ...(status ? { status } : {}),
     },
   });
+
+  try {
+    const alarmService = require('../alarms/alarm.service');
+    await alarmService.syncAlarmDefinitionsAfterPointWrite(created);
+    await alarmService.evaluateForPointIds([created.id]);
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.warn('alarm sync after point create failed', e?.message || e);
+  }
+
+  return created;
 }
 
 async function getPointById(id) {
@@ -102,10 +113,25 @@ async function updatePoint(id, data) {
   if (Object.keys(update).length === 0) {
     throw new HttpError(400, 'No fields to update');
   }
-  return prisma.point.update({
+  const updated = await prisma.point.update({
     where: { id },
     data: update,
   });
+
+  try {
+    const alarmService = require('../alarms/alarm.service');
+    if (update.pointCode !== undefined) {
+      await alarmService.syncAlarmDefinitionsAfterPointWrite(updated);
+    }
+    if (update.presentValue !== undefined || update.pointCode !== undefined) {
+      await alarmService.evaluateForPointIds([id]);
+    }
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.warn('alarm sync/evaluate after point update failed', e?.message || e);
+  }
+
+  return updated;
 }
 
 module.exports = {
