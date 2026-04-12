@@ -14,17 +14,32 @@ function nowIso() {
 
 /**
  * @param {string} code
- * @param {{ equipmentId?: string | null, online?: boolean, simEnabled?: boolean }} [opts]
+ * @param {{
+ *   runtimeId?: string | null,
+ *   mappedEquipmentId?: string | null,
+ *   deviceType?: string | null,
+ *   deviceInstance?: string | null,
+ *   deviceAddress?: string | null,
+ *   fieldPoints?: object[] | null,
+ *   online?: boolean,
+ *   simEnabled?: boolean,
+ *   pollRateMs?: number,
+ * }} [opts]
  */
 function createDefaultController(code, opts = {}) {
   return {
+    runtimeId: opts.runtimeId ?? null,
     controllerCode: code,
     protocol: 'SIM',
-    equipmentId: opts.equipmentId ?? null,
+    deviceType: opts.deviceType ?? null,
+    deviceInstance: opts.deviceInstance ?? null,
+    deviceAddress: opts.deviceAddress ?? null,
+    mappedEquipmentId: opts.mappedEquipmentId ?? null,
+    fieldPoints: opts.fieldPoints ?? null,
     online: opts.online !== false,
     scanVisible: true,
     simEnabled: opts.simEnabled !== false,
-    pollRateMs: DEFAULT_POLL_MS,
+    pollRateMs: opts.pollRateMs != null ? Number(opts.pollRateMs) : DEFAULT_POLL_MS,
     lastSeenAt: null,
     startedAt: nowIso(),
     stats: { pollCount: 0, lastPollAt: null },

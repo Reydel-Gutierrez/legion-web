@@ -12,6 +12,7 @@ import {
   flattenDiscoveryTree,
   appendRuntimeDevicesToDiscoveryTree,
   mapEquipmentPointsToDiscoveryObjects,
+  mapRuntimeFieldPointsToDiscoveryObjects,
   isRuntimeSimDiscoveryDevice,
   getRuntimeSimEquipmentId,
 } from "../network/discoveryScan";
@@ -19,7 +20,10 @@ import { USE_HIERARCHY_API } from "../../../lib/data/config";
 import { listPointsByEquipment } from "../../../lib/data/adapters/api/hierarchyApiAdapter";
 import { isBackendSiteId } from "../../../lib/data/siteIdUtils";
 import { coerceSiteKeyToApiId } from "../../../lib/data/siteApiResolution";
-import { fetchRuntimeDiscoveryDevices } from "../../../lib/data/adapters/api/runtimeApiAdapter";
+import {
+  fetchRuntimeDiscoveryDevices,
+  fetchRuntimeFieldPoints,
+} from "../../../lib/data/adapters/api/runtimeApiAdapter";
 import { getEquipmentControllerByEquipment } from "../../../lib/data/adapters/api/equipmentControllerApiAdapter";
 import AssignRuntimeControllerModal from "./components/AssignRuntimeControllerModal";
 import MapFieldPointsModal from "./components/MapFieldPointsModal";
@@ -199,7 +203,7 @@ export default function NetworkDiscoveryPage() {
     async (deviceTree) => {
       if (!USE_HIERARCHY_API) return deviceTree;
       try {
-        const runtimeItems = await fetchRuntimeDiscoveryDevices();
+        const runtimeItems = await fetchRuntimeDiscoveryDevices(resolvedApiSiteId || undefined);
         return appendRuntimeDevicesToDiscoveryTree(deviceTree, runtimeItems);
       } catch (e) {
         // eslint-disable-next-line no-console
@@ -207,7 +211,7 @@ export default function NetworkDiscoveryPage() {
         return deviceTree;
       }
     },
-    []
+    [resolvedApiSiteId]
   );
 
   const runDiscoveryScan = useCallback(
@@ -342,14 +346,25 @@ export default function NetworkDiscoveryPage() {
   }, [refreshPersistedEquipmentController]);
 
   const loadLivePointsForSimDevice = useCallback(async (device, deviceKeyForState) => {
+    if (!USE_HIERARCHY_API) return null;
     const equipmentId = getRuntimeSimEquipmentId(device);
-    if (!USE_HIERARCHY_API || !equipmentId) {
-      return null;
+    const runtimeCode = String(device?.runtimeFieldPointsCode || "").trim();
+
+    if (equipmentId) {
+      const rows = await listPointsByEquipment(equipmentId);
+      const discoveredObjects = mapEquipmentPointsToDiscoveryObjects(rows);
+      setDiscoveredForDeviceRef.current(deviceKeyForState, discoveredObjects);
+      return discoveredObjects;
     }
-    const rows = await listPointsByEquipment(equipmentId);
-    const discoveredObjects = mapEquipmentPointsToDiscoveryObjects(rows);
-    setDiscoveredForDeviceRef.current(deviceKeyForState, discoveredObjects);
-    return discoveredObjects;
+
+    if (runtimeCode) {
+      const fp = await fetchRuntimeFieldPoints(runtimeCode);
+      const discoveredObjects = mapRuntimeFieldPointsToDiscoveryObjects(fp);
+      setDiscoveredForDeviceRef.current(deviceKeyForState, discoveredObjects);
+      return discoveredObjects;
+    }
+
+    return null;
   }, []);
 
   /** Live DB points for Legion SIM devices; mock BACnet objects otherwise. */
@@ -358,7 +373,11 @@ export default function NetworkDiscoveryPage() {
       const device = inspectorDevice;
       if (!device) return;
       const key = String(device.deviceInstance ?? deviceId);
-      if (USE_HIERARCHY_API && isRuntimeSimDiscoveryDevice(device) && getRuntimeSimEquipmentId(device)) {
+      if (
+        USE_HIERARCHY_API &&
+        isRuntimeSimDiscoveryDevice(device) &&
+        (getRuntimeSimEquipmentId(device) || String(device?.runtimeFieldPointsCode || "").trim())
+      ) {
         try {
           await loadLivePointsForSimDevice(device, key);
           setDevicePointDiscoveryMeta((prev) => ({
@@ -392,7 +411,11 @@ export default function NetworkDiscoveryPage() {
       const device = inspectorDevice;
       if (!device) return;
       const key = String(device.deviceInstance ?? deviceId);
-      if (USE_HIERARCHY_API && isRuntimeSimDiscoveryDevice(device) && getRuntimeSimEquipmentId(device)) {
+      if (
+        USE_HIERARCHY_API &&
+        isRuntimeSimDiscoveryDevice(device) &&
+        (getRuntimeSimEquipmentId(device) || String(device?.runtimeFieldPointsCode || "").trim())
+      ) {
         try {
           await loadLivePointsForSimDevice(device, key);
           setDevicePointDiscoveryMeta((prev) => ({

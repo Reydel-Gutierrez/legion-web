@@ -163,7 +163,7 @@ export function formatDiscoveryLastSeen(iso) {
  * @returns {object} discovery tree node (flat device row shape)
  */
 export function runtimeDiscoveryItemToTreeRoot(item) {
-  /** Runtime API store key: equipment UUID when multi-site SIM; legacy single-controller may still be FCU-1. */
+  /** Stable runtime id (e.g. sim-fcu-01) — API route key for field-points / poll; not equipment UUID. */
   const apiCode = item?.code != null ? String(item.code) : "SIM";
   const humanControllerCode =
     item?.controllerCode != null && String(item.controllerCode).trim() !== ""
@@ -183,9 +183,6 @@ export function runtimeDiscoveryItemToTreeRoot(item) {
     macOrMstpId: (() => {
       const raw = item?.deviceAddress;
       if (raw != null && String(raw).trim() !== "") return String(raw).trim();
-      /** Runtime FCU-1 SIM row: show lab MSTP address, never equipment UUID (looks like random hex). */
-      const codeUp = String(humanControllerCode).toUpperCase();
-      if (item?.source === "runtime" && codeUp === "FCU-1") return "4";
       return "—";
     })(),
     objectCount: item?.pointCount != null ? item.pointCount : "—",
@@ -193,10 +190,10 @@ export function runtimeDiscoveryItemToTreeRoot(item) {
     status: item?.online ? "Online" : "Offline",
     protocol: item?.protocol || "SIM",
     isExpandable: false,
-    assignedEquipmentId: item?.equipmentId ?? null,
+    assignedEquipmentId: item?.equipmentId ?? item?.mappedEquipmentId ?? null,
     children: [],
     discoverySource: item?.source || "runtime",
-    /** Pass to `/api/runtime/controllers/:code/field-points` */
+    /** Pass to `/api/runtime/controllers/:code/field-points` (catalog runtimeId) */
     runtimeFieldPointsCode: apiCode,
     /** Pass to assign API as `controllerCode` (e.g. FCU-1) */
     assignControllerCode: humanControllerCode,
@@ -229,6 +226,35 @@ function mapPointTypeToDiscoveryAbbrev(pointType) {
  * Maps hierarchy API point rows to Device Inspector "discovered object" rows (live SIM / DB-backed).
  * @param {Array<{ id?: string, pointName?: string, pointCode?: string, pointType?: string, unit?: string | null, presentValue?: string | null }>} points
  */
+/**
+ * Runtime `/field-points` payload → Device Inspector rows (unmapped SIM: catalog-only).
+ * @param {Array<{ fieldPointKey?: string, fieldPointName?: string, fieldObjectType?: string }>} fieldPoints
+ */
+export function mapRuntimeFieldPointsToDiscoveryObjects(fieldPoints) {
+  const readLabel = formatDiscoveryLastSeen(new Date().toISOString());
+  const sorted = [...(fieldPoints || [])].sort((a, b) =>
+    String(a.fieldPointKey || "").localeCompare(String(b.fieldPointKey || ""), undefined, { sensitivity: "base" })
+  );
+  return sorted.map((p, idx) => {
+    const objectType = mapPointTypeToDiscoveryAbbrev(p.fieldObjectType);
+    const codeRaw =
+      p.fieldPointKey != null && String(p.fieldPointKey).trim() !== "" ? String(p.fieldPointKey).trim() : null;
+    const refSuffix = codeRaw ?? String(idx);
+    const objectName = p.fieldPointName || p.fieldPointKey || "—";
+    return {
+      id: `rt-fp-${p.fieldPointKey}-${idx}`,
+      objectName,
+      objectType,
+      instance: p.fieldPointKey ?? "—",
+      presentValue: "—",
+      units: "",
+      lastRead: readLabel,
+      bacnetRef: `${objectType}-${refSuffix}`,
+      displayName: objectName,
+    };
+  });
+}
+
 export function mapEquipmentPointsToDiscoveryObjects(points) {
   const readLabel = formatDiscoveryLastSeen(new Date().toISOString());
   const sorted = [...(points || [])].sort((a, b) =>

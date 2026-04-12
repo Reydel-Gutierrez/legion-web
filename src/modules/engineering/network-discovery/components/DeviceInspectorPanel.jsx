@@ -147,7 +147,9 @@ export default function DeviceInspectorPanel({
                       <div className="text-white-50">Equipment ID: {persistedEquipmentController.equipmentId}</div>
                     </div>
                   ) : (
-                    <div className="text-white-50 small mb-2">No persisted assignment for this equipment yet.</div>
+                    <div className="text-white-50 small mb-2">
+                      No persisted assignment for this controller yet.
+                    </div>
                   )}
                   <div className="d-flex flex-wrap gap-2">
                     <Button
