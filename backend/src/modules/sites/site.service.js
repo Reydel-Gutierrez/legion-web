@@ -2,6 +2,7 @@ const prisma = require('../../lib/prisma');
 const { HttpError } = require('../../lib/httpError');
 const { sortBySortOrderThenName } = require('../../lib/hierarchySort');
 const { normalizeEntityStatusForDb } = require('../siteHierarchy/siteHierarchy.service');
+const { ensureSeedOwnerSiteAccess, ensureSeedOwnerSiteAccessBatch } = require('../../lib/siteAccess');
 
 function strOrNull(v) {
   if (v == null) return null;
@@ -10,12 +11,30 @@ function strOrNull(v) {
 }
 
 async function listSites() {
-  return prisma.site.findMany({
+  const include = {
+    _count: { select: { buildings: true, userSiteAccess: true } },
+    createdByUser: { select: { id: true, email: true, name: true } },
+  };
+
+  let rows = await prisma.site.findMany({
     orderBy: { name: 'asc' },
-    include: {
-      _count: { select: { buildings: true } },
-      createdByUser: { select: { id: true, email: true, name: true } },
-    },
+    include,
+  });
+
+  const healed = await ensureSeedOwnerSiteAccessBatch(rows.map((r) => r.id));
+  if (healed) {
+    rows = await prisma.site.findMany({
+      orderBy: { name: 'asc' },
+      include,
+    });
+  }
+
+  return rows.map((row) => {
+    const { _count, ...rest } = row;
+    return {
+      ...rest,
+      _count: { buildings: _count.buildings },
+    };
   });
 }
 
@@ -58,11 +77,19 @@ async function createSite(data) {
   if (data.status !== undefined) {
     entityStatus = normalizeEntityStatusForDb(data.status);
   }
-  return prisma.site.create({
+  const created = await prisma.site.create({
     data: {
       name: name.trim(),
       ...(entityStatus ? { status: entityStatus } : {}),
       ...extra,
+    },
+  });
+  await ensureSeedOwnerSiteAccess(created.id);
+  return prisma.site.findUnique({
+    where: { id: created.id },
+    include: {
+      _count: { select: { buildings: true } },
+      createdByUser: { select: { id: true, email: true, name: true } },
     },
   });
 }

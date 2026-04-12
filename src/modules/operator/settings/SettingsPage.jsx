@@ -19,7 +19,7 @@ export default function SettingsPage() {
     () => ({
       displayName: "Reydel Gutierrez",
       username: "reydel",
-      email: "reydel@legion.local",
+      email: "reydel.gutierrez@legioncontrol.com",
       role: "Engineer",
       sites: ["Miami HQ", "New Site"],
       lastLogin: "2/22/26 14:03",

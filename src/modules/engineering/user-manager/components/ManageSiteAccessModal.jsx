@@ -10,6 +10,10 @@ export default function ManageSiteAccessModal({
   users,
   sites,
   currentSite,
+  /** Resolved API site id when `currentSite` is still a display name */
+  preferredSiteId,
+  /** Header/breadcrumb label (matches `sites[].siteName` for API sites) */
+  siteDisplayLabel,
   onSave,
 }) {
   const isEdit = !!membership?.id;
@@ -30,14 +34,20 @@ export default function ManageSiteAccessModal({
       setMembershipStatus(membership.membershipStatus || "active");
     } else {
       setUserId(preselectedUserId || users?.[0]?.id || "");
-      const defaultSite = (sites || []).find((s) => s.siteName === currentSite) || sites?.[0];
+      const label = siteDisplayLabel || currentSite;
+      const defaultSite =
+        (sites || []).find((s) => preferredSiteId && s.siteId === preferredSiteId) ||
+        (sites || []).find((s) => s.siteId === currentSite) ||
+        (sites || []).find((s) => s.siteName === label) ||
+        (sites || []).find((s) => s.siteName === currentSite) ||
+        sites?.[0];
       setSiteId(defaultSite?.siteId || "");
       setCanAccessEngineering(true);
       setCanAccessOperator(true);
       setRoleOverrideKey("");
       setMembershipStatus("active");
     }
-  }, [membership, preselectedUserId, users, sites, currentSite, show]);
+  }, [membership, preselectedUserId, users, sites, currentSite, preferredSiteId, siteDisplayLabel, show]);
 
   const handleSubmit = (e) => {
     e.preventDefault();

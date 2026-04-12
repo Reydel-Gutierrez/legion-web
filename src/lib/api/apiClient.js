@@ -29,7 +29,9 @@ export async function apiFetch(path, options = {}) {
     headers["Content-Type"] = "application/json";
     body = JSON.stringify(body);
   }
-  const res = await fetch(url, { ...options, headers, body });
+  /** Avoid HTTP cache + 304: empty body + res.ok false makes JSON APIs look like errors and breaks callers (e.g. runtime discovery merge). */
+  const cache = options.cache !== undefined ? options.cache : "no-store";
+  const res = await fetch(url, { ...options, cache, headers, body });
   const text = await res.text();
   let data = null;
   if (text) {

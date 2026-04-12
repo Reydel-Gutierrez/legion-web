@@ -37,6 +37,7 @@ import {
   getEquipmentOrderedForSiteWide,
   buildSequentialValueFormatter,
   toApiEquipmentUpdatePayload,
+  resolveNetworkProtocolForControllerRef,
 } from "./siteBuilderEquipmentUtils";
 
 /** Apply full GET/PUT working-version payload so hierarchy fields (e.g. instance #) stay in sync with the API. */
@@ -612,6 +613,14 @@ export default function SiteBuilderPage() {
             address: addr,
             instanceNumber: instanceNum,
           });
+          const protocol = resolveNetworkProtocolForControllerRef(
+            workingState.discoveredDevices ?? [],
+            form.controllerRef
+          );
+          await hierarchyRepository.syncEquipmentControllerAssignment(id, {
+            controllerRef: form.controllerRef,
+            protocol,
+          });
           const payload = await engineeringRepository.fetchWorkingVersion(site);
           if (payload) {
             resetWorkingVersionFromApiPayload(dispatch, site, payload);
@@ -654,7 +663,7 @@ export default function SiteBuilderPage() {
       const next = (workingState.equipment || []).map((e) => (e.id === id ? { ...e, ...updates } : e));
       actions.setEquipment(next);
     },
-    [workingState.equipment, actions, site, siteTree, dispatch]
+    [workingState.equipment, workingState.discoveredDevices, actions, site, siteTree, dispatch]
   );
 
   const handleGraphicChange = useCallback(
@@ -780,7 +789,7 @@ export default function SiteBuilderPage() {
             data.instanceNumber != null && String(data.instanceNumber).trim()
               ? String(data.instanceNumber).trim()
               : undefined;
-          await hierarchyRepository.createEquipment(floorId, {
+          const created = await hierarchyRepository.createEquipment(floorId, {
             name: data.name,
             code,
             equipmentType: data.equipmentType || "CUSTOM",
@@ -788,6 +797,16 @@ export default function SiteBuilderPage() {
             ...(addr ? { address: addr } : {}),
             ...(inst ? { instanceNumber: inst } : {}),
           });
+          if (created?.id && data.controllerRef && String(data.controllerRef).trim()) {
+            const protocol = resolveNetworkProtocolForControllerRef(
+              workingState.discoveredDevices ?? [],
+              data.controllerRef
+            );
+            await hierarchyRepository.syncEquipmentControllerAssignment(created.id, {
+              controllerRef: data.controllerRef,
+              protocol,
+            });
+          }
           const payload = await engineeringRepository.fetchWorkingVersion(site);
           if (payload) {
             resetWorkingVersionFromApiPayload(dispatch, site, payload);
@@ -827,7 +846,16 @@ export default function SiteBuilderPage() {
       actions.setEquipment([...(workingState.equipment || []), newEq]);
       setShowAddEquipment(false);
     },
-    [selectedNode, workingState.site, workingState.equipment, actions, site, siteTree, dispatch]
+    [
+      selectedNode,
+      workingState.site,
+      workingState.equipment,
+      workingState.discoveredDevices,
+      actions,
+      site,
+      siteTree,
+      dispatch,
+    ]
   );
 
   const handleExpandAll = useCallback(() => {

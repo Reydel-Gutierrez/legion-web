@@ -23,7 +23,7 @@ let users = [
   {
     id: "usr-1",
     fullName: "Reydel Gutierrez",
-    email: "reydel@legion.local",
+    email: "reydel.gutierrez@legioncontrol.com",
     status: USER_STATUS.ACTIVE,
     roleKey: ROLE_KEYS.SUPER_ADMIN,
     roleName: "Super Admin",
@@ -85,7 +85,7 @@ let siteMemberships = [
 let currentUserForAccess = {
   id: "usr-1",
   fullName: "Reydel Gutierrez",
-  email: "reydel@legion.local",
+  email: "reydel.gutierrez@legioncontrol.com",
   roleKey: ROLE_KEYS.SUPER_ADMIN,
   roleName: "Super Admin",
 };

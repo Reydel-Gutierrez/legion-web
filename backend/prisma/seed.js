@@ -1,5 +1,6 @@
 const { PrismaClient } = require('@prisma/client');
 const { getGlobalStarterTemplateSeedRows } = require('../src/lib/legionStarterEquipmentTemplates');
+const { ensureFcuSimEquipmentAndPoints, ensureFcuPhase2Bindings } = require('../src/lib/seedFcuSimEquipment');
 
 const prisma = new PrismaClient();
 
@@ -7,9 +8,18 @@ const prisma = new PrismaClient();
 const DEMO_CAMPUS_SITE_ID =
   process.env.DEMO_CAMPUS_SITE_ID || 'cafe0000-0000-4000-8000-00000000babe';
 
+/** Second demo project (buildings/floors only). Legion SIM controller is seeded on Demo Campus only. */
+const SUNSET_STRIP_PLAZA_SITE_ID =
+  process.env.SUNSET_STRIP_PLAZA_SITE_ID || 'decaf0000-0000-4000-8000-000000000001';
+
 /** Your account: granted site access + set as Demo Campus creator. Override in .env when seeding. */
-const SEED_OWNER_EMAIL = (process.env.SEED_OWNER_EMAIL || 'reydel@legion.local').trim().toLowerCase();
+const SEED_OWNER_EMAIL = (
+  process.env.SEED_OWNER_EMAIL || 'reydel.gutierrez@legioncontrol.com'
+).trim().toLowerCase();
 const SEED_OWNER_NAME = process.env.SEED_OWNER_NAME || 'Reydel Gutierrez';
+
+/** Set to `false` to skip Demo Campus + Sunset Strip Plaza demo data (roles, templates, owner user still run). */
+const SEED_DEMO_SITES = String(process.env.SEED_DEMO_SITES ?? 'true').toLowerCase() !== 'false';
 
 function pointToWorkspaceRow(equipmentId, equipmentName, pt) {
   const units = pt.unit || '';
@@ -185,6 +195,19 @@ async function main() {
     create: { email: SEED_OWNER_EMAIL, name: SEED_OWNER_NAME },
   });
 
+  if (!SEED_DEMO_SITES) {
+    const usersForLog = await prisma.user.findMany({
+      select: { email: true },
+      orderBy: { email: 'asc' },
+    });
+    console.log('Seed complete (demo sites skipped — set SEED_DEMO_SITES=true to seed Demo Campus + Sunset):', {
+      ownerEmail: SEED_OWNER_EMAIL,
+      roles: roles.map((r) => r.name).sort(),
+      users: usersForLog.map((u) => u.email),
+    });
+    return;
+  }
+
   const site = await prisma.site.upsert({
     where: { id: DEMO_CAMPUS_SITE_ID },
     update: {
@@ -349,6 +372,19 @@ async function main() {
       equipmentType: 'Chiller',
     },
   });
+
+  const fcuSimSeedSummary = await ensureFcuSimEquipmentAndPoints(prisma, {
+    siteId: site.id,
+    defaultBuildingId: buildingA.id,
+    defaultFloorId: a1.id,
+  });
+
+  let fcuPhase2Summary = null;
+  try {
+    fcuPhase2Summary = await ensureFcuPhase2Bindings(prisma, fcuSimSeedSummary.equipment);
+  } catch (e) {
+    console.warn('[seed] Phase 2 FCU bindings skipped (run migrations if tables are missing):', e?.message || e);
+  }
 
   await prisma.point.upsert({
     where: { equipmentId_pointCode: { equipmentId: equip1.id, pointCode: 'SAT' } },
@@ -527,6 +563,74 @@ async function main() {
     },
   });
 
+  // --- Sunset Strip Plaza (structure demo; single global SIM lives on Demo Campus) ---
+  const sunsetSite = await prisma.site.upsert({
+    where: { id: SUNSET_STRIP_PLAZA_SITE_ID },
+    update: {
+      name: 'Sunset Strip Plaza',
+      status: 'ACTIVE',
+      createdByUserId: ownerUser.id,
+    },
+    create: {
+      id: SUNSET_STRIP_PLAZA_SITE_ID,
+      name: 'Sunset Strip Plaza',
+      status: 'ACTIVE',
+      createdByUserId: ownerUser.id,
+    },
+  });
+
+  await prisma.userSiteAccess.upsert({
+    where: {
+      userId_siteId: { userId: ownerUser.id, siteId: sunsetSite.id },
+    },
+    update: { roleId: roleByName.site_admin.id },
+    create: {
+      userId: ownerUser.id,
+      siteId: sunsetSite.id,
+      roleId: roleByName.site_admin.id,
+    },
+  });
+
+  const sunsetBuilding = await prisma.building.upsert({
+    where: { siteId_name: { siteId: sunsetSite.id, name: 'Sunset Strip Plaza Building' } },
+    update: {
+      addressLine1: 'Sunset Blvd',
+      city: 'West Hollywood',
+      state: 'CA',
+      postalCode: '90069',
+      country: 'US',
+      status: 'ACTIVE',
+    },
+    create: {
+      siteId: sunsetSite.id,
+      name: 'Sunset Strip Plaza Building',
+      addressLine1: 'Sunset Blvd',
+      city: 'West Hollywood',
+      state: 'CA',
+      postalCode: '90069',
+      country: 'US',
+    },
+  });
+
+  await prisma.floor.upsert({
+    where: { buildingId_name: { buildingId: sunsetBuilding.id, name: 'Level 1' } },
+    update: { status: 'ACTIVE' },
+    create: { buildingId: sunsetBuilding.id, name: 'Level 1' },
+  });
+
+  const legacySunsetSim = await prisma.equipment.findFirst({
+    where: {
+      siteId: sunsetSite.id,
+      OR: [
+        { code: { equals: 'FCU-1', mode: 'insensitive' } },
+        { name: { equals: 'LC-CGC', mode: 'insensitive' } },
+      ],
+    },
+  });
+  if (legacySunsetSim) {
+    await prisma.equipment.delete({ where: { id: legacySunsetSim.id } });
+  }
+
   const deploymentSnapshot = await buildDemoDeploymentSnapshot(site.id);
   const releasedAt = new Date();
 
@@ -567,11 +671,20 @@ async function main() {
 
   console.log('Seed complete:', {
     siteId: site.id,
+    sunsetStripPlazaSiteId: sunsetSite.id,
     ownerEmail: SEED_OWNER_EMAIL,
     createdByUserId: ownerUser.id,
     activeReleaseVersionId: siteVersion.id,
     roles: roles.map((r) => r.name).sort(),
     users: usersForLog.map((u) => u.email),
+    fcu1Sim: {
+      equipmentId: fcuSimSeedSummary.equipment.id,
+      equipmentCreated: fcuSimSeedSummary.equipmentCreated,
+      pointsCreated: fcuSimSeedSummary.pointsCreated,
+      pointsAlreadyExisted: fcuSimSeedSummary.pointsAlreadyPresent,
+      totalPointDefinitions: fcuSimSeedSummary.totalPointDefinitions,
+      phase2: fcuPhase2Summary,
+    },
   });
 }
 

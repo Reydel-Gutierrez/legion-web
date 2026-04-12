@@ -52,6 +52,8 @@ const STATUS_MAP = {
   down: { label: "OFFLINE", dotModifier: DOT_RED, variant: "danger", dotClass: "bg-danger", chipClass: "legion-chip--stat-offline" },
   disabled: { label: "DISABLED", dotModifier: DOT_RED, variant: "danger", dotClass: "bg-danger", chipClass: "legion-chip--stat-offline" },
   unbound: { label: "UNBOUND", dotModifier: DOT_YELLOW, variant: "warning", dotClass: "bg-warning", chipClass: "legion-chip--stat-warn" },
+  /** Mapping exists but live Legion point row not resolved (wrong equipment bundle, etc.) */
+  pending: { label: "PENDING", dotModifier: DOT_YELLOW, variant: "warning", dotClass: "bg-warning", chipClass: "legion-chip--stat-warn" },
   unacked: { label: "UNACKED", dotModifier: DOT_RED, variant: "danger", dotClass: "bg-danger", chipClass: "legion-chip--ack-unacked" },
 };
 
@@ -63,6 +65,7 @@ export function getStatusMap(value) {
   if (s === "alarm" || s === "fault" || s === "critical") return STATUS_MAP.alarm;
   if (s === "offline" || s === "down" || s === "disabled") return STATUS_MAP.offline;
   if (s === "unbound") return STATUS_MAP.unbound;
+  if (s === "pending") return STATUS_MAP.pending;
   if (s === "unacked") return STATUS_MAP.unacked;
   return STATUS_MAP.offline;
 }

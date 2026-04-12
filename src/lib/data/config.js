@@ -1,6 +1,6 @@
 /**
  * Data layer configuration.
- * Toggle mock vs API; when false, repositories use API adapters (not yet implemented).
+ * When false, some repositories skip legacy in-memory mock paths (see each repository).
  */
 export const USE_MOCK_DATA =
   typeof process !== "undefined" &&
@@ -11,7 +11,7 @@ export const USE_MOCK_DATA =
 
 /**
  * When REACT_APP_API_BASE_URL is set, sites/buildings/floors/equipment/points use the backend.
- * Other operator features (alarms, trends, etc.) still follow USE_MOCK_DATA unless migrated.
+ * Other operator surfaces use `adapters/api/operatorApi.js` stubs until HTTP is wired.
  */
 export const USE_HIERARCHY_API =
   typeof process !== "undefined" &&

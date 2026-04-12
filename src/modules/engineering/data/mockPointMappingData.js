@@ -354,7 +354,7 @@ export function autoMapPoints(templatePoints, discoveredObjects, existingMapping
     const candidates = discoveredObjects
       .filter((obj) => !usedIds.has(obj.id))
       .map((obj) => {
-        const objNorm = normalize(obj.displayName);
+        const objNorm = normalize(obj.displayName || obj.objectName);
         let score = 0;
         if (objNorm === tpNorm || objNorm === tpKeyNorm) score = 100;
         else if (tpNorm.includes(objNorm) || objNorm.includes(tpNorm)) score = 80;

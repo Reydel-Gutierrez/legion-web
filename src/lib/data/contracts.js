@@ -25,6 +25,7 @@
  * @property {string} id
  * @property {string|number} equipmentId
  * @property {string} equipmentName
+ * @property {string} [databasePointId] - Relational Point.id when backed by API/Postgres (alarm config, etc.).
  * @property {string} pointId - Stable logical id (e.g. template point id).
  * @property {string} [pointKey] - Logical point key from template (no spaces; e.g. SA-T).
  * @property {string} [pointDescription] - Operator-facing description (template label / display name).
@@ -60,6 +61,8 @@
  * @property {string} occurredAt
  * @property {string|null} clearedAt
  * @property {number|null} durationMin
+ * @property {string} [value] - Current / last point value text for the table
+ * @property {string} [definitionBinding] - e.g. "Bound / Ready" | "Pending Binding" (API-backed events)
  */
 
 /**

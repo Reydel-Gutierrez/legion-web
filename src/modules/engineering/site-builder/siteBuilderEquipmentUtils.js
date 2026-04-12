@@ -2,6 +2,22 @@
  * Site Builder: ordering equipment per floor (sortOrder + display helpers).
  */
 
+import { flattenDiscoveryTree } from "../network/discoveryScan";
+
+/**
+ * Match Assign Controller dropdown (device instance) to Network Discovery for protocol label.
+ * @param {object[]} discoveredDevices
+ * @param {string|null|undefined} controllerRef
+ */
+export function resolveNetworkProtocolForControllerRef(discoveredDevices, controllerRef) {
+  const inst = String(controllerRef || "").trim();
+  if (!inst) return "BACnet/IP";
+  const flat = flattenDiscoveryTree(discoveredDevices || []);
+  const dev = flat.find((d) => String(d.deviceInstance ?? "").trim() === inst);
+  const network = (dev?.network || "BACnet/IP").replace(/\s+/g, " ").trim();
+  return network || "BACnet/IP";
+}
+
 /**
  * @param {object[]} equipmentOnFloor - equipment sharing the same floorId
  * @returns {object[]} sorted copy

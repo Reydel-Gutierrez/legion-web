@@ -6,6 +6,7 @@ const accessController = require('../access/access.controller');
 const buildingSiteRoutes = require('../buildings/building.site.routes');
 const siteVersionRoutes = require('../siteVersions/siteVersion.routes');
 const alarmController = require('../alarms/alarm.controller');
+const equipmentController = require('../equipment/equipment.controller');
 
 const router = express.Router();
 
@@ -24,6 +25,11 @@ router.post(
 );
 
 router.use('/:siteId/buildings', buildingSiteRoutes);
+
+router.get(
+  '/:siteId/equipment',
+  asyncHandler((req, res) => equipmentController.listBySite(req, res))
+);
 
 router.get(
   '/:siteId/alarm-definitions',

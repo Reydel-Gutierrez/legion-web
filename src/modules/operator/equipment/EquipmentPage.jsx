@@ -17,12 +17,27 @@ import {
 import LegionHeroHeader from "../../../components/legion/LegionHeroHeader";
 import StatusDotLabel from "../../../components/legion/StatusDotLabel";
 import { operatorRepository } from "../../../lib/data";
+import { USE_HIERARCHY_API } from "../../../lib/data/config";
+import { listRuntimeControllers } from "../../../lib/data/adapters/api/runtimeApiAdapter";
+import { listPointsByEquipment } from "../../../lib/data/adapters/api/hierarchyApiAdapter";
+import { getPointMappingsByEquipment } from "../../../lib/data/adapters/api/pointMappingApiAdapter";
+import { getEquipmentControllerByEquipment } from "../../../lib/data/adapters/api/equipmentControllerApiAdapter";
+import { applyHierarchyLiveToWorkspaceRows } from "../../../lib/operator/operatorWorkspaceHierarchyMerge";
+import { resolveLivePointsSourceEquipmentId } from "../../../lib/operator/operatorWorkspaceLivePointsSource";
+import { isBackendSiteId } from "../../../lib/data/siteIdUtils";
+import { coerceSiteKeyToApiId } from "../../../lib/data/siteApiResolution";
+import { useSite } from "../../../app/providers/SiteProvider";
 import {
   getCommandProfileForRows,
   getInitialCommandValue,
   formatCommandValueForDisplay,
   OperatorPointCommandField,
 } from "./OperatorPointCommandField";
+import { OperatorAlarmConfigModal } from "./OperatorAlarmConfigModal";
+import {
+  areRowsAlarmCompatible,
+  BULK_ALARM_INCOMPATIBLE_MESSAGE,
+} from "./operatorAlarmWorkspaceCompat";
 
 // ---------------------------------------
 // Operator equipment tree row — simple, clear hierarchy + offline pill
@@ -164,6 +179,8 @@ function WorkspacePanel({
   onRemove,
   showRemove,
   activeReleaseData,
+  siteId,
+  runtimeControllersList,
 }) {
   const pointsOptions = useMemo(
     () => (activeReleaseData ? { activeRelease: activeReleaseData } : undefined),
@@ -181,6 +198,8 @@ function WorkspacePanel({
   const [globalSearchResults, setGlobalSearchResults] = useState([]);
   const [globalSearchSelected, setGlobalSearchSelected] = useState(new Set());
   const [showGlobalResults, setShowGlobalResults] = useState(false);
+  const [showAlarmModal, setShowAlarmModal] = useState(false);
+  const [alarmModalRows, setAlarmModalRows] = useState(null);
 
   const zone = workspace.id;
 
@@ -189,12 +208,78 @@ function WorkspacePanel({
   const selectedRowIds = workspace.selectedRowIds || [];
   const existingRowIds = useMemo(() => new Set(rows.map((r) => r.id)), [rows]);
 
+  const equipmentIdsKey = useMemo(
+    () =>
+      [...new Set(rows.map((r) => r.equipmentId).filter(Boolean))]
+        .map(String)
+        .sort()
+        .join(","),
+    [rows]
+  );
+
+  const [equipmentLiveBundles, setEquipmentLiveBundles] = useState(() => new Map());
+
+  useEffect(() => {
+    if (!USE_HIERARCHY_API || !isBackendSiteId(siteId) || !activeReleaseData || !equipmentIdsKey) {
+      setEquipmentLiveBundles(new Map());
+      return undefined;
+    }
+    const eqIds = equipmentIdsKey.split(",").filter(Boolean);
+    let cancelled = false;
+
+    async function load() {
+      const next = new Map();
+      const rtList = Array.isArray(runtimeControllersList) ? runtimeControllersList : [];
+      await Promise.all(
+        eqIds.map(async (eqId) => {
+          try {
+            const sourceEqId = resolveLivePointsSourceEquipmentId(eqId, activeReleaseData, rtList);
+            const [dbPoints, mappings, ctrl] = await Promise.all([
+              listPointsByEquipment(sourceEqId),
+              getPointMappingsByEquipment(sourceEqId).catch(() => []),
+              getEquipmentControllerByEquipment(eqId).catch(() => null),
+            ]);
+            const rt =
+              rtList.find((c) => c && String(c.equipmentId) === String(eqId)) ||
+              rtList.find((c) => c && String(c.equipmentId) === String(sourceEqId)) ||
+              null;
+            if (!cancelled) {
+              next.set(eqId, {
+                points: Array.isArray(dbPoints) ? dbPoints : [],
+                mappings: Array.isArray(mappings) ? mappings : [],
+                controller: ctrl,
+                runtime: rt,
+              });
+            }
+          } catch {
+            /* keep previous bundle for this id */
+          }
+        })
+      );
+      if (!cancelled) setEquipmentLiveBundles(next);
+    }
+
+    load();
+    const t = window.setInterval(load, 5000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(t);
+    };
+  }, [siteId, activeReleaseData, equipmentIdsKey, runtimeControllersList]);
+
+  const hydratedRows = useMemo(() => {
+    if (!USE_HIERARCHY_API || !isBackendSiteId(siteId) || !equipmentLiveBundles.size) {
+      return rows;
+    }
+    return applyHierarchyLiveToWorkspaceRows(rows, activeReleaseData, equipmentLiveBundles);
+  }, [rows, siteId, activeReleaseData, equipmentLiveBundles]);
+
   // Filter mode: filter rows by equipmentName, pointName, value, status
   const filteredRows = useMemo(() => {
-    if (workspace.searchMode !== "filter") return rows;
+    if (workspace.searchMode !== "filter") return hydratedRows;
     const q = String(workspace.filterText || "").trim().toLowerCase();
-    if (!q) return rows;
-    return rows.filter(
+    if (!q) return hydratedRows;
+    return hydratedRows.filter(
       (r) =>
         String(r.equipmentName || "").toLowerCase().includes(q) ||
         String(r.pointId || "").toLowerCase().includes(q) ||
@@ -206,7 +291,7 @@ function WorkspacePanel({
         String(r.value || "").toLowerCase().includes(q) ||
         String(r.status || "").toLowerCase().includes(q)
     );
-  }, [rows, workspace.searchMode, workspace.filterText]);
+  }, [hydratedRows, workspace.searchMode, workspace.filterText]);
 
   // Global search results (scoped query)
   const globalSearchResultsMemo = useMemo(() => {
@@ -250,10 +335,14 @@ function WorkspacePanel({
 
   const selectedCount = selectedRowIds.length;
   const selectedRows = useMemo(
-    () => rows.filter((r) => selectedRowIds.includes(r.id)),
-    [rows, selectedRowIds]
+    () => hydratedRows.filter((r) => selectedRowIds.includes(r.id)),
+    [hydratedRows, selectedRowIds]
   );
   const commandModalProfile = getCommandProfileForRows(selectedRows);
+  const alarmSelectionCompatible = useMemo(
+    () => areRowsAlarmCompatible(selectedRows),
+    [selectedRows]
+  );
   const commandApplyDisabled =
     !commandConfirmStep &&
     commandModalProfile.mode === "typed" &&
@@ -503,7 +592,7 @@ function WorkspacePanel({
   }, []);
 
   const openCommandModal = useCallback(() => {
-    const sel = rows.filter((r) => selectedRowIds.includes(r.id));
+    const sel = selectedRows;
     const needBulkConfirm = selectedCount > 10;
     setCommandConfirmStep(needBulkConfirm);
     setShowCommandModal(true);
@@ -515,12 +604,12 @@ function WorkspacePanel({
       setCommandValue("");
       setServiceStateChoice("in_service");
     }
-  }, [selectedCount, rows, selectedRowIds, syncServiceStateFromSelection]);
+  }, [selectedCount, selectedRows, syncServiceStateFromSelection]);
 
   const handleCommandApply = useCallback(() => {
     if (commandConfirmStep) {
       setCommandConfirmStep(false);
-      const sel = rows.filter((r) => selectedRowIds.includes(r.id));
+      const sel = selectedRows;
       const p = getCommandProfileForRows(sel);
       setCommandValue(p.mode === "typed" ? getInitialCommandValue(sel, p) : "");
       syncServiceStateFromSelection(sel);
@@ -790,10 +879,32 @@ function WorkspacePanel({
       {selectedCount > 0 && (
         <div className="legion-selection-bar mb-2">
           <span className="text-white fw-semibold">{selectedCount} Selected</span>
-          <div className="d-flex gap-2">
+          <div className="d-flex flex-wrap align-items-center gap-2">
             <Button size="sm" variant="success" onClick={openCommandModal}>
               Command Selected
             </Button>
+            {alarmSelectionCompatible ? (
+              <Button
+                size="sm"
+                variant="outline-light"
+                className="border-opacity-25"
+                onClick={() => {
+                  setAlarmModalRows(selectedRows);
+                  setShowAlarmModal(true);
+                }}
+              >
+                Alarm
+              </Button>
+            ) : null}
+            {selectedCount > 1 && !alarmSelectionCompatible ? (
+              <span
+                className="small text-white-50"
+                title={BULK_ALARM_INCOMPATIBLE_MESSAGE}
+                role="note"
+              >
+                {BULK_ALARM_INCOMPATIBLE_MESSAGE}
+              </span>
+            ) : null}
             <Button size="sm" variant="outline-light" className="border-opacity-25" onClick={removeSelected}>
               Remove Selected
             </Button>
@@ -1092,21 +1203,93 @@ function WorkspacePanel({
           </Toast>
         </div>
       )}
+
+      <OperatorAlarmConfigModal
+        show={showAlarmModal}
+        onHide={() => {
+          setShowAlarmModal(false);
+          setAlarmModalRows(null);
+        }}
+        siteId={siteId}
+        rows={alarmModalRows ?? undefined}
+        activeReleaseData={activeReleaseData}
+      />
     </div>
   );
 }
 
 export default function EquipmentPage() {
   const history = useHistory();
+  const { siteId, apiSites } = useSite();
+  /** Match useActiveRelease: sidebar may hold site name until coerced to UUID. */
+  const apiSiteId = useMemo(
+    () => coerceSiteKeyToApiId(siteId, apiSites) ?? (isBackendSiteId(siteId) ? siteId : null),
+    [siteId, apiSites]
+  );
   const { deployment, loading: releaseLoading, error: releaseError } = useActiveDeployment();
   const activeReleaseData = deployment;
   const goToEquipment = (node) =>
     history.push(`/legion/equipment/${node.instanceNumber ? encodeURIComponent(node.instanceNumber) : node.id}`);
 
-  const treeData = useMemo(
-    () => activeReleaseDataToEquipmentTree(activeReleaseData),
-    [activeReleaseData]
-  );
+  const [runtimeByEquipmentId, setRuntimeByEquipmentId] = useState(() => new Map());
+  const [runtimeControllersList, setRuntimeControllersList] = useState([]);
+
+  useEffect(() => {
+    if (!USE_HIERARCHY_API) return undefined;
+    let cancelled = false;
+    function tick() {
+      listRuntimeControllers()
+        .then((rows) => {
+          if (cancelled) return;
+          const list = Array.isArray(rows) ? rows : [];
+          setRuntimeControllersList(list);
+          const m = new Map();
+          for (const r of list) {
+            if (r?.equipmentId) m.set(String(r.equipmentId), r);
+          }
+          if (activeReleaseData?.equipment?.length) {
+            for (const eq of activeReleaseData.equipment) {
+              const wid = String(eq.id);
+              const src = resolveLivePointsSourceEquipmentId(wid, activeReleaseData, list);
+              if (src !== wid) {
+                const alt = m.get(src);
+                if (alt) m.set(wid, alt);
+              }
+            }
+          }
+          setRuntimeByEquipmentId(m);
+        })
+        .catch(() => {});
+    }
+    tick();
+    const id = window.setInterval(tick, 10000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(id);
+    };
+  }, [activeReleaseData]);
+
+  const treeData = useMemo(() => {
+    const base = activeReleaseDataToEquipmentTree(activeReleaseData);
+    if (!runtimeByEquipmentId.size) return base;
+    const patch = (nodes) =>
+      (nodes || []).map((n) => {
+        if (n.children?.length) {
+          return { ...n, children: patch(n.children) };
+        }
+        if (n.type === "equip" && runtimeByEquipmentId.has(String(n.id))) {
+          const r = runtimeByEquipmentId.get(String(n.id));
+          const live = r?.online && r?.simEnabled;
+          return {
+            ...n,
+            status: r?.online ? "Online" : n.status,
+            label: live ? `${n.label} · Live` : n.label,
+          };
+        }
+        return n;
+      });
+    return patch(base);
+  }, [activeReleaseData, runtimeByEquipmentId]);
 
   const [treeSearch, setTreeSearch] = useState("");
   const [openMap, setOpenMap] = useState({ plant: true, f1: true, ahu1: true });
@@ -1237,28 +1420,10 @@ export default function EquipmentPage() {
           <Col xs={12} lg={8} xl={9}>
             <Card className="legion-equipment-workspaces bg-primary text-white border border-light border-opacity-10 shadow-sm">
               <Card.Body className="text-white">
-                <div className="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
-                  <div>
-                    <div className="text-white fw-bold fs-5 mb-1">Workspaces</div>
-                    <div className="text-white-50 small">
-                      Drag equipment from the tree to add points to a workspace or scope. Each workspace has its own search and selection.
-                    </div>
-                  </div>
-                  <div className="d-flex align-items-center gap-2">
-                    <Button size="sm" variant="dark" className="workspace-action-btn workspace-action-btn--brand">
-                      Filters
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="dark"
-                      className="border border-light border-opacity-10 text-white-50"
-                      onClick={() => {
-                        setMainWorkspace((p) => ({ ...p, rows: [], selectedRowIds: [] }));
-                        setSecondaryWorkspace((p) => ({ ...p, rows: [], selectedRowIds: [] }));
-                      }}
-                    >
-                      Clear All
-                    </Button>
+                <div className="mb-3">
+                  <div className="text-white fw-bold fs-5 mb-1">Workspaces</div>
+                  <div className="text-white-50 small">
+                    Drag equipment from the tree to add points to a workspace or scope. Each workspace has its own search and selection.
                   </div>
                 </div>
 
@@ -1270,6 +1435,8 @@ export default function EquipmentPage() {
                   treeData={treeData}
                   handleDragStart={handleDragStart}
                   activeReleaseData={activeReleaseData}
+                  siteId={apiSiteId || siteId}
+                  runtimeControllersList={runtimeControllersList}
                 />
 
                 {showSecondaryWorkspace ? (
@@ -1284,6 +1451,8 @@ export default function EquipmentPage() {
                       onRemove={() => setShowSecondaryWorkspace(false)}
                       showRemove
                       activeReleaseData={activeReleaseData}
+                      siteId={apiSiteId || siteId}
+                      runtimeControllersList={runtimeControllersList}
                     />
                   </div>
                 ) : (

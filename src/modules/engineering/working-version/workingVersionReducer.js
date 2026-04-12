@@ -138,7 +138,7 @@ function workingVersionReducer(state, action) {
       const entry = {
         version: newVersion,
         date: now.toISOString().slice(0, 10),
-        user: "Reydel",
+        user: "Reydel Gutierrez",
         result: "Success",
         notes: action.payload?.notes ?? "",
         timestamp: now.toISOString(),

@@ -1,4 +1,5 @@
-import React, { useState, useCallback, useMemo } from "react";
+import React, { useState, useCallback, useMemo, useEffect } from "react";
+import * as hierarchyRepository from "../../../lib/data/repositories/hierarchyRepository";
 import {
   Container,
   Card,
@@ -30,6 +31,7 @@ import { useTablePagination } from "../../../hooks/useTablePagination";
 import { useSite } from "../../../app/providers/SiteProvider";
 import { USE_HIERARCHY_API } from "../../../lib/data/config";
 import { isBackendSiteId } from "../../../lib/data/siteIdUtils";
+import { coerceSiteKeyToApiId } from "../../../lib/data/siteApiResolution";
 import { isEmptySite } from "../../../lib/sites";
 import { useSiteDisplayLabel } from "../../../hooks/useSiteDisplayLabel";
 import { accessRepository } from "../../../lib/data";
@@ -67,9 +69,109 @@ export default function UserManagerPage() {
   const [users, setUsers] = useState(() => accessRepository.getUsers());
   const [roles] = useState(() => accessRepository.getRoles());
   const [siteMemberships, setSiteMemberships] = useState(() => accessRepository.getSiteMemberships());
+  const [apiSiteAccess, setApiSiteAccess] = useState(null);
+  const [apiSiteAccessLoading, setApiSiteAccessLoading] = useState(false);
+  const [siteAccessListRefresh, setSiteAccessListRefresh] = useState(0);
+  const [apiDirectoryUsers, setApiDirectoryUsers] = useState([]);
+
+  const siteIdForApi = useMemo(() => {
+    const c = coerceSiteKeyToApiId(currentSite, apiSites);
+    if (c) return c;
+    return isBackendSiteId(currentSite) ? currentSite : null;
+  }, [currentSite, apiSites]);
+
+  const selectedApiSite = useMemo(
+    () => (USE_HIERARCHY_API ? apiSites.find((s) => s.id === siteIdForApi) : null),
+    [apiSites, siteIdForApi]
+  );
+  const siteLabelForMembershipMatch = selectedApiSite?.name || currentSite;
+
+  useEffect(() => {
+    if (!USE_HIERARCHY_API || !siteIdForApi) {
+      setApiSiteAccess(null);
+      setApiSiteAccessLoading(false);
+      return undefined;
+    }
+    let cancelled = false;
+    setApiSiteAccessLoading(true);
+    hierarchyRepository
+      .listSiteUserAccess(siteIdForApi)
+      .then((rows) => {
+        if (!cancelled) setApiSiteAccess(Array.isArray(rows) ? rows : []);
+      })
+      .catch(() => {
+        if (!cancelled) setApiSiteAccess(null);
+      })
+      .finally(() => {
+        if (!cancelled) setApiSiteAccessLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [siteIdForApi, siteAccessListRefresh]);
+
+  useEffect(() => {
+    if (!USE_HIERARCHY_API) return undefined;
+    let cancelled = false;
+    hierarchyRepository
+      .listUsersDirectory()
+      .then((rows) => {
+        if (!cancelled) setApiDirectoryUsers(Array.isArray(rows) ? rows : []);
+      })
+      .catch(() => {
+        if (!cancelled) setApiDirectoryUsers([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const apiUsersDerived = useMemo(() => {
+    if (!apiSiteAccess?.length) return [];
+    const byId = new Map();
+    apiSiteAccess.forEach((row) => {
+      const u = row.user;
+      if (!u?.id || byId.has(u.id)) return;
+      byId.set(u.id, {
+        id: u.id,
+        fullName: u.name || u.email || u.id,
+        email: u.email || "",
+        status: USER_STATUS.ACTIVE,
+        roleKey: row.role?.name || "",
+        roleName: row.role?.name || "—",
+        siteCount: 1,
+        lastSeenAt: null,
+        createdAt: row.createdAt,
+        updatedAt: row.updatedAt,
+      });
+    });
+    return [...byId.values()];
+  }, [apiSiteAccess]);
+
+  const apiMembershipsDerived = useMemo(() => {
+    if (!apiSiteAccess?.length) return [];
+    const siteName = selectedApiSite?.name || "—";
+    return apiSiteAccess.map((row) => ({
+      id: row.id,
+      userId: row.userId,
+      siteId: row.siteId,
+      siteName,
+      canAccessEngineering: true,
+      canAccessOperator: true,
+      roleOverrideKey: row.role?.name || null,
+      membershipStatus: "active",
+      userName: row.user?.name || row.user?.email || row.userId,
+      roleName: row.role?.name || "—",
+    }));
+  }, [apiSiteAccess, selectedApiSite]);
+
   const sites = useMemo(() => {
     if (USE_HIERARCHY_API && apiSites.length > 0) {
-      return apiSites.map((s) => ({ siteId: s.id, siteName: s.name }));
+      return [...apiSites]
+        .map((s) => ({ siteId: s.id, siteName: s.name || s.id }))
+        .sort((a, b) =>
+          String(a.siteName).localeCompare(String(b.siteName), undefined, { sensitivity: "base" })
+        );
     }
     const list = accessRepository.getSitesForAccess();
     const hasCurrent = list.some(
@@ -86,6 +188,24 @@ export default function UserManagerPage() {
     }
     return list;
   }, [currentSite, apiSites, siteDisplayLabel]);
+
+  const usersForSiteAccessModal = useMemo(() => {
+    if (USE_HIERARCHY_API && apiDirectoryUsers.length > 0) {
+      return apiDirectoryUsers.map((u) => ({
+        id: u.id,
+        fullName: u.name || u.email || u.id,
+        email: u.email || "",
+        status: USER_STATUS.ACTIVE,
+        roleKey: "",
+        roleName: "—",
+        siteCount: 0,
+        lastSeenAt: null,
+        createdAt: null,
+        updatedAt: null,
+      }));
+    }
+    return users;
+  }, [apiDirectoryUsers, users]);
 
   const refreshUsers = useCallback(() => setUsers(accessRepository.getUsers()), []);
   const refreshMemberships = useCallback(() => setSiteMemberships(accessRepository.getSiteMemberships()), []);
@@ -117,11 +237,20 @@ export default function UserManagerPage() {
       };
       usersInCurrentProject = [builderUser];
     } else {
-      usersInCurrentProject = users.filter((u) =>
-        siteMemberships.some(
-          (m) => m.userId === u.id && (m.siteId === currentSite || m.siteName === currentSite)
-        )
-      );
+      if (USE_HIERARCHY_API && siteIdForApi) {
+        usersInCurrentProject = apiUsersDerived;
+      } else {
+        usersInCurrentProject = users.filter((u) =>
+          siteMemberships.some(
+            (m) =>
+              m.userId === u.id &&
+              (m.siteId === currentSite ||
+                m.siteName === currentSite ||
+                m.siteName === siteLabelForMembershipMatch ||
+                (selectedApiSite && m.siteId === selectedApiSite.id))
+          )
+        );
+      }
     }
     return usersInCurrentProject.filter((u) => {
       const matchSearch =
@@ -133,7 +262,21 @@ export default function UserManagerPage() {
       const matchSite = siteFilter === "all" || siteFilter === currentSite;
       return matchSearch && matchRole && matchStatus && matchSite;
     });
-  }, [users, search, roleFilter, statusFilter, siteFilter, siteMemberships, currentSite, isNewSite, currentUser]);
+  }, [
+    users,
+    search,
+    roleFilter,
+    statusFilter,
+    siteFilter,
+    siteMemberships,
+    currentSite,
+    isNewSite,
+    currentUser,
+    apiUsersDerived,
+    siteLabelForMembershipMatch,
+    selectedApiSite,
+    siteIdForApi,
+  ]);
 
   const {
     page,
@@ -183,8 +326,20 @@ export default function UserManagerPage() {
   );
 
   const handleSaveSiteAccess = useCallback(
-    (payload) => {
-      if (payload.id) {
+    async (payload) => {
+      if (USE_HIERARCHY_API && isBackendSiteId(payload.siteId)) {
+        try {
+          await hierarchyRepository.grantSiteUserAccess(payload.siteId, {
+            userId: payload.userId,
+            roleName: payload.roleOverrideKey || "site_admin",
+          });
+          showToast(payload.id ? "Site access updated." : "Site access assigned.");
+          setSiteAccessListRefresh((n) => n + 1);
+        } catch (e) {
+          showToast(e?.message || String(e) || "Failed to save site access.");
+          return;
+        }
+      } else if (payload.id) {
         accessRepository.updateSiteMembership(payload.id, {
           canAccessEngineering: payload.canAccessEngineering,
           canAccessOperator: payload.canAccessOperator,
@@ -232,7 +387,15 @@ export default function UserManagerPage() {
   }, [siteMemberships, users]);
 
   const filteredMemberships = useMemo(() => {
-    const forCurrentSite = membershipsWithUser.filter((m) => m.siteName === currentSite);
+    if (USE_HIERARCHY_API && siteIdForApi) {
+      return apiMembershipsDerived;
+    }
+    const forCurrentSite = membershipsWithUser.filter(
+      (m) =>
+        m.siteName === currentSite ||
+        m.siteName === siteLabelForMembershipMatch ||
+        (selectedApiSite && (m.siteId === selectedApiSite.id || m.siteName === selectedApiSite.name))
+    );
     if (isNewSite) {
       const siteIdForNew = currentSite.toLowerCase().replace(/\s+/g, "-");
       const builderMembership = {
@@ -250,7 +413,16 @@ export default function UserManagerPage() {
       return [builderMembership];
     }
     return forCurrentSite;
-  }, [membershipsWithUser, currentSite, isNewSite, currentUser]);
+  }, [
+    membershipsWithUser,
+    currentSite,
+    isNewSite,
+    currentUser,
+    apiMembershipsDerived,
+    siteLabelForMembershipMatch,
+    selectedApiSite,
+    siteIdForApi,
+  ]);
 
   if (!canView) {
     return (
@@ -647,9 +819,11 @@ export default function UserManagerPage() {
         onHide={() => { setShowSiteAccessModal(false); setEditingMembership(null); setPreselectedUserId(null); }}
         membership={editingMembership}
         preselectedUserId={preselectedUserId}
-        users={users}
+        users={usersForSiteAccessModal}
         sites={sites}
         currentSite={currentSite}
+        preferredSiteId={siteIdForApi}
+        siteDisplayLabel={siteDisplayLabel}
         onSave={handleSaveSiteAccess}
       />
       {confirmAction && (

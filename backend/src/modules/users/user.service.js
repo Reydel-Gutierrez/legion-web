@@ -1,5 +1,6 @@
 const prisma = require('../../lib/prisma');
 const { HttpError } = require('../../lib/httpError');
+const { ensureSeedOwnerSiteAccess } = require('../../lib/siteAccess');
 
 async function assertSiteExists(siteId) {
   const site = await prisma.site.findUnique({ where: { id: siteId } });
@@ -36,7 +37,7 @@ async function createUser(data) {
 
 async function listUsersBySite(siteId) {
   await assertSiteExists(siteId);
-  const rows = await prisma.userSiteAccess.findMany({
+  let rows = await prisma.userSiteAccess.findMany({
     where: { siteId },
     include: {
       user: true,
@@ -44,6 +45,17 @@ async function listUsersBySite(siteId) {
     },
     orderBy: { createdAt: 'asc' },
   });
+  if (rows.length === 0) {
+    await ensureSeedOwnerSiteAccess(siteId);
+    rows = await prisma.userSiteAccess.findMany({
+      where: { siteId },
+      include: {
+        user: true,
+        role: true,
+      },
+      orderBy: { createdAt: 'asc' },
+    });
+  }
   return rows;
 }
 

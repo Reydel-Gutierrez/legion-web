@@ -39,6 +39,11 @@ export default function DeviceInspectorPanel({
   onDiscoverPoints,
   onRefreshPoints,
   onPatchDevice,
+  phase2SiteId,
+  persistedEquipmentController,
+  onPhase2AssignClick,
+  onPhase2MapClick,
+  phase2ControllerCode,
 }) {
   const [addressDraft, setAddressDraft] = useState("");
   const deviceId = device?.id;
@@ -109,7 +114,7 @@ export default function DeviceInspectorPanel({
                 <div className="text-white">{device?.network ?? device?.protocol ?? "—"}</div>
               </div>
               <div className="col-md-6">
-                <div className="text-white-50">MAC / MSTP ID</div>
+                <div className="text-white-50">Device Address</div>
                 <div className="text-white">{device?.macOrMstpId ?? "—"}</div>
               </div>
               <div className="col-md-6">
@@ -130,6 +135,40 @@ export default function DeviceInspectorPanel({
                   <div className="text-white">{assignedEquipmentPath}</div>
                 </div>
               )}
+              {phase2SiteId && phase2ControllerCode ? (
+                <div className="col-12">
+                  <div className="text-white-50 small text-uppercase mb-2">Controller assignment (database)</div>
+                  {persistedEquipmentController ? (
+                    <div className="text-white small mb-2">
+                      <div>
+                        Code: <span className="text-white">{persistedEquipmentController.controllerCode}</span> ·{" "}
+                        {persistedEquipmentController.protocol || "—"}
+                      </div>
+                      <div className="text-white-50">Equipment ID: {persistedEquipmentController.equipmentId}</div>
+                    </div>
+                  ) : (
+                    <div className="text-white-50 small mb-2">No persisted assignment for this equipment yet.</div>
+                  )}
+                  <div className="d-flex flex-wrap gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline-light"
+                      className="legion-hero-btn legion-hero-btn--secondary"
+                      onClick={onPhase2AssignClick}
+                    >
+                      Assign to equipment
+                    </Button>
+                    <Button
+                      size="sm"
+                      className="legion-hero-btn legion-hero-btn--primary"
+                      onClick={onPhase2MapClick}
+                      disabled={!persistedEquipmentController?.id}
+                    >
+                      Map points
+                    </Button>
+                  </div>
+                </div>
+              ) : null}
               <div className="col-12">
                 <Form.Label className="text-white-50 small mb-1">Address # (optional)</Form.Label>
                 <Form.Control

@@ -6,6 +6,11 @@ async function listByFloor(req, res) {
   res.json(items);
 }
 
+async function listBySite(req, res) {
+  const items = await equipmentService.listEquipmentBySite(req.params.siteId);
+  res.json(items);
+}
+
 async function createForFloor(req, res) {
   const equipment = await equipmentService.createEquipment(
     req.params.floorId,
@@ -30,6 +35,7 @@ async function remove(req, res) {
 
 module.exports = {
   listByFloor,
+  listBySite,
   createForFloor,
   update,
   remove,

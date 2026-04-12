@@ -54,8 +54,13 @@ export default function UnusedObjectsPanel({ discoveredObjects, usedObjectIds, i
                   {unused.map((obj) => (
                     <tr key={obj.id} className="point-mapping-table-row">
                       <td className="point-mapping-table-cell">
-                        <span className="text-white">{obj.bacnetRef}</span>
-                        <div className="text-white-50 small">{obj.displayName}</div>
+                        <span className="text-white">
+                          {obj.bacnetRef ??
+                            (obj.objectType && obj.instance != null ? `${obj.objectType}-${obj.instance}` : null) ??
+                            obj.objectName ??
+                            "—"}
+                        </span>
+                        <div className="text-white-50 small">{obj.displayName ?? obj.objectName ?? "—"}</div>
                       </td>
                       <td className="point-mapping-table-cell text-white-50 small">
                         {engineeringRepository.BACNET_OBJECT_TYPES[obj.objectType] || obj.objectType}

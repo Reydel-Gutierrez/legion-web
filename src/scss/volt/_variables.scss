@@ -1847,6 +1847,11 @@ $accordion-body-padding-x: 1.25rem;
   box-shadow: 0 0 0 3px rgba(251,191,36,0.12);
 }
 
+.mini-dot.offline {
+  background: #f87171;
+  box-shadow: 0 0 0 3px rgba(248, 113, 113, 0.12);
+}
+
 /* ---------- SPARKLINE ---------- */
 
 .spark {

@@ -16,6 +16,9 @@ const pointRoutes = require('./modules/points/point.routes');
 const userRoutes = require('./modules/users/user.routes');
 const globalTemplateLibraryRoutes = require('./modules/globalTemplateLibrary/globalTemplateLibrary.routes');
 const geocodeRoutes = require('./modules/geocode/geocode.routes');
+const runtimeRoutes = require('./modules/runtime/runtime.routes');
+const equipmentControllersRoutes = require('./modules/equipmentControllers/equipmentControllers.routes');
+const pointMappingsRoutes = require('./modules/pointMappings/pointMappings.routes');
 
 const app = express();
 
@@ -39,6 +42,15 @@ app.use('/api/equipment', equipmentPatchRoutes);
 app.use('/api/points', pointRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/global-template-library', globalTemplateLibraryRoutes);
+/** Live SIM / discovery: never allow caches or ETag revalidation — 304 responses have no JSON body and break SPA clients. */
+app.use('/api/runtime', (req, res, next) => {
+  res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+  res.set('Pragma', 'no-cache');
+  next();
+});
+app.use('/api/runtime', runtimeRoutes);
+app.use('/api/equipment-controllers', equipmentControllersRoutes);
+app.use('/api/point-mappings', pointMappingsRoutes);
 
 app.use(notFound);
 app.use(errorHandler);

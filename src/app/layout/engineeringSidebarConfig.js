@@ -35,7 +35,7 @@ export function getEngineeringSidebarGroups({ includeAdministration }) {
       children: [
         { path: Routes.EngineeringSiteBuilder.path, title: "Site Builder", icon: faSitemap },
         { path: Routes.EngineeringTemplateLibrary.path, title: "Template Library", icon: faBook },
-        { path: Routes.EngineeringPointMapping.path, title: "Point Mapping", icon: faMapMarkerAlt },
+        { path: Routes.EngineeringPointMapping.path, title: "Points mapped", icon: faMapMarkerAlt },
       ],
     },
     {

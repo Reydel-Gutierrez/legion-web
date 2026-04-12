@@ -18,6 +18,11 @@ export default function DeviceInspectorDrawer({
   onDiscoverPoints,
   onRefreshPoints,
   onPatchDevice,
+  phase2SiteId,
+  persistedEquipmentController,
+  phase2ControllerCode,
+  onPhase2AssignClick,
+  onPhase2MapClick,
 }) {
   return (
     <LegionDrawer
@@ -36,6 +41,11 @@ export default function DeviceInspectorDrawer({
           onDiscoverPoints={onDiscoverPoints}
           onRefreshPoints={onRefreshPoints}
           onPatchDevice={onPatchDevice}
+          phase2SiteId={phase2SiteId}
+          persistedEquipmentController={persistedEquipmentController}
+          phase2ControllerCode={phase2ControllerCode}
+          onPhase2AssignClick={onPhase2AssignClick}
+          onPhase2MapClick={onPhase2MapClick}
         />
       </div>
     </LegionDrawer>

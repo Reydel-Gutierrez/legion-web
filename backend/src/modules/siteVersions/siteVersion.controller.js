@@ -31,7 +31,10 @@ async function getActiveRelease(req, res) {
 
 async function postDeploy(req, res) {
   const { siteId } = req.params;
-  const released = await siteVersionService.deployWorkingVersion(siteId);
+  const body = req.body && typeof req.body === 'object' ? req.body : {};
+  const deployedBy =
+    body.deployedBy != null && String(body.deployedBy).trim() ? String(body.deployedBy).trim() : undefined;
+  const released = await siteVersionService.deployWorkingVersion(siteId, { deployedBy });
   res.json({
     activeRelease: siteVersionService.serializeVersionRow(released, true),
   });

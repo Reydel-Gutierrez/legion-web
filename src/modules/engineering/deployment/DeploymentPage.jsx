@@ -21,17 +21,29 @@ import LegionHeroHeader from "../../../components/legion/LegionHeroHeader";
 import DeployAnywayModal from "../validation-center/components/DeployAnywayModal";
 import { useValidation } from "../../../app/providers/ValidationProvider";
 import { useWorkingVersion } from "../../../hooks/useWorkingVersion";
+import { useEngineeringVersionContext } from "../../../app/providers/EngineeringVersionProvider";
 import { Routes } from "../../../routes";
-import { engineeringRepository, deploymentRepository, USE_HIERARCHY_API } from "../../../lib/data";
+import { engineeringRepository, deploymentRepository, USE_HIERARCHY_API, accessRepository } from "../../../lib/data";
 import { useSite } from "../../../app/providers/SiteProvider";
 import { WORKING_VERSION_ACTIONS } from "../working-version/workingVersionReducer";
 import { isBackendSiteId } from "../../../lib/data/siteIdUtils";
+
+function getDeployerDisplayName() {
+  try {
+    const u = accessRepository.getCurrentUserForAccess();
+    const n = (u?.fullName || "").trim();
+    return n || "Reydel Gutierrez";
+  } catch {
+    return "Reydel Gutierrez";
+  }
+}
 
 export default function DeploymentPage() {
   const history = useHistory();
   const { site } = useSite();
   const { validationSnapshot } = useValidation();
   const { workingState, actions, dispatch } = useWorkingVersion();
+  const { registerBackendActiveRelease } = useEngineeringVersionContext();
   const { summary } = validationSnapshot;
   const errors = summary?.errors ?? 0;
   const warnings = summary?.warnings ?? 0;
@@ -124,8 +136,14 @@ export default function DeploymentPage() {
         type: WORKING_VERSION_ACTIONS.SET_RELEASE_HISTORY,
         payload: [entry, ...(workingState.deploymentHistory || [])],
       });
+      if (isBackendSiteId(site)) {
+        registerBackendActiveRelease(site, {
+          version: snap.version,
+          lastDeployedAt: snap.lastDeployedAt,
+        });
+      }
     },
-    [dispatch, workingState.deploymentHistory]
+    [dispatch, workingState.deploymentHistory, site, registerBackendActiveRelease]
   );
 
   const handleDeployConfiguration = useCallback(async () => {
@@ -133,7 +151,9 @@ export default function DeploymentPage() {
     if (useApiDeploy) {
       setApiDeployLoading(true);
       try {
-        const res = await engineeringRepository.postDeployWorkingVersion(site);
+        const res = await engineeringRepository.postDeployWorkingVersion(site, undefined, {
+          deployedBy: getDeployerDisplayName(),
+        });
         applyApiDeploySuccess(res);
         engineeringRepository.notifyEngineeringHierarchyChanged(site);
         setVersionMetaTick((t) => t + 1);
@@ -167,7 +187,9 @@ export default function DeploymentPage() {
       if (useApiDeploy) {
         setApiDeployLoading(true);
         try {
-          const res = await engineeringRepository.postDeployWorkingVersion(site, notes);
+          const res = await engineeringRepository.postDeployWorkingVersion(site, notes, {
+            deployedBy: getDeployerDisplayName(),
+          });
           applyApiDeploySuccess(res);
           engineeringRepository.notifyEngineeringHierarchyChanged(site);
           setVersionMetaTick((t) => t + 1);

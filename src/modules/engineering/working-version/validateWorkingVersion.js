@@ -23,15 +23,35 @@ export function validateWorkingVersion(workingData) {
   const graphics = workingData?.graphics ?? {};
 
   const deviceStatusByInstance = {};
+  function registerDeviceStatus(keys, statusRaw) {
+    const s = (statusRaw || "Offline").toLowerCase();
+    (keys || []).forEach((k) => {
+      const nk = String(k || "").trim();
+      if (!nk) return;
+      deviceStatusByInstance[nk] = s;
+      deviceStatusByInstance[nk.toLowerCase()] = s;
+    });
+  }
   function collectDeviceStatus(nodes) {
     if (!nodes?.length) return;
     nodes.forEach((d) => {
-      const key = String(d.deviceInstance ?? d.id);
-      deviceStatusByInstance[key] = (d.status || "Offline").toLowerCase();
+      const status = d.status || "Offline";
+      const keys = [];
+      if (d.deviceInstance != null && String(d.deviceInstance).trim() !== "") keys.push(String(d.deviceInstance).trim());
+      if (d.assignControllerCode != null && String(d.assignControllerCode).trim() !== "")
+        keys.push(String(d.assignControllerCode).trim());
+      if (d.id != null && String(d.id).trim() !== "") keys.push(String(d.id).trim());
+      registerDeviceStatus(keys, status);
       collectDeviceStatus(d.children);
     });
   }
   collectDeviceStatus(discoveredDevices);
+
+  function controllerDiscoveryStatus(ref) {
+    const r = String(ref || "").trim();
+    if (!r) return undefined;
+    return deviceStatusByInstance[r] ?? deviceStatusByInstance[r.toLowerCase()];
+  }
 
   equipment.forEach((eq) => {
     if (!eq.controllerRef || String(eq.controllerRef).trim() === "") {
@@ -128,7 +148,7 @@ export function validateWorkingVersion(workingData) {
 
   equipment.forEach((eq) => {
     if (!eq.controllerRef) return;
-    const status = deviceStatusByInstance[String(eq.controllerRef)];
+    const status = controllerDiscoveryStatus(eq.controllerRef);
     if (status === "offline") {
       issues.push({
         id: nextId(),
@@ -153,7 +173,7 @@ export function validateWorkingVersion(workingData) {
   equipment.forEach((eq) => {
     if (!eq.controllerRef) return;
     const objects = discoveredObjects[String(eq.controllerRef)] ?? [];
-    if (objects.length === 0 && deviceStatusByInstance[String(eq.controllerRef)] !== "offline") {
+    if (objects.length === 0 && controllerDiscoveryStatus(eq.controllerRef) !== "offline") {
       issues.push({
         id: nextId(),
         severity: SEVERITY.ERROR,

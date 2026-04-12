@@ -1,11 +1,11 @@
-import React, { useState } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import SimpleBar from 'simplebar-react';
 import { useLocation } from "react-router-dom";
 import { CSSTransition } from 'react-transition-group';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faUsers, faBoxOpen, faCog, faSignOutAlt, faTimes, faCalendarAlt, faMapPin, faInbox } from "@fortawesome/free-solid-svg-icons";
 import { Nav, Badge, Image, Button, Dropdown, Navbar } from '@themesberg/react-bootstrap';
-import { Link } from 'react-router-dom';
+import { Link } from "react-router-dom";
 
 import { Routes } from "../../routes";
 import { accessRepository } from "../../lib/data";
@@ -17,6 +17,7 @@ import { useWorkspaceMode } from "../providers/WorkspaceModeProvider";
 import { useEngineeringVersionContext } from "../providers/EngineeringVersionProvider";
 import { SITE_IDS } from "../../lib/sites";
 import { USE_HIERARCHY_API } from "../../lib/data/config";
+import { isBackendSiteId } from "../../lib/data/siteIdUtils";
 import { useSiteDisplayLabel } from "../../hooks/useSiteDisplayLabel";
 import { formatSiteNameForDisplay } from "../../lib/siteDisplayLabel";
 import { getPersistedWorkingVersionSiteNames } from "../../lib/data/persistence/engineeringVersionPersistence";
@@ -25,13 +26,46 @@ import { getEngineeringSidebarGroups } from "./engineeringSidebarConfig";
 import { getOperatorSidebarGroups } from "./operatorSidebarConfig";
 
 export default function Sidebar() {
-  const { setSite, apiSites, sitesLoading, sitesError } = useSite();
+  const { setSite, apiSites, sitesLoading, sitesError, refreshSites } = useSite();
   const displaySiteName = useSiteDisplayLabel();
   const { currentMode } = useWorkspaceMode();
   const { workingVersion, activeReleaseBySite } = useEngineeringVersionContext();
   const workingSiteName = workingVersion?.data?.site?.name;
   const apiModeWithSites = USE_HIERARCHY_API && apiSites.length > 0;
+
   const persistedWorkingSites = getPersistedWorkingVersionSiteNames();
+  const apiSiteNamesNorm = useMemo(
+    () => new Set(apiSites.map((s) => String(s.name || "").trim().toLowerCase()).filter(Boolean)),
+    [apiSites]
+  );
+  const localDemoExtraNames = useMemo(() => {
+    const raw = new Set([
+      ...persistedWorkingSites.filter(
+        (n) =>
+          n !== SITE_IDS.MIAMI_HQ &&
+          n !== SITE_IDS.NEW_SITE &&
+          n !== "New Building" &&
+          !(USE_HIERARCHY_API && isBackendSiteId(n))
+      ),
+      ...(workingSiteName && workingSiteName !== SITE_IDS.MIAMI_HQ && workingSiteName !== SITE_IDS.NEW_SITE
+        ? [workingSiteName]
+        : []),
+    ]);
+    return [...raw].filter((n) => {
+      const key = String(n || "").trim().toLowerCase();
+      if (!key) return false;
+      if (apiSiteNamesNorm.has(key)) return false;
+      return true;
+    });
+  }, [persistedWorkingSites, workingSiteName, apiSiteNamesNorm]);
+
+  const localDemoNameRows =
+    USE_HIERARCHY_API && (sitesLoading || sitesError) ? [] : localDemoExtraNames;
+
+  useEffect(() => {
+    if (!USE_HIERARCHY_API || currentMode !== "operator") return;
+    refreshSites();
+  }, [currentMode, refreshSites]);
   const deployedSiteNames = Object.keys(activeReleaseBySite || {}).filter((k) => activeReleaseBySite[k] != null);
   const location = useLocation();
   const { pathname } = location;
@@ -46,6 +80,18 @@ export default function Sidebar() {
       <span className="legion-sidebar-site-option__label">{label}</span>
       {showNoRelease ? <span className="text-white-50 small flex-shrink-0">(no release)</span> : null}
     </Dropdown.Item>
+  );
+
+  const apiSiteLoadingBlock = (
+    <>
+      {sitesLoading && apiSites.length === 0 ? (
+        <div className="px-3 py-2 small text-white-50">Loading sites…</div>
+      ) : null}
+      {sitesError ? <div className="px-3 py-2 small text-warning">{sitesError}</div> : null}
+      {!sitesLoading && !sitesError && apiSites.length === 0 ? (
+        <div className="px-3 py-2 small text-white-50">No sites from API.</div>
+      ) : null}
+    </>
   );
 
   const NavItem = (props) => {
@@ -136,84 +182,11 @@ export default function Sidebar() {
 
                 <Dropdown.Menu className="w-100 legion-dropdown-menu legion-sidebar-site-menu">
                   {currentMode === "engineering" ? (
-                    <>
-                      {USE_HIERARCHY_API && sitesLoading && apiSites.length === 0 ? (
-                        <div className="px-3 py-2 small text-white-50">Loading sites…</div>
-                      ) : null}
-                      {USE_HIERARCHY_API && sitesError ? (
-                        <div className="px-3 py-2 small text-warning">{sitesError}</div>
-                      ) : null}
-                      {USE_HIERARCHY_API && !sitesLoading && !sitesError && apiSites.length === 0 ? (
-                        <div className="px-3 py-2 small text-white-50">No sites from API.</div>
-                      ) : null}
-                      {apiSites.length > 0 && (
-                        <>
-                          {apiSites.map((s) => (
-                            <SiteMenuRow
-                              key={s.id}
-                              label={formatSiteNameForDisplay(s.name)}
-                              onSelect={() => setSite(s.id)}
-                              showNoRelease={!(activeReleaseBySite && activeReleaseBySite[s.id])}
-                            />
-                          ))}
-                        </>
-                      )}
-                      {apiModeWithSites ? (
-                        <>
-                          <Dropdown.Divider className="border-light border-opacity-10" />
-                          <div className="px-3 py-1 small text-white-50 text-uppercase" style={{ fontSize: 10, letterSpacing: "0.06em" }}>
-                            Local demos
-                          </div>
-                        </>
-                      ) : null}
-                      <SiteMenuRow
-                        label={formatSiteNameForDisplay(SITE_IDS.MIAMI_HQ)}
-                        onSelect={() => setSite(SITE_IDS.MIAMI_HQ)}
-                        showNoRelease={!(activeReleaseBySite && activeReleaseBySite[SITE_IDS.MIAMI_HQ])}
-                      />
-                      <SiteMenuRow
-                        label={formatSiteNameForDisplay(SITE_IDS.BRIGHTLINE)}
-                        onSelect={() => setSite(SITE_IDS.BRIGHTLINE)}
-                        showNoRelease={!(activeReleaseBySite && activeReleaseBySite[SITE_IDS.BRIGHTLINE])}
-                      />
-                      {[
-                        ...new Set([
-                          ...persistedWorkingSites.filter(
-                            (n) => n !== SITE_IDS.MIAMI_HQ && n !== SITE_IDS.NEW_SITE && n !== "New Building"
-                          ),
-                          ...(workingSiteName && workingSiteName !== SITE_IDS.MIAMI_HQ && workingSiteName !== SITE_IDS.NEW_SITE
-                            ? [workingSiteName]
-                            : []),
-                        ]),
-                      ]
-                        .sort((a, b) => a.localeCompare(b))
-                        .map((name) => (
-                          <SiteMenuRow
-                            key={name}
-                            label={formatSiteNameForDisplay(name)}
-                            onSelect={() => setSite(name)}
-                            showNoRelease={!(activeReleaseBySite && activeReleaseBySite[name])}
-                          />
-                        ))}
-                      <Dropdown.Divider className="border-light border-opacity-10" />
-                      <Dropdown.Item onClick={() => setSite(SITE_IDS.NEW_SITE)} className="legion-dropdown-new-site">
-                        <span className="text-white-50">+ New Site</span>
-                      </Dropdown.Item>
-                    </>
-                  ) : (
-                    <>
-                      {USE_HIERARCHY_API && sitesLoading && apiSites.length === 0 ? (
-                        <div className="px-3 py-2 small text-white-50">Loading sites…</div>
-                      ) : null}
-                      {USE_HIERARCHY_API && sitesError ? (
-                        <div className="px-3 py-2 small text-warning">{sitesError}</div>
-                      ) : null}
-                      {USE_HIERARCHY_API && !sitesLoading && !sitesError && apiSites.length === 0 ? (
-                        <div className="px-3 py-2 small text-white-50">No sites from API.</div>
-                      ) : null}
-                      {apiSites.length > 0 && (
-                        <>
-                          {apiSites.map((s) => (
+                    USE_HIERARCHY_API ? (
+                      <>
+                        {apiSiteLoadingBlock}
+                        {apiSites.length > 0 &&
+                          apiSites.map((s) => (
                             <SiteMenuRow
                               key={s.id}
                               label={formatSiteNameForDisplay(s.name)}
@@ -221,9 +194,54 @@ export default function Sidebar() {
                               showNoRelease={false}
                             />
                           ))}
-                          <Dropdown.Divider className="border-light border-opacity-10" />
-                        </>
-                      )}
+                        <Dropdown.Divider className="border-light border-opacity-10" />
+                        <Dropdown.Item onClick={() => setSite(SITE_IDS.NEW_SITE)} className="legion-dropdown-new-site">
+                          <span className="text-white-50">+ New Site</span>
+                        </Dropdown.Item>
+                      </>
+                    ) : (
+                      <>
+                        <SiteMenuRow
+                          label={formatSiteNameForDisplay(SITE_IDS.MIAMI_HQ)}
+                          onSelect={() => setSite(SITE_IDS.MIAMI_HQ)}
+                          showNoRelease={!(activeReleaseBySite && activeReleaseBySite[SITE_IDS.MIAMI_HQ])}
+                        />
+                        <SiteMenuRow
+                          label={formatSiteNameForDisplay(SITE_IDS.BRIGHTLINE)}
+                          onSelect={() => setSite(SITE_IDS.BRIGHTLINE)}
+                          showNoRelease={!(activeReleaseBySite && activeReleaseBySite[SITE_IDS.BRIGHTLINE])}
+                        />
+                        {[...new Set(localDemoNameRows)]
+                          .sort((a, b) => a.localeCompare(b))
+                          .map((name) => (
+                            <SiteMenuRow
+                              key={name}
+                              label={formatSiteNameForDisplay(name)}
+                              onSelect={() => setSite(name)}
+                              showNoRelease={!(activeReleaseBySite && activeReleaseBySite[name])}
+                            />
+                          ))}
+                        <Dropdown.Divider className="border-light border-opacity-10" />
+                        <Dropdown.Item onClick={() => setSite(SITE_IDS.NEW_SITE)} className="legion-dropdown-new-site">
+                          <span className="text-white-50">+ New Site</span>
+                        </Dropdown.Item>
+                      </>
+                    )
+                  ) : USE_HIERARCHY_API ? (
+                    <>
+                      {apiSiteLoadingBlock}
+                      {apiSites.length > 0 &&
+                        apiSites.map((s) => (
+                          <SiteMenuRow
+                            key={s.id}
+                            label={formatSiteNameForDisplay(s.name)}
+                            onSelect={() => setSite(s.id)}
+                            showNoRelease={false}
+                          />
+                        ))}
+                    </>
+                  ) : (
+                    <>
                       {!apiModeWithSites && deployedSiteNames.length > 0
                         ? deployedSiteNames.map((name) => (
                             <SiteMenuRow

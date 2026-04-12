@@ -21,6 +21,22 @@ async function listEquipmentByFloor(floorId) {
   });
 }
 
+async function listEquipmentBySite(siteId) {
+  const site = await prisma.site.findUnique({ where: { id: siteId } });
+  if (!site) {
+    throw new HttpError(404, 'Site not found');
+  }
+  return prisma.equipment.findMany({
+    where: { siteId },
+    include: {
+      building: { select: { id: true, name: true } },
+      floor: { select: { id: true, name: true } },
+      _count: { select: { points: true } },
+    },
+    orderBy: [{ buildingId: 'asc' }, { floorId: 'asc' }, { name: 'asc' }],
+  });
+}
+
 async function createEquipment(floorId, data) {
   const floor = await getFloorWithContext(floorId);
   const siteId = floor.building.siteId;
@@ -109,6 +125,7 @@ async function deleteEquipment(id) {
 
 module.exports = {
   listEquipmentByFloor,
+  listEquipmentBySite,
   createEquipment,
   getEquipmentById,
   updateEquipment,

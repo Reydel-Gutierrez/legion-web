@@ -11,6 +11,7 @@ import { ensureNetworkConfig } from "../modules/engineering/network/networkConfi
 import { USE_HIERARCHY_API } from "../lib/data/config";
 import { sortEquipmentForDisplay } from "../modules/engineering/site-builder/siteBuilderEquipmentUtils";
 import { isBackendSiteId } from "../lib/data/siteIdUtils";
+import { coerceSiteKeyToApiId } from "../lib/data/siteApiResolution";
 import * as operatorRepository from "../lib/data/repositories/operatorRepository";
 import { toActiveRelease } from "../modules/engineering/working-version/workingVersionTransforms";
 
@@ -253,15 +254,22 @@ export function useWorkingVersionSelectors() {
  * Active release for the current site (Operator Mode). `activeRelease.data` matches the former deployment snapshot shape.
  */
 export function useActiveRelease() {
-  const { site } = useSite();
+  const { site, apiSites } = useSite();
   const { activeReleaseBySite } = useEngineeringVersionContext();
   const [apiSnapshot, setApiSnapshot] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [refreshTick, setRefreshTick] = useState(0);
 
-  const fromStore = activeReleaseBySite?.[site] ?? null;
-  const useApi = USE_HIERARCHY_API && isBackendSiteId(site);
+  const siteKeyForApi = useMemo(() => {
+    const c = coerceSiteKeyToApiId(site, apiSites);
+    if (c) return c;
+    return isBackendSiteId(site) ? site : null;
+  }, [site, apiSites]);
+
+  const fromStore =
+    activeReleaseBySite?.[site] ?? (siteKeyForApi ? activeReleaseBySite?.[siteKeyForApi] : null) ?? null;
+  const useApi = Boolean(USE_HIERARCHY_API && siteKeyForApi);
 
   useEffect(() => {
     if (!useApi) {
@@ -274,7 +282,7 @@ export function useActiveRelease() {
     setLoading(true);
     setError(null);
     operatorRepository
-      .fetchActiveRelease(site)
+      .fetchActiveRelease(siteKeyForApi)
       .then((snap) => {
         if (!cancelled) {
           setApiSnapshot(snap);
@@ -291,33 +299,40 @@ export function useActiveRelease() {
     return () => {
       cancelled = true;
     };
-  }, [site, useApi, refreshTick]);
+  }, [siteKeyForApi, useApi, refreshTick]);
 
   useEffect(() => {
     if (!USE_HIERARCHY_API) return undefined;
     const onRefresh = (ev) => {
       const changedSite = ev?.detail?.siteId;
-      if (changedSite != null && changedSite !== site) return;
+      if (
+        changedSite != null &&
+        changedSite !== site &&
+        changedSite !== siteKeyForApi
+      ) {
+        return;
+      }
       setRefreshTick((t) => t + 1);
     };
     window.addEventListener("legion-api-hierarchy-changed", onRefresh);
     return () => window.removeEventListener("legion-api-hierarchy-changed", onRefresh);
-  }, [site]);
+  }, [site, siteKeyForApi]);
 
   return useMemo(() => {
+    const releaseSiteId = siteKeyForApi || site;
     if (useApi) {
       return {
-        activeRelease: apiSnapshot ? toActiveRelease(site, apiSnapshot) : null,
+        activeRelease: apiSnapshot ? toActiveRelease(releaseSiteId, apiSnapshot) : null,
         loading,
         error,
       };
     }
     return {
-      activeRelease: fromStore ? toActiveRelease(site, fromStore) : null,
+      activeRelease: fromStore ? toActiveRelease(releaseSiteId, fromStore) : null,
       loading: false,
       error: null,
     };
-  }, [useApi, apiSnapshot, fromStore, site, loading, error]);
+  }, [useApi, apiSnapshot, fromStore, site, siteKeyForApi, loading, error]);
 }
 
 /**

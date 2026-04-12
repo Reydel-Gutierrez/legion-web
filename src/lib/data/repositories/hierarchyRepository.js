@@ -4,6 +4,7 @@
  */
 
 import * as api from "../adapters/api/hierarchyApiAdapter";
+import * as equipmentControllerApi from "../adapters/api/equipmentControllerApiAdapter";
 import { isHierarchyApiEnabled } from "../../api/apiConfig";
 import { EMPTY_WORKING_DATA } from "../../../modules/engineering/working-version/workingVersionModel";
 import { ensureNetworkConfig } from "../../../modules/engineering/network/networkConfigModel";
@@ -78,6 +79,38 @@ export async function deleteEquipment(equipmentId) {
   return api.deleteEquipment(equipmentId);
 }
 
+/**
+ * Persist Site Builder "Assign controller" for API-backed sites (EquipmentController row).
+ * @param {string} equipmentId
+ * @param {{ controllerRef?: string | null, protocol?: string }} opts - controllerRef is device instance / controller code from UI
+ */
+export async function syncEquipmentControllerAssignment(equipmentId, opts = {}) {
+  const id = String(equipmentId || "").trim();
+  if (!id) throw new Error("equipmentId is required");
+
+  const trimmed =
+    opts.controllerRef != null && String(opts.controllerRef).trim() ? String(opts.controllerRef).trim() : "";
+
+  const existing = await equipmentControllerApi.getEquipmentControllerByEquipment(id);
+
+  if (!trimmed) {
+    if (existing?.id) {
+      await equipmentControllerApi.deleteEquipmentController(existing.id);
+    }
+    return;
+  }
+
+  const proto =
+    opts.protocol != null && String(opts.protocol).trim() ? String(opts.protocol).trim() : "BACnet/IP";
+
+  await equipmentControllerApi.assignEquipmentController({
+    equipmentId: id,
+    controllerCode: trimmed,
+    protocol: proto,
+    deviceInstance: trimmed,
+  });
+}
+
 export async function listPointsByEquipment(equipmentId) {
   return api.listPointsByEquipment(equipmentId);
 }
@@ -96,6 +129,13 @@ export async function updatePoint(pointId, payload) {
 export async function buildOperatorDeploymentSnapshot(siteId) {
   const siteRow = await api.getSiteById(siteId);
   if (!siteRow) return null;
+  const equipmentControllers = await equipmentControllerApi.listEquipmentControllers().catch(() => []);
+  const ctrlByEquipment = new Map();
+  for (const row of equipmentControllers) {
+    if (row && String(row.siteId) === String(siteId)) {
+      ctrlByEquipment.set(String(row.equipmentId), row);
+    }
+  }
   const buildings = await api.listBuildingsBySite(siteId);
   const siteBuildings = [];
   const allEquipment = [];
@@ -111,6 +151,18 @@ export async function buildOperatorDeploymentSnapshot(siteId) {
         const livePoints = points
           .map((pt) => api.pointToWorkspaceRow(eq.id, eq.name, pt))
           .filter(Boolean);
+        const persisted = ctrlByEquipment.get(String(eq.id));
+        const controllerRef =
+          persisted?.controllerCode != null && String(persisted.controllerCode).trim() !== ""
+            ? String(persisted.controllerCode).trim()
+            : persisted?.deviceInstance != null && String(persisted.deviceInstance).trim() !== ""
+              ? String(persisted.deviceInstance).trim()
+              : null;
+        const protocol =
+          persisted?.protocol != null && String(persisted.protocol).trim() !== ""
+            ? String(persisted.protocol).trim()
+            : "API";
+        const engStatus = persisted ? "CONTROLLER_ASSIGNED" : eq.engineeringStatus || "MISSING_CONTROLLER";
         allEquipment.push({
           id: eq.id,
           floorId: eq.floorId,
@@ -123,11 +175,11 @@ export async function buildOperatorDeploymentSnapshot(siteId) {
           equipmentType: eq.equipmentType,
           address: eq.address || "",
           locationLabel: "",
-          controllerRef: null,
-          protocol: "API",
+          controllerRef,
+          protocol,
           templateName: eq.templateName ?? null,
           pointsDefined: points.length,
-          status: eq.engineeringStatus || "MISSING_CONTROLLER",
+          status: engStatus,
           notes: "",
           livePoints,
         });
@@ -285,6 +337,14 @@ export async function fetchWorkingVersionForEngineering(siteId) {
   return normalizeWorkingPayloadFromApi(p);
 }
 
+function activeReleasePayloadMissingOperatorSite(payload) {
+  if (!payload || typeof payload !== "object") return true;
+  const s = payload.site;
+  if (!s || typeof s !== "object" || !s.id) return true;
+  if (!Array.isArray(s.buildings)) return true;
+  return false;
+}
+
 /**
  * Active release from `GET .../api/sites/:siteId/active-release`.
  * If no deployed release exists, builds a live snapshot from the relational hierarchy so Operator UI stays consistent.
@@ -293,12 +353,37 @@ export async function fetchWorkingVersionForEngineering(siteId) {
 export async function fetchActiveRelease(siteId) {
   const raw = await api.getActiveRelease(siteId);
   const ar = raw?.activeRelease;
-  if (ar?.payload != null && typeof ar.payload === "object") {
+  if (ar?.payload != null && typeof ar.payload === "object" && !activeReleasePayloadMissingOperatorSite(ar.payload)) {
     return {
       versionNumber: ar.versionNumber ?? null,
       status: ar.status,
       data: ar.payload,
     };
+  }
+  if (ar?.payload != null && typeof ar.payload === "object" && activeReleasePayloadMissingOperatorSite(ar.payload)) {
+    const live = await buildOperatorDeploymentSnapshot(siteId);
+    if (live) {
+      const prev = ar.payload;
+      live.version = prev.version ?? live.version;
+      live.lastDeployedAt = prev.lastDeployedAt ?? live.lastDeployedAt;
+      live.deployedBy = prev.deployedBy ?? live.deployedBy;
+      live.systemStatus = prev.systemStatus ?? live.systemStatus;
+      live.templates =
+        prev.templates && typeof prev.templates === "object"
+          ? prev.templates
+          : live.templates;
+      live.mappings = prev.mappings && typeof prev.mappings === "object" ? prev.mappings : live.mappings;
+      live.graphics = prev.graphics && typeof prev.graphics === "object" ? prev.graphics : live.graphics;
+      live.siteLayoutGraphics =
+        prev.siteLayoutGraphics && typeof prev.siteLayoutGraphics === "object"
+          ? prev.siteLayoutGraphics
+          : live.siteLayoutGraphics;
+      return {
+        versionNumber: ar.versionNumber ?? null,
+        status: ar.status,
+        data: live,
+      };
+    }
   }
   const live = await buildOperatorDeploymentSnapshot(siteId);
   if (!live) return null;
@@ -334,8 +419,22 @@ export async function saveWorkingVersionToApi(siteId, payload, notes) {
   return api.putWorkingVersion(siteId, { payload, ...(notes !== undefined ? { notes } : {}) });
 }
 
-export async function deployWorkingVersionViaApi(siteId, notes) {
-  return api.postDeploy(siteId, notes);
+export async function deployWorkingVersionViaApi(siteId, notes, options = {}) {
+  return api.postDeploy(siteId, notes, options);
+}
+
+/** UserSiteAccess rows for a site (includes nested user + role). */
+export async function listSiteUserAccess(siteId) {
+  return api.listSiteUserAccess(siteId);
+}
+
+/** All users (directory) for User Manager assign-access modal. */
+export async function listUsersDirectory() {
+  return api.listUsers();
+}
+
+export async function grantSiteUserAccess(siteId, body) {
+  return api.grantSiteUserAccess(siteId, body);
 }
 
 /** Active + working version numbers for Engineering Deployment panel (API mode). */

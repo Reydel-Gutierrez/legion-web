@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect, useCallback } from "react";
 import { useSite } from "../../../app/providers/SiteProvider";
 import {
   Container,
@@ -25,8 +25,55 @@ export default function AlarmsPage() {
   const [state, setState] = useState("Active"); // Active | History | All
   const [ack, setAck] = useState("All"); // All | Acked | Unacked
 
-  // Canonical alarm list via repository (currently mock-backed)
-  const alarms = useMemo(() => operatorRepository.getAlarms(site), [site]);
+  const [alarms, setAlarms] = useState([]);
+  const [alarmsLoading, setAlarmsLoading] = useState(false);
+  const [alarmsError, setAlarmsError] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setAlarmsLoading(true);
+    setAlarmsError(null);
+    operatorRepository
+      .fetchAlarmsForSite(site)
+      .then((rows) => {
+        if (!cancelled) setAlarms(Array.isArray(rows) ? rows : []);
+      })
+      .catch((e) => {
+        if (!cancelled) {
+          setAlarmsError(e?.message || String(e));
+          setAlarms([]);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setAlarmsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [site]);
+
+  const refreshAlarms = useCallback(() => {
+    operatorRepository
+      .fetchAlarmsForSite(site)
+      .then((rows) => {
+        setAlarmsError(null);
+        setAlarms(Array.isArray(rows) ? rows : []);
+      })
+      .catch((e) => {
+        setAlarmsError(e?.message || String(e));
+        setAlarms([]);
+      });
+  }, [site]);
+
+  const handleAck = useCallback(
+    (eventId) => {
+      operatorRepository
+        .acknowledgeOperatorAlarmEvent(site, eventId)
+        .then(() => refreshAlarms())
+        .catch((e) => setAlarmsError(e?.message || String(e)));
+    },
+    [site, refreshAlarms]
+  );
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -40,7 +87,10 @@ export default function AlarmsPage() {
         a.message.toLowerCase().includes(q) ||
         a.id.toLowerCase().includes(q);
 
-      const matchesSeverity = severity === "All" || a.severity === severity || (severity === "Warning" && a.severity === "Major");
+      const matchesSeverity =
+        severity === "All" ||
+        a.severity === severity ||
+        (severity === "Warning" && (a.severity === "Major" || a.severity === "Warning"));
       const matchesState = state === "All" || a.state === state;
 
       const matchesAck =
@@ -91,6 +141,14 @@ export default function AlarmsPage() {
             <div className="text-white small">
               Active + historical alarm log for all equipment in this site.
             </div>
+            {alarmsLoading ? (
+              <div className="text-white-50 small mt-1">Loading alarms…</div>
+            ) : null}
+            {alarmsError ? (
+              <div className="text-warning small mt-1" role="alert">
+                {alarmsError}
+              </div>
+            ) : null}
           </div>
 
           <div className="d-flex align-items-center gap-2">
@@ -231,6 +289,9 @@ export default function AlarmsPage() {
                             <td>
                               <div className="fw-bold text-white">{a.point}</div>
                               <div className="text-white">{a.value}</div>
+                              {a.definitionBinding ? (
+                                <div className="text-white-50 small mt-1">{a.definitionBinding}</div>
+                              ) : null}
                             </td>
 
                             <td className="text-white fw-semibold">{a.message}</td>
@@ -277,7 +338,7 @@ export default function AlarmsPage() {
                                   variant="outline-light"
                                   className="border-opacity-10"
                                   disabled={a.ack}
-                                  onClick={() => {}}
+                                  onClick={() => handleAck(a.id)}
                                 >
                                   Ack
                                 </Button>

@@ -166,7 +166,7 @@ export default function DiscoveryTable({
             <th className="discovery-table-header">Vendor</th>
             <th className="discovery-table-header">Device Instance</th>
             <th className="discovery-table-header">Network</th>
-            <th className="discovery-table-header">MAC / MSTP ID</th>
+            <th className="discovery-table-header">Device Address</th>
             <th className="discovery-table-header">Object Count</th>
             <th className="discovery-table-header">Last Seen</th>
             <th className="discovery-table-header">Status</th>

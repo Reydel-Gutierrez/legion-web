@@ -137,3 +137,134 @@ export function flattenDiscoveryTree(roots) {
   walk(Array.isArray(roots) ? roots : []);
   return out;
 }
+
+// ---------------------------------------------------------------------------
+// Simulated / runtime-backed discovery (Legion SIM controllers from API)
+// ---------------------------------------------------------------------------
+
+/** @param {string | undefined} iso */
+export function formatDiscoveryLastSeen(iso) {
+  if (!iso) return "—";
+  try {
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return String(iso);
+    const sec = Math.round((Date.now() - d.getTime()) / 1000);
+    if (sec < 45) return "just now";
+    if (sec < 3600) return `${Math.max(1, Math.round(sec / 60))} min ago`;
+    if (sec < 86400) return `${Math.round(sec / 3600)} hr ago`;
+    return d.toLocaleString();
+  } catch {
+    return String(iso);
+  }
+}
+
+/**
+ * @param {object} item — runtime discovery payload
+ * @returns {object} discovery tree node (flat device row shape)
+ */
+export function runtimeDiscoveryItemToTreeRoot(item) {
+  /** Runtime API store key: equipment UUID when multi-site SIM; legacy single-controller may still be FCU-1. */
+  const apiCode = item?.code != null ? String(item.code) : "SIM";
+  const humanControllerCode =
+    item?.controllerCode != null && String(item.controllerCode).trim() !== ""
+      ? String(item.controllerCode).trim()
+      : apiCode;
+  const hasBacnetInstance = item?.bacnetDeviceInstance != null && String(item.bacnetDeviceInstance).trim() !== "";
+  return {
+    id: `runtime-${apiCode}`,
+    parentId: null,
+    name: item?.deviceLabel || humanControllerCode,
+    vendor: item?.vendorName != null && String(item.vendorName).trim() !== "" ? String(item.vendorName) : "Legion",
+    deviceInstance: hasBacnetInstance ? String(item.bacnetDeviceInstance) : humanControllerCode,
+    network:
+      item?.discoveryNetwork != null && String(item.discoveryNetwork).trim() !== ""
+        ? String(item.discoveryNetwork)
+        : `SIM:${humanControllerCode}`,
+    macOrMstpId: (() => {
+      const raw = item?.deviceAddress;
+      if (raw != null && String(raw).trim() !== "") return String(raw).trim();
+      /** Runtime FCU-1 SIM row: show lab MSTP address, never equipment UUID (looks like random hex). */
+      const codeUp = String(humanControllerCode).toUpperCase();
+      if (item?.source === "runtime" && codeUp === "FCU-1") return "4";
+      return "—";
+    })(),
+    objectCount: item?.pointCount != null ? item.pointCount : "—",
+    lastSeen: formatDiscoveryLastSeen(item?.lastSeenAt),
+    status: item?.online ? "Online" : "Offline",
+    protocol: item?.protocol || "SIM",
+    isExpandable: false,
+    assignedEquipmentId: item?.equipmentId ?? null,
+    children: [],
+    discoverySource: item?.source || "runtime",
+    /** Pass to `/api/runtime/controllers/:code/field-points` */
+    runtimeFieldPointsCode: apiCode,
+    /** Pass to assign API as `controllerCode` (e.g. FCU-1) */
+    assignControllerCode: humanControllerCode,
+  };
+}
+
+/**
+ * Append SIM / runtime devices after BACnet-filtered scan results.
+ * @param {object[]} treeRoots
+ * @param {object[]} runtimeItems
+ */
+export function appendRuntimeDevicesToDiscoveryTree(treeRoots, runtimeItems) {
+  const roots = Array.isArray(treeRoots) ? treeRoots : [];
+  const extra = Array.isArray(runtimeItems) ? runtimeItems.map(runtimeDiscoveryItemToTreeRoot) : [];
+  return [...roots, ...extra];
+}
+
+/** @param {string | undefined} pointType */
+function mapPointTypeToDiscoveryAbbrev(pointType) {
+  const s = (pointType || "").toLowerCase();
+  if (s.includes("analog input")) return "AI";
+  if (s.includes("analog output")) return "AO";
+  if (s.includes("analog value")) return "AV";
+  if (s.includes("binary")) return "BV";
+  if (s.includes("character") || s.includes("string")) return "STR";
+  return pointType ? String(pointType).slice(0, 12) : "—";
+}
+
+/**
+ * Maps hierarchy API point rows to Device Inspector "discovered object" rows (live SIM / DB-backed).
+ * @param {Array<{ id?: string, pointName?: string, pointCode?: string, pointType?: string, unit?: string | null, presentValue?: string | null }>} points
+ */
+export function mapEquipmentPointsToDiscoveryObjects(points) {
+  const readLabel = formatDiscoveryLastSeen(new Date().toISOString());
+  const sorted = [...(points || [])].sort((a, b) =>
+    String(a.pointCode || "").localeCompare(String(b.pointCode || ""), undefined, { sensitivity: "base" })
+  );
+  return sorted.map((p, idx) => {
+    const objectType = mapPointTypeToDiscoveryAbbrev(p.pointType);
+    const codeRaw = p.pointCode != null && String(p.pointCode).trim() !== "" ? String(p.pointCode).trim() : null;
+    const refSuffix = codeRaw ?? String(idx);
+    const objectName = p.pointName || p.pointCode || "—";
+    return {
+      id: p.id || `sim-${p.pointCode}-${idx}`,
+      objectName,
+      objectType,
+      instance: p.pointCode ?? "—",
+      presentValue:
+        p.presentValue != null && String(p.presentValue).trim() !== "" ? String(p.presentValue) : "—",
+      units: p.unit != null && String(p.unit).trim() !== "" ? String(p.unit) : "",
+      lastRead: readLabel,
+      // Point Mapping page + auto-map use bacnetRef / displayName (same shape as generateMockDiscoveredObjects).
+      bacnetRef: `${objectType}-${refSuffix}`,
+      displayName: objectName,
+    };
+  });
+}
+
+/** Legion SIM device row from runtime discovery merge */
+export function isRuntimeSimDiscoveryDevice(device) {
+  if (!device) return false;
+  if (device.discoverySource === "runtime") return true;
+  if (device.protocol === "SIM") return true;
+  if (String(device.network || "").startsWith("SIM:")) return true;
+  return false;
+}
+
+export function getRuntimeSimEquipmentId(device) {
+  if (!device) return null;
+  return device.assignedEquipmentId ?? device.equipmentId ?? null;
+}

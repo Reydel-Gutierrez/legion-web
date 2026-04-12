@@ -3,6 +3,8 @@
  * Storage keys are unchanged from early prototypes so existing browser data keeps loading.
  */
 
+import { isBackendSiteId } from "../siteIdUtils";
+
 const STORAGE_KEY_WORKING_VERSIONS = "legion_site_drafts";
 const STORAGE_KEY_ACTIVE_RELEASES = "legion_site_deployments";
 
@@ -102,4 +104,70 @@ export function getPersistedWorkingVersionSiteNames() {
 export function getSitesWithActiveRelease() {
   const all = loadAllActiveReleases();
   return Object.keys(all).filter((k) => all[k] != null);
+}
+
+const WIZARD_KEYS = new Set(["New Site", "New Building"]);
+
+/**
+ * Remove browser drafts/releases whose keys are not a known API site id or name.
+ * Keeps only "New Site" / "New Building" wizard keys and rows tied to `apiSites`.
+ * @param {{ id: string, name?: string }[]} apiSites
+ */
+export function pruneWorkingVersionsNotBoundToApi(apiSites) {
+  if (!apiSites?.length) return;
+  const idSet = new Set(apiSites.map((s) => s.id).filter(Boolean));
+  const nameNorm = new Set(
+    apiSites.map((s) => String(s.name || "").trim().toLowerCase()).filter(Boolean)
+  );
+  const all = loadAllWorkingVersions();
+  const next = {};
+  for (const [key, value] of Object.entries(all)) {
+    if (WIZARD_KEYS.has(key)) {
+      next[key] = value;
+      continue;
+    }
+    if (isBackendSiteId(key) && idSet.has(key)) {
+      next[key] = value;
+      continue;
+    }
+    const kn = String(key).trim().toLowerCase();
+    if (nameNorm.has(kn)) {
+      next[key] = value;
+      continue;
+    }
+  }
+  if (Object.keys(next).length !== Object.keys(all).length) {
+    setLocalStorageSafe(STORAGE_KEY_WORKING_VERSIONS, safeStringify(next));
+  }
+}
+
+/**
+ * @param {{ id: string, name?: string }[]} apiSites
+ */
+export function pruneActiveReleasesNotBoundToApi(apiSites) {
+  if (!apiSites?.length) return;
+  const idSet = new Set(apiSites.map((s) => s.id).filter(Boolean));
+  const nameNorm = new Set(
+    apiSites.map((s) => String(s.name || "").trim().toLowerCase()).filter(Boolean)
+  );
+  const all = loadAllActiveReleases();
+  const next = {};
+  for (const [key, value] of Object.entries(all)) {
+    if (WIZARD_KEYS.has(key)) {
+      next[key] = value;
+      continue;
+    }
+    if (isBackendSiteId(key) && idSet.has(key)) {
+      next[key] = value;
+      continue;
+    }
+    const kn = String(key).trim().toLowerCase();
+    if (nameNorm.has(kn)) {
+      next[key] = value;
+      continue;
+    }
+  }
+  if (Object.keys(next).length !== Object.keys(all).length) {
+    setLocalStorageSafe(STORAGE_KEY_ACTIVE_RELEASES, safeStringify(next));
+  }
 }

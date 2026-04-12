@@ -138,6 +138,7 @@ export function pointToWorkspaceRow(equipmentId, equipmentName, pt) {
     p.presentValue != null && p.presentValue !== "" ? parsePresentValueRawForWorkspace(p.presentValue) : null;
   return {
     id: `${equipmentId}-${p.pointCode || p.id}`,
+    databasePointId: p.id,
     equipmentId,
     equipmentName,
     pointId: p.pointCode || p.id,
@@ -247,6 +248,22 @@ export async function deleteFloor(floorId) {
 
 // --- Equipment
 
+/** Flat list of equipment on a site (buildings/floors included for labels). */
+export async function listEquipmentBySite(siteId) {
+  const rows = await apiFetch(`/api/sites/${encodeURIComponent(siteId)}/equipment`);
+  if (!Array.isArray(rows)) return [];
+  return rows.map((r) => {
+    const base = normalizeEquipment(r);
+    if (!base) return null;
+    return {
+      ...base,
+      buildingName: r.building?.name ?? "",
+      floorName: r.floor?.name ?? "",
+      pointsCount: r._count?.points,
+    };
+  }).filter(Boolean);
+}
+
 export async function listEquipmentByFloor(floorId) {
   const rows = await apiFetch(`/api/floors/${encodeURIComponent(floorId)}/equipment`);
   return Array.isArray(rows) ? rows.map(normalizeEquipment).filter(Boolean) : [];
@@ -277,7 +294,8 @@ export async function deleteEquipment(equipmentId) {
 // --- Points
 
 export async function listPointsByEquipment(equipmentId) {
-  const rows = await apiFetch(`/api/equipment/${encodeURIComponent(equipmentId)}/points`);
+  const raw = await apiFetch(`/api/equipment/${encodeURIComponent(equipmentId)}/points`);
+  const rows = Array.isArray(raw) ? raw : raw?.points ?? raw?.data ?? [];
   return Array.isArray(rows) ? rows.map(normalizePoint).filter(Boolean) : [];
 }
 
@@ -314,10 +332,13 @@ export async function getActiveRelease(siteId) {
   return apiFetch(`/api/sites/${encodeURIComponent(siteId)}/active-release`);
 }
 
-export async function postDeploy(siteId, notes) {
+export async function postDeploy(siteId, notes, options = {}) {
   const body = {};
   if (notes !== undefined && notes !== null && String(notes).length > 0) {
     body.notes = String(notes);
+  }
+  if (options.deployedBy != null && String(options.deployedBy).trim()) {
+    body.deployedBy = String(options.deployedBy).trim();
   }
   return apiFetch(`/api/sites/${encodeURIComponent(siteId)}/deploy`, {
     method: "POST",
@@ -327,4 +348,35 @@ export async function postDeploy(siteId, notes) {
 
 export async function listSiteVersions(siteId) {
   return apiFetch(`/api/sites/${encodeURIComponent(siteId)}/versions`);
+}
+
+/** @returns {Promise<object[]>} UserSiteAccess rows with user + role */
+export async function listSiteUserAccess(siteId) {
+  const raw = await apiFetch(`/api/sites/${encodeURIComponent(siteId)}/users`);
+  return Array.isArray(raw) ? raw : [];
+}
+
+/** @returns {Promise<{ id: string, email: string, name: string|null }[]>} */
+export async function listUsers() {
+  const raw = await apiFetch("/api/users");
+  const rows = Array.isArray(raw) ? raw : [];
+  return rows
+    .filter((u) => u && u.id)
+    .map((u) => ({
+      id: u.id,
+      email: u.email != null ? String(u.email) : "",
+      name: u.name != null ? String(u.name) : "",
+    }));
+}
+
+/**
+ * Grant or update site access (UserSiteAccess).
+ * @param {string} siteId
+ * @param {{ userId: string, roleId?: string, roleName?: string }} body roleName is Prisma Role.name e.g. site_admin, engineer
+ */
+export async function grantSiteUserAccess(siteId, body) {
+  return apiFetch(`/api/sites/${encodeURIComponent(siteId)}/users/access`, {
+    method: "POST",
+    body: body && typeof body === "object" ? body : {},
+  });
 }

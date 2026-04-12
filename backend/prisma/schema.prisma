@@ -47,6 +47,7 @@ model Site {
   siteVersions      SiteVersion[]
   alarmDefinitions  AlarmDefinition[]
   alarmEvents       AlarmEvent[]
+  controllersMapped ControllersMapped[]
 }
 
 model SiteVersion {
@@ -106,6 +107,7 @@ model Building {
   floors    Floor[]
   equipment Equipment[]
   points    Point[]
+  controllersMapped ControllersMapped[]
 
   @@unique([siteId, name])
 }
@@ -124,6 +126,7 @@ model Floor {
   building  Building    @relation(fields: [buildingId], references: [id], onDelete: Cascade)
   equipment Equipment[]
   points    Point[]
+  controllersMapped ControllersMapped[]
 
   @@unique([buildingId, name])
 }
@@ -152,9 +155,75 @@ model Equipment {
   points   Point[]
   alarmDefinitions AlarmDefinition[]
   alarmEvents      AlarmEvent[]
+  controllersMapped ControllersMapped?
+  pointsMapped      PointsMapped[]
 
   @@unique([siteId, code])
   @@unique([siteId, instanceNumber])
+}
+
+/// Persisted assignment of a discovered field controller to one Legion equipment row (Phase 2).
+/// Renamed from EquipmentController: one row per equipment; `controllerCode` is unique per site (not globally).
+model ControllersMapped {
+  id             String    @id @default(uuid())
+  equipmentId    String    @unique
+  controllerCode String
+  displayName    String?
+  protocol       String
+  deviceInstance String?
+  ipAddress      String?
+  networkAddress String?
+  siteId         String
+  buildingId     String?
+  floorId        String?
+  pollRateMs     Int?      @default(5000)
+  isSimulated    Boolean   @default(false)
+  isEnabled      Boolean   @default(true)
+  status         String?
+  lastSeenAt     DateTime?
+  metadataJson   Json?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  site      Site      @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  building  Building? @relation(fields: [buildingId], references: [id], onDelete: SetNull)
+  floor     Floor?    @relation(fields: [floorId], references: [id], onDelete: SetNull)
+  equipment Equipment @relation(fields: [equipmentId], references: [id], onDelete: Cascade)
+  pointsMapped PointsMapped[]
+
+  @@unique([siteId, controllerCode])
+  @@index([controllerCode])
+  @@index([siteId])
+}
+
+/// Maps a runtime / field point key to a Legion Point row for a given assigned controller (Phase 2).
+/// Renamed from PointMapping.
+model PointsMapped {
+  id                    String   @id @default(uuid())
+  equipmentControllerId String
+  equipmentId           String
+  pointId               String
+  legionPointCode       String?
+  fieldPointKey         String
+  fieldPointName        String?
+  fieldObjectType       String?
+  fieldObjectInstance   String?
+  fieldDataType         String?
+  readEnabled           Boolean  @default(true)
+  writeEnabled          Boolean  @default(false)
+  isBound               Boolean  @default(true)
+  metadataJson          Json?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  controllersMapped ControllersMapped @relation(fields: [equipmentControllerId], references: [id], onDelete: Cascade)
+  equipment         Equipment         @relation(fields: [equipmentId], references: [id], onDelete: Cascade)
+  point             Point             @relation(fields: [pointId], references: [id], onDelete: Cascade)
+
+  @@unique([equipmentControllerId, fieldPointKey])
+  @@unique([equipmentControllerId, pointId])
+  @@index([equipmentId])
+  @@index([pointId])
 }
 
 enum AlarmSeverity {
@@ -215,6 +284,7 @@ model Point {
   alarmDefinitionsAsSource AlarmDefinition[] @relation("AlarmDefinitionSourcePoint")
   alarmDefinitionsAsTarget AlarmDefinition[] @relation("AlarmDefinitionTargetPoint")
   alarmEvents              AlarmEvent[]      @relation("AlarmEventPoint")
+  pointsMapped PointsMapped[]
 
   @@unique([equipmentId, pointCode])
 }

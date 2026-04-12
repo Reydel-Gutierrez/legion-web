@@ -118,6 +118,7 @@ async function buildWorkingSiteEquipmentFromDb(siteId) {
       const equipmentList = await prisma.equipment.findMany({
         where: { floorId: f.id },
         orderBy: { name: 'asc' },
+        include: { controllersMapped: true },
       });
       for (const eq of equipmentList) {
         const points = await prisma.point.findMany({
@@ -125,7 +126,12 @@ async function buildWorkingSiteEquipmentFromDb(siteId) {
           orderBy: { pointCode: 'asc' },
         });
         const livePoints = points.map((p) => pointToWorkspaceRow(eq.id, eq.name, p));
-        const engStatus = eq.status === 'ACTIVE' ? 'MISSING_CONTROLLER' : 'DRAFT';
+        const ec = eq.controllersMapped;
+        const engStatus = ec
+          ? 'CONTROLLER_ASSIGNED'
+          : eq.status === 'ACTIVE'
+            ? 'MISSING_CONTROLLER'
+            : 'DRAFT';
         allEquipment.push({
           id: eq.id,
           floorId: eq.floorId,
@@ -138,8 +144,9 @@ async function buildWorkingSiteEquipmentFromDb(siteId) {
           equipmentType: eq.equipmentType,
           address: eq.address || '',
           locationLabel: '',
-          controllerRef: null,
-          protocol: 'API',
+          controllerRef: ec ? ec.controllerCode : null,
+          deviceInstance: ec?.deviceInstance ?? null,
+          protocol: ec ? ec.protocol || 'BACnet/IP' : 'API',
           templateName: eq.templateName ?? null,
           pointsDefined: points.length,
           status: engStatus,

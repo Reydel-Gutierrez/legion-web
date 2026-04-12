@@ -19,6 +19,7 @@ import { buildFullDeploymentSnapshot } from "../../modules/engineering/working-v
 import { toWorkingVersion } from "../../modules/engineering/working-version/workingVersionTransforms";
 import { SITE_IDS } from "../../lib/sites";
 import { isBackendSiteId } from "../../lib/data/siteIdUtils";
+import { coerceSiteKeyToApiId } from "../../lib/data/siteApiResolution";
 import {
   loadAllActiveReleases,
   saveWorkingVersionForSite,
@@ -29,12 +30,16 @@ import {
   notifyEngineeringHierarchyChanged,
   fetchWorkingVersion,
   saveWorkingVersion,
+  fetchSiteVersionSummary,
 } from "../../lib/data/repositories/engineeringRepository";
 import { USE_HIERARCHY_API } from "../../lib/data/config";
 
 const EngineeringVersionContext = createContext(null);
 
 function getInitialActiveReleasesMap() {
+  if (USE_HIERARCHY_API) {
+    return {};
+  }
   const miamiSeed = createSeedWorkingVersion("Miami HQ");
   const snapshot = buildFullDeploymentSnapshot(miamiSeed, {
     version: miamiSeed.activeDeploymentSnapshot?.version ?? "v12",
@@ -59,7 +64,13 @@ function getInitialActiveReleasesMap() {
 }
 
 export function EngineeringVersionProvider({ children }) {
-  const { site } = useSite();
+  const { site, apiSites } = useSite();
+  /** UUID for API calls when localStorage still has a display name like "Sunset Strip Plaza". */
+  const siteKeyForApi = useMemo(() => {
+    const c = coerceSiteKeyToApiId(site, apiSites);
+    if (c) return c;
+    return isBackendSiteId(site) ? site : null;
+  }, [site, apiSites]);
   const [workingState, dispatch] = useReducer(workingVersionReducer, site, getInitialWorkingVersionState);
   const [activeReleaseBySite, setActiveReleaseBySite] = React.useState(getInitialActiveReleasesMap);
   const [backendWorkingVersionLoading, setBackendWorkingVersionLoading] = React.useState(false);
@@ -74,7 +85,14 @@ export function EngineeringVersionProvider({ children }) {
 
   useEffect(() => {
     isMountedRef.current = true;
-    if (site === SITE_IDS.MIAMI_HQ) {
+    if (USE_HIERARCHY_API && (site === SITE_IDS.NEW_SITE || site === "New Building")) {
+      const stored = loadWorkingVersionForSite(SITE_IDS.NEW_SITE) || loadWorkingVersionForSite("New Building");
+      const raw = stored || getInitialWorkingVersionState(SITE_IDS.NEW_SITE);
+      dispatch({
+        type: WORKING_VERSION_ACTIONS.RESET_WORKING_VERSION,
+        payload: normalizeWorkingVersionNetworkConfig(raw, site),
+      });
+    } else if (!USE_HIERARCHY_API && site === SITE_IDS.MIAMI_HQ) {
       const stored = loadWorkingVersionForSite(SITE_IDS.MIAMI_HQ);
       const raw =
         stored && (stored.site || (stored.equipment && stored.equipment.length > 0))
@@ -84,7 +102,7 @@ export function EngineeringVersionProvider({ children }) {
         type: WORKING_VERSION_ACTIONS.RESET_WORKING_VERSION,
         payload: normalizeWorkingVersionNetworkConfig(raw, site),
       });
-    } else if (site === SITE_IDS.BRIGHTLINE) {
+    } else if (!USE_HIERARCHY_API && site === SITE_IDS.BRIGHTLINE) {
       const stored = loadWorkingVersionForSite(SITE_IDS.BRIGHTLINE);
       const raw =
         stored && (stored.site || (stored.equipment && stored.equipment.length > 0))
@@ -94,12 +112,31 @@ export function EngineeringVersionProvider({ children }) {
         type: WORKING_VERSION_ACTIONS.RESET_WORKING_VERSION,
         payload: normalizeWorkingVersionNetworkConfig(raw, site),
       });
-    } else if (site === SITE_IDS.NEW_SITE || site === "New Building") {
+    } else if (!USE_HIERARCHY_API && (site === SITE_IDS.NEW_SITE || site === "New Building")) {
       const stored = loadWorkingVersionForSite(SITE_IDS.NEW_SITE) || loadWorkingVersionForSite("New Building");
       const raw = stored || getInitialWorkingVersionState(SITE_IDS.NEW_SITE);
       dispatch({
         type: WORKING_VERSION_ACTIONS.RESET_WORKING_VERSION,
         payload: normalizeWorkingVersionNetworkConfig(raw, site),
+      });
+    } else if (siteKeyForApi && USE_HIERARCHY_API) {
+      const emptyPayload = {
+        site: null,
+        templates: { equipmentTemplates: [], graphicTemplates: [] },
+        equipment: [],
+        discoveredDevices: [],
+        discoveredObjects: {},
+        mappings: {},
+        graphics: {},
+        siteLayoutGraphics: {},
+        networkConfig: createEmptyNetworkConfig(),
+        validation: null,
+        deploymentHistory: [],
+        activeDeploymentSnapshot: null,
+      };
+      dispatch({
+        type: WORKING_VERSION_ACTIONS.RESET_WORKING_VERSION,
+        payload: normalizeWorkingVersionNetworkConfig(emptyPayload, siteKeyForApi),
       });
     } else if (isBackendSiteId(site) && !USE_HIERARCHY_API) {
       const emptyPayload = {
@@ -120,7 +157,7 @@ export function EngineeringVersionProvider({ children }) {
         type: WORKING_VERSION_ACTIONS.RESET_WORKING_VERSION,
         payload: normalizeWorkingVersionNetworkConfig(emptyPayload, site),
       });
-    } else if (isBackendSiteId(site) && USE_HIERARCHY_API) {
+    } else if (USE_HIERARCHY_API) {
       const emptyPayload = {
         site: null,
         templates: { equipmentTemplates: [], graphicTemplates: [] },
@@ -169,10 +206,10 @@ export function EngineeringVersionProvider({ children }) {
       isMountedRef.current = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [site]);
+  }, [site, siteKeyForApi]);
 
   useEffect(() => {
-    if (!USE_HIERARCHY_API || !isBackendSiteId(site)) {
+    if (!USE_HIERARCHY_API || !siteKeyForApi) {
       setBackendWorkingVersionLoading(false);
       setBackendWorkingVersionError(null);
       setBackendWorkingVersionSynced(false);
@@ -182,7 +219,7 @@ export function EngineeringVersionProvider({ children }) {
     setBackendWorkingVersionLoading(true);
     setBackendWorkingVersionError(null);
     setBackendWorkingVersionSynced(false);
-    fetchWorkingVersion(site)
+    fetchWorkingVersion(siteKeyForApi)
       .then((state) => {
         if (cancelled) return;
         if (!state) {
@@ -192,7 +229,7 @@ export function EngineeringVersionProvider({ children }) {
         }
         dispatch({
           type: WORKING_VERSION_ACTIONS.RESET_WORKING_VERSION,
-          payload: normalizeWorkingVersionNetworkConfig(state, site),
+          payload: normalizeWorkingVersionNetworkConfig(state, siteKeyForApi),
         });
         setBackendWorkingVersionSynced(true);
       })
@@ -208,11 +245,18 @@ export function EngineeringVersionProvider({ children }) {
     return () => {
       cancelled = true;
     };
-  }, [site]);
+  }, [siteKeyForApi]);
 
   useEffect(() => {
     if (!site) return;
-    if (isBackendSiteId(site)) return;
+    if (siteKeyForApi) return;
+    if (
+      USE_HIERARCHY_API &&
+      site !== SITE_IDS.NEW_SITE &&
+      site !== "New Building"
+    ) {
+      return;
+    }
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
     saveTimeoutRef.current = setTimeout(() => {
       saveTimeoutRef.current = null;
@@ -226,18 +270,18 @@ export function EngineeringVersionProvider({ children }) {
     return () => {
       if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
     };
-  }, [site, workingState]);
+  }, [site, siteKeyForApi, workingState]);
 
   /** Persist full working payload to API for backend UUID sites (templates, mappings, etc.). */
   useEffect(() => {
-    if (!USE_HIERARCHY_API || !isBackendSiteId(site)) return;
+    if (!USE_HIERARCHY_API || !siteKeyForApi) return;
     if (!backendWorkingVersionSynced || backendWorkingVersionLoading) return;
     if (backendApiSaveTimeoutRef.current) clearTimeout(backendApiSaveTimeoutRef.current);
     backendApiSaveTimeoutRef.current = setTimeout(() => {
       backendApiSaveTimeoutRef.current = null;
       if (!isMountedRef.current) return;
-      saveWorkingVersion(site, workingState)
-        .then(() => notifyEngineeringHierarchyChanged(site))
+      saveWorkingVersion(siteKeyForApi, workingState)
+        .then(() => notifyEngineeringHierarchyChanged(siteKeyForApi))
         .catch((err) => {
           // eslint-disable-next-line no-console
           console.error("Failed to persist working version to API", err);
@@ -246,9 +290,10 @@ export function EngineeringVersionProvider({ children }) {
     return () => {
       if (backendApiSaveTimeoutRef.current) clearTimeout(backendApiSaveTimeoutRef.current);
     };
-  }, [site, workingState, backendWorkingVersionSynced, backendWorkingVersionLoading]);
+  }, [siteKeyForApi, workingState, backendWorkingVersionSynced, backendWorkingVersionLoading]);
 
   useEffect(() => {
+    if (USE_HIERARCHY_API) return;
     const fromStorage = loadAllActiveReleases();
     setActiveReleaseBySite((prev) => {
       let next = { ...prev };
@@ -266,16 +311,47 @@ export function EngineeringVersionProvider({ children }) {
   const deployWorkingVersion = useCallback(
     (options) => {
       const snapshot = buildFullDeploymentSnapshot(workingState, { notes: options?.notes });
+      const releaseKey = USE_HIERARCHY_API && siteKeyForApi ? siteKeyForApi : site;
       dispatch({ type: WORKING_VERSION_ACTIONS.DEPLOY_WORKING_VERSION, payload: options });
       setActiveReleaseBySite((prev) => {
-        const next = { ...prev, [site]: { ...snapshot, version: snapshot.version } };
-        saveActiveReleaseForSite(site, next[site]);
+        const next = { ...prev, [releaseKey]: { ...snapshot, version: snapshot.version } };
+        saveActiveReleaseForSite(releaseKey, next[releaseKey]);
         return next;
       });
-      notifyEngineeringHierarchyChanged(site);
+      notifyEngineeringHierarchyChanged(releaseKey);
     },
-    [workingState, site]
+    [workingState, site, siteKeyForApi]
   );
+
+  /** After POST /deploy (API); keeps engineering sidebar "(no release)" accurate for UUID sites. */
+  const registerBackendActiveRelease = useCallback((siteId, snapshotStub) => {
+    if (!siteId || !snapshotStub || typeof snapshotStub !== "object") return;
+    setActiveReleaseBySite((prev) => {
+      const next = { ...prev, [siteId]: snapshotStub };
+      saveActiveReleaseForSite(siteId, snapshotStub);
+      return next;
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!USE_HIERARCHY_API || !siteKeyForApi) return undefined;
+    let cancelled = false;
+    fetchSiteVersionSummary(siteKeyForApi)
+      .then((sum) => {
+        if (cancelled || sum?.activeVersionNumber == null) return;
+        setActiveReleaseBySite((prev) => {
+          if (prev[siteKeyForApi] != null) return prev;
+          return {
+            ...prev,
+            [siteKeyForApi]: { version: `v${sum.activeVersionNumber}` },
+          };
+        });
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [siteKeyForApi]);
 
   const value = useMemo(
     () => ({
@@ -285,6 +361,7 @@ export function EngineeringVersionProvider({ children }) {
       dispatch,
       activeReleaseBySite,
       deployWorkingVersion,
+      registerBackendActiveRelease,
       backendWorkingVersionLoading,
       backendWorkingVersionError,
       backendWorkingVersionSynced,
@@ -293,8 +370,10 @@ export function EngineeringVersionProvider({ children }) {
       site,
       workingState,
       workingVersion,
+      dispatch,
       activeReleaseBySite,
       deployWorkingVersion,
+      registerBackendActiveRelease,
       backendWorkingVersionLoading,
       backendWorkingVersionError,
       backendWorkingVersionSynced,

@@ -36,10 +36,11 @@ function PointMappingRow({
 }) {
   const objectOptions = [
     { value: "", label: "— Select —" },
-    ...discoveredObjects.map((obj) => ({
-      value: obj.id,
-      label: `${obj.bacnetRef} / ${obj.displayName}`,
-    })),
+    ...discoveredObjects.map((obj) => {
+      const ref = obj.bacnetRef ?? (obj.objectType && obj.instance != null ? `${obj.objectType}-${obj.instance}` : null) ?? obj.objectName ?? "—";
+      const name = obj.displayName ?? obj.objectName ?? "—";
+      return { value: obj.id, label: `${ref} / ${name}` };
+    }),
   ];
 
   const currentValue = mappedObject ? formatValue(mappedObject) : "—";

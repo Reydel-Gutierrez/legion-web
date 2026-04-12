@@ -1,35 +1,19 @@
-import { USE_MOCK_DATA, USE_HIERARCHY_API } from "../config";
+import { USE_HIERARCHY_API } from "../config";
+import { isBackendSiteId } from "../siteIdUtils";
 import * as hierarchyRepository from "./hierarchyRepository";
-import {
-  getSitesMock,
-  getSiteByIdMock,
-  getOperatorSummaryMock,
-  getOperatorDashboardAlarmsMock,
-  getAlarmsMock,
-  getRecentEventsMock,
-  getEquipmentHealthMock,
-  getWeatherMock,
-  getWorkspacePointsForEquipmentMock,
-  getSchedulesMock,
-  getEventsMock,
-  getUsersMock,
-  getCurrentUserMock,
-  getTrendEquipmentListMock,
-  getTrendDataMock,
-  getTrendPointCatalogMock,
-  getTrendEquipmentGroupsMock,
-  getTrendLiveSnapshotMock,
-} from "../adapters/mock/operatorAdapter";
+import * as alarmApi from "../adapters/api/alarmApiAdapter";
+import * as operatorApi from "../adapters/api/operatorApi";
+import { getWorkspacePointsForEquipmentFromRelease } from "../workspacePointsFromRelease";
 
-export { USE_MOCK_DATA, USE_HIERARCHY_API };
+export { USE_MOCK_DATA, USE_HIERARCHY_API } from "../config";
 
-// Sites — sync helpers remain mock-only; use fetchSites when USE_HIERARCHY_API is set.
+// Sites — prefer fetchSites / fetchSiteById; sync helpers match operatorApi until backed by cache.
 export function getSites() {
-  return getSitesMock();
+  return operatorApi.getSites();
 }
 
 export function getSiteById(siteId) {
-  return getSiteByIdMock(siteId);
+  return operatorApi.getSiteById(siteId);
 }
 
 /** @returns {Promise<import("../contracts").Site[]>} */
@@ -37,7 +21,7 @@ export async function fetchSites() {
   if (USE_HIERARCHY_API) {
     return hierarchyRepository.listSites();
   }
-  return Promise.resolve(getSitesMock());
+  return Promise.resolve(operatorApi.getSites());
 }
 
 /** @returns {Promise<import("../contracts").Site | null>} */
@@ -45,112 +29,144 @@ export async function fetchSiteById(siteId) {
   if (USE_HIERARCHY_API) {
     return hierarchyRepository.getSiteById(siteId);
   }
-  return Promise.resolve(getSiteByIdMock(siteId));
+  return Promise.resolve(operatorApi.getSiteById(siteId));
 }
 
 // Dashboard
 export function getOperatorSummary(siteId) {
-  if (USE_MOCK_DATA) return getOperatorSummaryMock(siteId);
-  return getOperatorSummaryMock(siteId);
+  return operatorApi.getOperatorSummary(siteId);
 }
 
 export function getOperatorDashboardAlarms(siteId) {
-  if (USE_MOCK_DATA) return getOperatorDashboardAlarmsMock(siteId);
-  return getOperatorDashboardAlarmsMock(siteId);
+  return operatorApi.getOperatorDashboardAlarms(siteId);
 }
 
 export function getRecentEvents(siteId) {
-  if (USE_MOCK_DATA) return getRecentEventsMock(siteId);
-  return getRecentEventsMock(siteId);
+  return operatorApi.getRecentEvents(siteId);
 }
 
 export function getEquipmentHealth(siteId) {
-  if (USE_MOCK_DATA) return getEquipmentHealthMock(siteId);
-  return getEquipmentHealthMock(siteId);
+  return operatorApi.getEquipmentHealth(siteId);
 }
 
 export function getWeather(siteId) {
-  if (USE_MOCK_DATA) return getWeatherMock(siteId);
-  return getWeatherMock(siteId);
+  return operatorApi.getWeather(siteId);
 }
 
-// Alarms
-export function getAlarms(siteId) {
-  if (USE_MOCK_DATA) return getAlarmsMock(siteId);
-  return getAlarmsMock(siteId);
+// Alarms — real `AlarmEvent` rows from the API/DB (no mock fallback).
+/** @returns {import("../contracts").Alarm[]} */
+export function getAlarms() {
+  return [];
 }
 
-// Equipment workspace. options.activeRelease: when set (operator), points derived from active release snapshot.
+/** @returns {Promise<import("../contracts").Alarm[]>} */
+export async function fetchAlarmsForSite(siteId) {
+  if (!siteId || !isBackendSiteId(siteId)) {
+    return [];
+  }
+  const events = await alarmApi.listAlarmEvents(siteId, {});
+  const list = Array.isArray(events) ? events : [];
+  return list.map(alarmApi.mapAlarmEventToAlarmRow);
+}
+
+export async function createOperatorAlarmDefinition(siteId, body) {
+  if (!isBackendSiteId(siteId)) {
+    throw new Error("Alarm configuration requires an API-backed site");
+  }
+  return alarmApi.createAlarmDefinition(siteId, body);
+}
+
+/** @returns {Promise<object[]>} */
+export async function listOperatorAlarmDefinitions(siteId, query = {}) {
+  if (!siteId || !isBackendSiteId(siteId)) {
+    return [];
+  }
+  const rows = await alarmApi.listAlarmDefinitions(siteId, query);
+  return Array.isArray(rows) ? rows : [];
+}
+
+export async function updateOperatorAlarmDefinition(siteId, definitionId, body) {
+  if (!isBackendSiteId(siteId)) {
+    throw new Error("Alarm configuration requires an API-backed site");
+  }
+  return alarmApi.updateAlarmDefinition(siteId, definitionId, body);
+}
+
+export async function deleteOperatorAlarmDefinition(siteId, definitionId) {
+  if (!isBackendSiteId(siteId)) {
+    throw new Error("Alarm configuration requires an API-backed site");
+  }
+  return alarmApi.deleteAlarmDefinition(siteId, definitionId);
+}
+
+export async function acknowledgeOperatorAlarmEvent(siteId, eventId) {
+  if (!isBackendSiteId(siteId)) return;
+  await alarmApi.acknowledgeAlarmEvent(siteId, eventId);
+}
+
+export async function triggerOperatorAlarmEvaluate(siteId, pointIds) {
+  if (!isBackendSiteId(siteId)) return;
+  await alarmApi.triggerAlarmEvaluate(siteId, pointIds || []);
+}
+
+// Equipment workspace: snapshot-driven rows from release payload; otherwise future runtime API.
 export function getWorkspacePointsForEquipment(equipmentId, equipmentName, status, options = {}) {
   const releaseData = options.activeRelease ?? options.activeDeployment;
   if (releaseData) {
-    return getWorkspacePointsForEquipmentMock(equipmentId, equipmentName, status, options);
+    return getWorkspacePointsForEquipmentFromRelease(equipmentId, equipmentName, status, options);
   }
-  if (USE_HIERARCHY_API) {
-    return [];
-  }
-  if (USE_MOCK_DATA) return getWorkspacePointsForEquipmentMock(equipmentId, equipmentName, status, options);
-  return getWorkspacePointsForEquipmentMock(equipmentId, equipmentName, status, options);
+  return operatorApi.getWorkspacePointsForEquipment(equipmentId, equipmentName, status, options);
 }
 
 // Schedules
 export function getSchedules(siteId) {
-  if (USE_MOCK_DATA) return getSchedulesMock(siteId);
-  return getSchedulesMock(siteId);
+  return operatorApi.getSchedules(siteId);
 }
 
 // Events (full list)
 export function getEvents(siteId) {
-  if (USE_MOCK_DATA) return getEventsMock(siteId);
-  return getEventsMock(siteId);
+  return operatorApi.getEvents(siteId);
 }
 
 // Users
 export function getCurrentUser() {
-  if (USE_MOCK_DATA) return getCurrentUserMock();
-  return getCurrentUserMock();
+  return operatorApi.getCurrentUser();
 }
 
 export function getUsers(siteId) {
-  if (USE_MOCK_DATA) return getUsersMock(siteId);
-  return getUsersMock(siteId);
+  return operatorApi.getUsers(siteId);
 }
 
 // Trends
 export function getTrendEquipmentList(siteId) {
-  if (USE_MOCK_DATA) return getTrendEquipmentListMock(siteId);
-  return getTrendEquipmentListMock(siteId);
+  return operatorApi.getTrendEquipmentList(siteId);
 }
 
 /**
  * @param {string} siteId
  * @param {string} equipmentId
  * @param {string} range
- * @param {{ recordingStartedAt?: number }} [options] When set, mock delays historical samples until after logging warmup (trend session).
+ * @param {{ recordingStartedAt?: number }} [options]
  */
 export function getTrendData(siteId, equipmentId, range, options) {
-  if (USE_MOCK_DATA) return getTrendDataMock(siteId, equipmentId, range, options);
-  return getTrendDataMock(siteId, equipmentId, range, options);
+  return operatorApi.getTrendData(siteId, equipmentId, range, options);
 }
 
 /** Live point values (not historian) for current-value displays. */
 export function getTrendLiveSnapshot(siteId, equipmentId) {
-  if (USE_MOCK_DATA) return getTrendLiveSnapshotMock(siteId, equipmentId);
-  return getTrendLiveSnapshotMock(siteId, equipmentId);
+  return operatorApi.getTrendLiveSnapshot(siteId, equipmentId);
 }
 
 /** Point metadata for the selected equipment/device (for trend configuration). */
 export function getTrendPointCatalog(siteId, equipmentId) {
   const list = getTrendEquipmentList(siteId);
   const eq = list.find((e) => e.id === equipmentId);
-  if (USE_MOCK_DATA) return getTrendPointCatalogMock(equipmentId, eq);
-  return getTrendPointCatalogMock(equipmentId, eq);
+  return operatorApi.getTrendPointCatalog(equipmentId, eq);
 }
 
-/** Equipment groups for bulk assignment (mock). */
+/** Equipment groups for bulk assignment. */
 export function getTrendEquipmentGroups(siteId) {
-  if (USE_MOCK_DATA) return getTrendEquipmentGroupsMock(siteId);
-  return getTrendEquipmentGroupsMock(siteId);
+  return operatorApi.getTrendEquipmentGroups(siteId);
 }
 
 /**
@@ -164,4 +180,3 @@ export async function fetchActiveRelease(siteId) {
   }
   return null;
 }
-

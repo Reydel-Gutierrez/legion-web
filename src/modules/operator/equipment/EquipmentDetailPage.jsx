@@ -6,6 +6,7 @@ import {
   resolveEquipmentLocationInRelease,
 } from "../../../lib/activeReleaseUtils";
 import { operatorRepository } from "../../../lib/data";
+import { useSite } from "../../../app/providers/SiteProvider";
 import { Container, Row, Col, Card, Button, Form, Modal } from "@themesberg/react-bootstrap";
 import LegionHeroHeader from "../../../components/legion/LegionHeroHeader";
 import StatusDotLabel from "../../../components/legion/StatusDotLabel";
@@ -18,6 +19,16 @@ import {
   formatCommandValueForDisplay,
   OperatorPointCommandField,
 } from "./OperatorPointCommandField";
+import { OperatorAlarmConfigModal } from "./OperatorAlarmConfigModal";
+import { USE_HIERARCHY_API } from "../../../lib/data/config";
+import { isBackendSiteId } from "../../../lib/data/siteIdUtils";
+import { listPointsByEquipment } from "../../../lib/data/adapters/api/hierarchyApiAdapter";
+import * as runtimeApi from "../../../lib/data/adapters/api/runtimeApiAdapter";
+import { getEquipmentControllerByEquipment } from "../../../lib/data/adapters/api/equipmentControllerApiAdapter";
+import { getPointMappingsByEquipment } from "../../../lib/data/adapters/api/pointMappingApiAdapter";
+import { applyHierarchyLiveToWorkspaceRows } from "../../../lib/operator/operatorWorkspaceHierarchyMerge";
+import { resolveLivePointsSourceEquipmentId } from "../../../lib/operator/operatorWorkspaceLivePointsSource";
+import { formatDiscoveryLastSeen } from "../../engineering/network/discoveryScan";
 
 const DETAIL_OOS_LABEL = "Out Of Service";
 
@@ -109,6 +120,7 @@ function buildOperatorEquipmentNetworkDetails(releaseData, equipment, graphic) {
 export default function EquipmentDetailPage() {
   const { equipmentId } = useParams();
   const history = useHistory();
+  const { site: siteFromContext } = useSite();
   const { deployment, loading: releaseLoading, error: releaseError } = useActiveDeployment();
   const releaseData = deployment;
 
@@ -116,19 +128,79 @@ export default function EquipmentDetailPage() {
   const [pointUiState, setPointUiState] = useState({});
   const [commandModalRow, setCommandModalRow] = useState(null);
   const [showCommandModal, setShowCommandModal] = useState(false);
+  const [showAlarmModal, setShowAlarmModal] = useState(false);
+  const [alarmModalRow, setAlarmModalRow] = useState(null);
   const [commandValue, setCommandValue] = useState("");
   const [serviceStateChoice, setServiceStateChoice] = useState("in_service");
+  /** DB points + mappings for hierarchy merge (operator live values / mapped-to labels). */
+  const [hierarchyLiveBundle, setHierarchyLiveBundle] = useState(null);
+  const [runtimeForEquipment, setRuntimeForEquipment] = useState(null);
+  const [persistedDbController, setPersistedDbController] = useState(null);
 
   useEffect(() => {
     setPointUiState({});
     setCommandModalRow(null);
     setShowCommandModal(false);
+    setHierarchyLiveBundle(null);
+    setRuntimeForEquipment(null);
+    setPersistedDbController(null);
   }, [equipmentId]);
 
   const equipment = useMemo(
     () => (releaseData && equipmentId ? getEquipmentFromRelease(releaseData, equipmentId) : null),
     [releaseData, equipmentId]
   );
+
+  const alarmSiteId = releaseData?.site?.id || siteFromContext;
+
+  useEffect(() => {
+    if (!USE_HIERARCHY_API || !equipment?.id || !isBackendSiteId(alarmSiteId)) {
+      setHierarchyLiveBundle(null);
+      setRuntimeForEquipment(null);
+      setPersistedDbController(null);
+      return undefined;
+    }
+    let cancelled = false;
+
+    async function refreshLive() {
+      try {
+        const controllers = await runtimeApi.listRuntimeControllers().catch(() => []);
+        const ctrlList = Array.isArray(controllers) ? controllers : [];
+        const sourceEqId = resolveLivePointsSourceEquipmentId(equipment.id, releaseData, ctrlList);
+        const [dbPoints, mappings, dbCtrl] = await Promise.all([
+          listPointsByEquipment(sourceEqId),
+          getPointMappingsByEquipment(sourceEqId).catch(() => []),
+          getEquipmentControllerByEquipment(equipment.id).catch(() => null),
+        ]);
+        const rt =
+          ctrlList.find((c) => c && String(c.equipmentId) === String(equipment.id)) ||
+          ctrlList.find((c) => c && String(c.equipmentId) === String(sourceEqId)) ||
+          null;
+        if (cancelled) return;
+        setPersistedDbController(dbCtrl);
+        setHierarchyLiveBundle({
+          points: Array.isArray(dbPoints) ? dbPoints : [],
+          mappings: Array.isArray(mappings) ? mappings : [],
+          controller: dbCtrl,
+          runtime: rt || null,
+        });
+        setRuntimeForEquipment(rt || null);
+      } catch {
+        if (!cancelled) {
+          setHierarchyLiveBundle(null);
+          setRuntimeForEquipment(null);
+          setPersistedDbController(null);
+        }
+      }
+    }
+
+    refreshLive();
+    const t = window.setInterval(refreshLive, 5000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(t);
+    };
+  }, [equipment, alarmSiteId, releaseData]);
 
   const points = useMemo(() => {
     if (!releaseData || !equipment) return [];
@@ -140,12 +212,26 @@ export default function EquipmentDetailPage() {
     );
   }, [releaseData, equipment]);
 
+  const displayPoints = useMemo(() => {
+    if (
+      !USE_HIERARCHY_API ||
+      !isBackendSiteId(alarmSiteId) ||
+      !hierarchyLiveBundle ||
+      !equipment?.id ||
+      !Array.isArray(hierarchyLiveBundle.points)
+    ) {
+      return points;
+    }
+    const m = new Map([[String(equipment.id), hierarchyLiveBundle]]);
+    return applyHierarchyLiveToWorkspaceRows(points, releaseData, m);
+  }, [points, releaseData, hierarchyLiveBundle, equipment?.id, alarmSiteId]);
+
   const pointsForGraphic = useMemo(() => {
-    return points.map((p) => {
+    return displayPoints.map((p) => {
       const v = detailPointTableValue(p, pointUiState);
       return { ...p, value: v };
     });
-  }, [points, pointUiState]);
+  }, [displayPoints, pointUiState]);
 
   const graphic = useMemo(() => {
     if (!releaseData?.graphics || !equipment) return null;
@@ -362,6 +448,57 @@ export default function EquipmentDetailPage() {
                       <Col xs={12} lg={8}>
                         <Card className="shadow-sm">
                           <Card.Body>
+                            {USE_HIERARCHY_API && (runtimeForEquipment || persistedDbController) ? (
+                              <div className="border border-light border-opacity-10 rounded px-3 py-2 mb-3 bg-dark bg-opacity-25">
+                                <div className="d-flex flex-wrap align-items-center gap-2 mb-1">
+                                  <span className="text-white fw-semibold small text-uppercase">
+                                    Controller runtime
+                                  </span>
+                                  {runtimeForEquipment ? (
+                                    <>
+                                      <span
+                                        className={`badge ${runtimeForEquipment.online ? "bg-success" : "bg-secondary"}`}
+                                      >
+                                        {runtimeForEquipment.online ? "Online" : "Offline"}
+                                      </span>
+                                      {runtimeForEquipment.online && runtimeForEquipment.simEnabled ? (
+                                        <span className="badge bg-info bg-opacity-50">Live</span>
+                                      ) : null}
+                                    </>
+                                  ) : null}
+                                </div>
+                                {persistedDbController ? (
+                                  <div className="text-white small mb-2">
+                                    Assigned field controller:{" "}
+                                    <span className="fw-semibold">{persistedDbController.controllerCode}</span>
+                                    {persistedDbController.displayName
+                                      ? ` (${persistedDbController.displayName})`
+                                      : ""}{" "}
+                                    · {persistedDbController.protocol || "—"}
+                                    {persistedDbController.isEnabled === false ? (
+                                      <span className="text-warning ms-2">(disabled)</span>
+                                    ) : null}
+                                  </div>
+                                ) : null}
+                                {runtimeForEquipment ? (
+                                  <div className="text-white-50 small d-flex flex-wrap gap-3">
+                                    <span>Protocol: {runtimeForEquipment.protocol || "—"}</span>
+                                    <span>
+                                      Last seen:{" "}
+                                      {formatDiscoveryLastSeen(runtimeForEquipment.lastSeenAt) || "—"}
+                                    </span>
+                                    <span>
+                                      Poll rate: {Math.round((runtimeForEquipment.pollRateMs || 5000) / 1000)}s
+                                    </span>
+                                    <span>Polls: {runtimeForEquipment.stats?.pollCount ?? 0}</span>
+                                  </div>
+                                ) : (
+                                  <div className="text-white-50 small">
+                                    In-memory runtime stats appear when the simulator exposes this equipment.
+                                  </div>
+                                )}
+                              </div>
+                            ) : null}
                             <div className="text-white fw-bold mb-2">Live Points</div>
                             <p className="text-white-50 small mb-3 mb-lg-2">
                               Click a row to open the command dialog (same controls as the operator workspace).
@@ -391,14 +528,14 @@ export default function EquipmentDetailPage() {
                                   </tr>
                                 </thead>
                                 <tbody>
-                                  {points.length === 0 ? (
+                                  {displayPoints.length === 0 ? (
                                     <tr>
                                       <td colSpan={6} className="text-white-50 text-center py-4">
                                         No points defined. Add a template in Engineering and deploy a version.
                                       </td>
                                     </tr>
                                   ) : (
-                                    points.map((p, index) => {
+                                    displayPoints.map((p, index) => {
                                       const displayVal = detailPointTableValue(p, pointUiState);
                                       const oos = pointUiState[p.id]?.outOfService;
                                       const isOosText = displayVal === DETAIL_OOS_LABEL;
@@ -428,7 +565,13 @@ export default function EquipmentDetailPage() {
                                           <td className="legion-workspace-td text-white">
                                             <div className="d-flex align-items-center gap-2 flex-wrap">
                                               <span
-                                                className={`mini-dot ${p.status === "Unbound" || oos ? "warn" : ""}`}
+                                                className={`mini-dot ${
+                                                  p.status === "OFFLINE"
+                                                    ? "offline"
+                                                    : p.status === "Unbound" || p.status === "Pending" || oos
+                                                      ? "warn"
+                                                      : ""
+                                                }`}
                                               />
                                               <span
                                                 className={
@@ -456,9 +599,13 @@ export default function EquipmentDetailPage() {
                                               value={
                                                 p.status === "OK"
                                                   ? "online"
-                                                  : p.status === "Unbound"
-                                                    ? "unbound"
-                                                    : "offline"
+                                                  : p.status === "OFFLINE"
+                                                    ? "offline"
+                                                    : p.status === "Pending"
+                                                      ? "pending"
+                                                      : p.status === "Unbound"
+                                                        ? "unbound"
+                                                        : "offline"
                                               }
                                               kind="status"
                                               dotOnly={["ok", "normal", "online"].includes(
@@ -621,15 +768,40 @@ export default function EquipmentDetailPage() {
             </>
           )}
         </Modal.Body>
-        <Modal.Footer className="border-light border-opacity-10">
-          <Button variant="secondary" onClick={closeCommandModal}>
-            Cancel
+        <Modal.Footer className="border-light border-opacity-10 d-flex flex-wrap gap-2 justify-content-between">
+          <Button
+            variant="outline-light"
+            className="border-opacity-10"
+            onClick={() => {
+              if (commandModalRow) setAlarmModalRow(commandModalRow);
+              setShowAlarmModal(true);
+            }}
+          >
+            Alarm
           </Button>
-          <Button variant="success" onClick={handleCommandModalApply} disabled={commandApplyDisabled}>
-            Apply
-          </Button>
+          <div className="d-flex gap-2 ms-auto">
+            <Button variant="secondary" onClick={closeCommandModal}>
+              Cancel
+            </Button>
+            <Button variant="success" onClick={handleCommandModalApply} disabled={commandApplyDisabled}>
+              Apply
+            </Button>
+          </div>
         </Modal.Footer>
       </Modal>
+
+      <OperatorAlarmConfigModal
+        show={showAlarmModal}
+        onHide={() => {
+          setShowAlarmModal(false);
+          setAlarmModalRow(null);
+        }}
+        siteId={alarmSiteId}
+        equipmentId={equipment?.id}
+        row={alarmModalRow}
+        activeReleaseData={releaseData}
+        onSaved={() => {}}
+      />
     </Container>
   );
 }

@@ -88,11 +88,12 @@ export async function saveWorkingVersion(siteId, payload, notes) {
  * Promote working version on the backend (POST .../deploy).
  * @param {string} siteId
  * @param {string} [notes]
+ * @param {{ deployedBy?: string }} [options]
  * @returns {Promise<object|null>} API JSON (e.g. `{ activeRelease }`) or null when API is off
  */
-export async function postDeployWorkingVersion(siteId, notes) {
+export async function postDeployWorkingVersion(siteId, notes, options = {}) {
   if (!USE_HIERARCHY_API) return Promise.resolve(null);
-  return hierarchyRepository.deployWorkingVersionViaApi(siteId, notes);
+  return hierarchyRepository.deployWorkingVersionViaApi(siteId, notes, options);
 }
 
 export function notifyEngineeringHierarchyChanged(siteId) {

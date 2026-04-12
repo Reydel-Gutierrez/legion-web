@@ -9,6 +9,49 @@ const {
   isPlainObject,
 } = require('./siteVersion.payload');
 const { buildWorkingSiteEquipmentFromDb } = require('../siteHierarchy/siteHierarchy.service');
+const { ensureSeedOwnerSiteAccess } = require('../../lib/siteAccess');
+
+/**
+ * Operator / active-release snapshot uses a slightly flatter site tree than engineering working state.
+ * @param {{ site: object | null, equipment: object[] }} dbMerged
+ */
+function operatorReleaseSiteEquipmentFromDbMerge(dbMerged) {
+  const { site, equipment } = dbMerged;
+  if (!site) {
+    return { site: null, equipment: Array.isArray(equipment) ? equipment : [] };
+  }
+  const buildings = (site.buildings || []).map((b) => ({
+    id: b.id,
+    name: b.name,
+    buildingType: b.buildingType || '',
+    buildingCode: b.buildingCode || '',
+    description: b.description != null ? String(b.description) : '',
+    address: b.address,
+    city: b.city,
+    state: b.state,
+    lat: b.lat,
+    lng: b.lng,
+    status: b.layoutStatus || b.status || 'normal',
+    hasFloors: b.hasFloors,
+    floors: (b.floors || []).map((f) => ({
+      id: f.id,
+      name: f.name,
+      sortOrder: f.sortOrder ?? 0,
+      floorType: f.floorType || 'Standard Floor',
+    })),
+  }));
+  return {
+    site: {
+      id: site.id,
+      name: site.name,
+      siteType: 'Site',
+      timezone: site.timezone || '',
+      description: site.description != null ? String(site.description) : '',
+      buildings,
+    },
+    equipment: Array.isArray(equipment) ? equipment : [],
+  };
+}
 
 const versionInclude = {
   payload: true,
@@ -212,7 +255,7 @@ async function getActiveRelease(siteId) {
   return site.activeReleaseVersion;
 }
 
-async function deployWorkingVersion(siteId) {
+async function deployWorkingVersion(siteId, options = {}) {
   await assertSiteExists(siteId);
 
   await syncWorkingPayloadFromDb(siteId);
@@ -233,10 +276,23 @@ async function deployWorkingVersion(siteId) {
   }
 
   const workingFlat = payloadJson;
+  const deployedBy =
+    options.deployedBy != null && String(options.deployedBy).trim()
+      ? String(options.deployedBy).trim()
+      : 'Reydel Gutierrez';
+
   const snapshot = buildDeploymentSnapshotFromWorking(workingFlat, {
     version: `v${working.versionNumber}`,
     lastDeployedAt: new Date().toISOString(),
+    deployedBy,
   });
+
+  const dbMerged = await buildWorkingSiteEquipmentFromDb(siteId);
+  const { site: opSite, equipment: opEquipment } = operatorReleaseSiteEquipmentFromDbMerge(dbMerged);
+  snapshot.site = opSite;
+  snapshot.equipment = opEquipment;
+
+  await ensureSeedOwnerSiteAccess(siteId);
 
   const released = await prisma.$transaction(async (tx) => {
     const deployedAt = new Date();
