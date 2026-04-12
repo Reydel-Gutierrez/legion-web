@@ -272,6 +272,10 @@ model Point {
   unit         String?
   writable     Boolean      @default(false)
   presentValue String?
+  /// Last time a field/runtime poll successfully refreshed this point (SIM or future protocols).
+  lastSeenAt   DateTime?
+  /// Runtime comms layer: ONLINE | OFFLINE | UNKNOWN (distinct from EntityStatus `status`).
+  commState    String?      @default("UNKNOWN")
   status       EntityStatus @default(ACTIVE)
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt

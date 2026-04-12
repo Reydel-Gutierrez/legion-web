@@ -51,7 +51,7 @@ const SIMULATED_CONTROLLERS_CATALOG = [
     deviceType: 'FCU',
     deviceInstance: '10005',
     deviceAddress: '5',
-    deviceLabel: 'LC-CGC (Bay 2)',
+    deviceLabel: 'LC-CGC',
     vendorName: FCU_SIM_VENDOR,
     discoveryNetwork: FCU_SIM_DISCOVERY_NETWORK,
     fieldPoints: FCU_SIM_POINT_DEFINITIONS,
@@ -63,7 +63,7 @@ const SIMULATED_CONTROLLERS_CATALOG = [
     deviceType: 'VAV',
     deviceInstance: '10100',
     deviceAddress: '100',
-    deviceLabel: 'VAV-LAB-1',
+    deviceLabel: 'LC-CVC',
     vendorName: FCU_SIM_VENDOR,
     discoveryNetwork: FCU_SIM_DISCOVERY_NETWORK,
     fieldPoints: [
@@ -112,6 +112,43 @@ function getCatalogEntryByControllerCode(code) {
   return SIMULATED_CONTROLLERS_CATALOG.find((e) => e.controllerCode.toLowerCase() === want) ?? null;
 }
 
+/**
+ * Discovery / bad assigns sometimes send BACnet instance (e.g. 10005) instead of catalog `controllerCode` (FCU-2).
+ * @param {string|number|null|undefined} instanceRaw
+ */
+function getCatalogEntryByDeviceInstance(instanceRaw) {
+  const inst = String(instanceRaw ?? '').trim();
+  if (!inst || !/^\d+$/.test(inst)) return null;
+  return SIMULATED_CONTROLLERS_CATALOG.find((e) => String(e.deviceInstance).trim() === inst) ?? null;
+}
+
+/** @param {string|unknown} s */
+function isNumericOnlyString(s) {
+  const t = String(s ?? '').trim();
+  return t.length > 0 && /^\d+$/.test(t);
+}
+
+/**
+ * ControllersMapped row stored `controllerCode` as device instance (e.g. "10005") — patch to catalog code.
+ * @param {{ protocol?: string|null, controllerCode?: string|null, deviceInstance?: string|null }} row
+ * @returns {{ controllerCode: string, deviceInstance: string } | null}
+ */
+function simCatalogRepairPatchForNumericControllerCode(row) {
+  if (!row) return null;
+  if (String(row.protocol || '').trim().toUpperCase() !== 'SIM') return null;
+  const code = String(row.controllerCode || '').trim();
+  if (!isNumericOnlyString(code)) return null;
+  const diRaw = row.deviceInstance != null ? String(row.deviceInstance).trim() : '';
+  const inst = isNumericOnlyString(diRaw) ? diRaw : code;
+  const cat = getCatalogEntryByDeviceInstance(inst);
+  if (!cat) return null;
+  if (cat.controllerCode === code && String(cat.deviceInstance) === inst) return null;
+  return {
+    controllerCode: cat.controllerCode,
+    deviceInstance: String(cat.deviceInstance),
+  };
+}
+
 /** @param {string} id */
 function getCatalogEntryByRuntimeId(id) {
   const k = String(id || '').trim();
@@ -121,5 +158,8 @@ function getCatalogEntryByRuntimeId(id) {
 module.exports = {
   SIMULATED_CONTROLLERS_CATALOG,
   getCatalogEntryByControllerCode,
+  getCatalogEntryByDeviceInstance,
   getCatalogEntryByRuntimeId,
+  isNumericOnlyString,
+  simCatalogRepairPatchForNumericControllerCode,
 };

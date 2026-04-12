@@ -114,11 +114,27 @@ async function listByController(equipmentControllerId) {
   return rows.map(toDto);
 }
 
-async function listByEquipment(equipmentId) {
-  const rows = await prisma.pointsMapped.findMany({
-    where: { equipmentId: String(equipmentId || '').trim() },
+/**
+ * @param {string} equipmentId
+ * @param {{ skipSelfHeal?: boolean }} [options] - when true, do not run simCatalogBindingSync (caller already did)
+ */
+async function listByEquipment(equipmentId, options = {}) {
+  const eid = String(equipmentId || '').trim();
+  const skipSelfHeal = options.skipSelfHeal === true;
+  let rows = await prisma.pointsMapped.findMany({
+    where: { equipmentId: eid },
     orderBy: { fieldPointKey: 'asc' },
   });
+  if (rows.length === 0 && !skipSelfHeal) {
+    const { syncSimCatalogBindingsForEquipmentId } = require('../../lib/simCatalogBindingSync');
+    const synced = await syncSimCatalogBindingsForEquipmentId(eid).catch(() => null);
+    if (synced?.ok) {
+      rows = await prisma.pointsMapped.findMany({
+        where: { equipmentId: eid },
+        orderBy: { fieldPointKey: 'asc' },
+      });
+    }
+  }
   return rows.map(toDto);
 }
 

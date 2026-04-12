@@ -5,14 +5,112 @@ const pointService = require('../points/point.service');
 const { SIMULATED_CONTROLLERS_CATALOG, getCatalogEntryByRuntimeId } = require('../../lib/simulatedControllers/catalog');
 const { store, createDefaultController, nowIso, DEFAULT_POLL_MS } = require('./runtime.store');
 
+/** Verbose SIM poll → DB writes (mapped equipment only). */
+const DEV_RUNTIME_SIM_POLL_LOG = process.env.NODE_ENV === 'development';
+
 /** Legacy export: primary demo FCU controller code from the SIM catalog. */
 const FCU_CONTROLLER_CODE = SIMULATED_CONTROLLERS_CATALOG[0]?.controllerCode || 'FCU-1';
 
-/** SIM controller considered offline if last successful poll/heartbeat is older than this window. */
+/** SIM controller / mapped point considered stale if last successful refresh is older than this window. */
 function staleThresholdMs(pollRateMs) {
   const pr =
     pollRateMs != null && Number.isFinite(Number(pollRateMs)) ? Number(pollRateMs) : DEFAULT_POLL_MS;
   return Math.max(90000, pr * 4);
+}
+
+/**
+ * @param {string} equipmentId
+ * @returns {object|null}
+ */
+function simStoreControllerForMappedEquipment(equipmentId) {
+  const eid = String(equipmentId || '').trim();
+  if (!eid) return null;
+  return (
+    Object.values(store.controllers).find(
+      (c) =>
+        c &&
+        String(c.protocol || '').toUpperCase() === 'SIM' &&
+        String(c.mappedEquipmentId || '').trim() === eid
+    ) || null
+  );
+}
+
+/**
+ * @param {object} ec - ControllersMapped row
+ * @param {Date} nowDate
+ */
+async function persistMappedSimControllerOnline(ec, nowDate) {
+  if (!ec?.id) return;
+  try {
+    await prisma.controllersMapped.update({
+      where: { id: ec.id },
+      data: { lastSeenAt: nowDate, status: 'ONLINE' },
+    });
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.warn('[runtime] ControllersMapped heartbeat persist failed:', e?.message || e);
+  }
+}
+
+/**
+ * Mark mapped SIM controllers/points OFFLINE when in-memory poll heartbeat is stale.
+ */
+async function reconcileSimMappedStaleState() {
+  const ecs = await prisma.controllersMapped.findMany({
+    where: {
+      isEnabled: true,
+      protocol: { equals: 'SIM', mode: 'insensitive' },
+    },
+  });
+  const simEcs = ecs;
+  const now = Date.now();
+
+  for (const ec of simEcs) {
+    const threshold = staleThresholdMs(ec.pollRateMs);
+    const storeCtrl = simStoreControllerForMappedEquipment(ec.equipmentId);
+    const memIso = storeCtrl?.lastSeenAt || storeCtrl?.stats?.lastPollAt;
+    const memT = memIso ? new Date(memIso).getTime() : NaN;
+    const memFresh =
+      storeCtrl &&
+      storeCtrl.online &&
+      storeCtrl.simEnabled &&
+      Number.isFinite(memT) &&
+      now - memT < threshold;
+
+    if (!memFresh) {
+      try {
+        await prisma.controllersMapped.update({
+          where: { id: ec.id },
+          data: { status: 'OFFLINE' },
+        });
+      } catch (_) {
+        /* ignore */
+      }
+    }
+
+    const mappings = await prisma.pointsMapped.findMany({
+      where: { equipmentControllerId: ec.id, isBound: true, readEnabled: true },
+    });
+    for (const m of mappings) {
+      const pt = await prisma.point.findUnique({
+        where: { id: m.pointId },
+        select: { id: true, lastSeenAt: true, commState: true },
+      });
+      if (!pt) continue;
+      const ptT = pt.lastSeenAt ? new Date(pt.lastSeenAt).getTime() : NaN;
+      const ptStale = !Number.isFinite(ptT) || now - ptT >= threshold;
+      if (ptStale && String(pt.commState || '').toUpperCase() !== 'OFFLINE') {
+        try {
+          await prisma.point.update({
+            where: { id: pt.id },
+            data: { commState: 'OFFLINE' },
+          });
+        } catch (_) {
+          /* ignore */
+        }
+      }
+    }
+  }
 }
 
 /**
@@ -249,6 +347,8 @@ function publicControllerDto(c) {
     deviceAddress: c.deviceAddress,
     /** False when SIM is stopped, marked offline, or poll loop has not refreshed within the stale window. */
     online: activelyUpdating,
+    /** Mirrors ControllersMapped.status when persisted; aligned with `online` for SIM. */
+    status: activelyUpdating ? 'ONLINE' : 'OFFLINE',
     scanVisible: c.scanVisible,
     simEnabled: c.simEnabled,
     pollRateMs: c.pollRateMs,
@@ -298,6 +398,9 @@ async function pollController(storeKey) {
     ctrl.lastSeenAt = nowIso();
     ctrl.stats.pollCount += 1;
     ctrl.stats.lastPollAt = ctrl.lastSeenAt;
+    if (ec) {
+      await persistMappedSimControllerOnline(ec, new Date(ctrl.lastSeenAt));
+    }
     return;
   }
 
@@ -307,6 +410,7 @@ async function pollController(storeKey) {
   ctrl.lastSeenAt = nowIso();
   ctrl.stats.pollCount += 1;
   ctrl.stats.lastPollAt = ctrl.lastSeenAt;
+  const pollAt = new Date(ctrl.lastSeenAt);
 
   if (!mappedId) {
     return;
@@ -315,50 +419,96 @@ async function pollController(storeKey) {
   const boundMappings = (mappings || []).filter((m) => m.isBound);
   if (boundMappings.length === 0) {
     ctrl.pollWarnings.push('Mapped equipment has no bound point mappings; skipping DB writes.');
+    if (ec) await persistMappedSimControllerOnline(ec, pollAt);
     return;
   }
   if (!points.length) {
     ctrl.pollWarnings.push('Mapped equipment has no point rows in DB; skipping writes.');
+    if (ec) await persistMappedSimControllerOnline(ec, pollAt);
     return;
   }
 
   const writeMappings = boundMappings.filter((m) => m.readEnabled);
   if (writeMappings.length === 0) {
     ctrl.pollWarnings.push('No read-enabled point mappings; skipping DB writes.');
+    if (ec) await persistMappedSimControllerOnline(ec, pollAt);
     return;
   }
 
-  async function writePresentValue(row, codeUpper, value) {
-    if (!row) return;
-    const prev = row.presentValue != null ? String(row.presentValue) : '';
-    const next = String(value);
-    if (prev === next) return;
-    try {
-      await pointService.updatePoint(row.id, { presentValue: next });
-    } catch (e) {
-      // eslint-disable-next-line no-console
-      console.warn(`[runtime] ${storeKey} failed updating ${codeUpper}:`, e?.message || e);
-    }
-  }
+  if (ec) await persistMappedSimControllerOnline(ec, pollAt);
 
   for (const m of writeMappings) {
+    const row = points.find((p) => p.id === m.pointId);
+    if (!row) {
+      if (DEV_RUNTIME_SIM_POLL_LOG) {
+        // eslint-disable-next-line no-console
+        console.log('[DEV runtime SIM poll write]', {
+          controllerCode: ctrl.controllerCode,
+          mappedEquipmentId: mappedId,
+          fieldPointKey: m.fieldPointKey,
+          pointIdFromMapping: m.pointId,
+          skipped: 'relational_point_row_not_found',
+        });
+      }
+      continue;
+    }
     const key = String(m.fieldPointKey || '').trim().toUpperCase();
     const value = nextStrings[key];
-    if (value === undefined) continue;
-    const row = points.find((p) => p.id === m.pointId);
-    await writePresentValue(row, key, value);
+    const prev = row.presentValue != null ? String(row.presentValue) : '';
+    const payload = {
+      lastSeenAt: pollAt,
+      commState: 'ONLINE',
+    };
+    let presentValueChanged = false;
+    if (value !== undefined) {
+      const next = String(value);
+      if (prev !== next) {
+        payload.presentValue = next;
+        presentValueChanged = true;
+      }
+    }
+    if (DEV_RUNTIME_SIM_POLL_LOG) {
+      // eslint-disable-next-line no-console
+      console.log('[DEV runtime SIM poll write]', {
+        controllerCode: ctrl.controllerCode,
+        mappedEquipmentId: mappedId,
+        fieldPointKey: m.fieldPointKey,
+        resolvedPointId: row.id,
+        pointCode: row.pointCode,
+        simulatedValue: value !== undefined ? String(value) : undefined,
+        presentValueChanged,
+        payloadIncludesPresentValue: payload.presentValue !== undefined,
+        lastSeenAtAndCommStateUpdated: true,
+        commStateWritten: payload.commState,
+        pollAtIso: pollAt.toISOString(),
+      });
+    }
+    try {
+      await pointService.updatePoint(row.id, payload);
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.warn(`[runtime] ${storeKey} failed updating ${key || m.pointId}:`, e?.message || e);
+    }
   }
 }
 
 function startPollLoop() {
   if (pollIntervalHandle) clearInterval(pollIntervalHandle);
   pollIntervalHandle = setInterval(() => {
-    Object.keys(store.controllers).forEach((key) => {
-      pollController(key).catch((e) =>
+    const keys = Object.keys(store.controllers);
+    Promise.all(
+      keys.map((key) =>
+        pollController(key).catch((e) =>
+          // eslint-disable-next-line no-console
+          console.warn(`[runtime] poll ${key}`, e?.message || e)
+        )
+      )
+    ).then(() =>
+      reconcileSimMappedStaleState().catch((e) =>
         // eslint-disable-next-line no-console
-        console.warn(`[runtime] poll ${key}`, e?.message || e)
-      );
-    });
+        console.warn('[runtime] stale reconcile', e?.message || e)
+      )
+    );
   }, DEFAULT_POLL_MS);
   // eslint-disable-next-line no-console
   console.log(`[runtime] poll loop started (${DEFAULT_POLL_MS} ms)`);
@@ -371,7 +521,6 @@ async function applyPersistedAssignmentsToSimControllers() {
 
     const ec = await prisma.controllersMapped.findFirst({
       where: {
-        isSimulated: true,
         isEnabled: true,
         protocol: { equals: 'SIM', mode: 'insensitive' },
         controllerCode: { equals: entry.controllerCode, mode: 'insensitive' },
@@ -418,6 +567,7 @@ async function initialize() {
   await hydrateSimulatedControllersFromCatalog();
   startPollLoop();
   await Promise.all(Object.keys(store.controllers).map((k) => pollController(k).catch(() => {})));
+  await reconcileSimMappedStaleState().catch(() => {});
 }
 
 function listControllers() {
@@ -562,4 +712,6 @@ module.exports = {
   refreshInMemoryBindingForEquipmentId,
   refreshInMemoryBindingForControllerCode: refreshInMemoryBindingForEquipmentId,
   FCU_CONTROLLER_CODE,
+  staleThresholdMs,
+  reconcileSimMappedStaleState,
 };

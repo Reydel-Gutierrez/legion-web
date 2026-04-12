@@ -10,6 +10,7 @@ import { useSite } from "../../../app/providers/SiteProvider";
 import { Container, Row, Col, Card, Button, Form, Modal } from "@themesberg/react-bootstrap";
 import LegionHeroHeader from "../../../components/legion/LegionHeroHeader";
 import StatusDotLabel from "../../../components/legion/StatusDotLabel";
+import OperatorCommFreshnessLabel from "../../../components/legion/OperatorCommFreshnessLabel";
 import { Routes } from "../../../routes";
 import VavGraphicImg from "../../../assets/graphics/mysvgvav.svg";
 import DeployedGraphicPreview from "./DeployedGraphicPreview";
@@ -28,7 +29,7 @@ import { getEquipmentControllerByEquipment } from "../../../lib/data/adapters/ap
 import { getPointMappingsByEquipment } from "../../../lib/data/adapters/api/pointMappingApiAdapter";
 import { applyHierarchyLiveToWorkspaceRows } from "../../../lib/operator/operatorWorkspaceHierarchyMerge";
 import { resolveLivePointsSourceEquipmentId } from "../../../lib/operator/operatorWorkspaceLivePointsSource";
-import { formatDiscoveryLastSeen } from "../../engineering/network/discoveryScan";
+import { getEquipmentStatus, formatLastSeenSecondsAgo } from "../../../lib/operator/statusUtils";
 
 const DETAIL_OOS_LABEL = "Out Of Service";
 
@@ -136,6 +137,12 @@ export default function EquipmentDetailPage() {
   const [hierarchyLiveBundle, setHierarchyLiveBundle] = useState(null);
   const [runtimeForEquipment, setRuntimeForEquipment] = useState(null);
   const [persistedDbController, setPersistedDbController] = useState(null);
+  const [nowTick, setNowTick] = useState(() => Date.now());
+
+  useEffect(() => {
+    const id = window.setInterval(() => setNowTick(Date.now()), 5000);
+    return () => window.clearInterval(id);
+  }, []);
 
   useEffect(() => {
     setPointUiState({});
@@ -223,8 +230,8 @@ export default function EquipmentDetailPage() {
       return points;
     }
     const m = new Map([[String(equipment.id), hierarchyLiveBundle]]);
-    return applyHierarchyLiveToWorkspaceRows(points, releaseData, m);
-  }, [points, releaseData, hierarchyLiveBundle, equipment?.id, alarmSiteId]);
+    return applyHierarchyLiveToWorkspaceRows(points, releaseData, m, nowTick);
+  }, [points, releaseData, hierarchyLiveBundle, equipment?.id, alarmSiteId, nowTick]);
 
   const pointsForGraphic = useMemo(() => {
     return displayPoints.map((p) => {
@@ -396,6 +403,19 @@ export default function EquipmentDetailPage() {
   const displayName = equipment.displayLabel || equipment.name || "Equipment";
   const instanceDisplay = equipment.instanceNumber || equipment.id;
 
+  const detailPollMs = runtimeForEquipment?.pollRateMs ?? persistedDbController?.pollRateMs;
+  const detailLastSeen = runtimeForEquipment?.lastSeenAt ?? persistedDbController?.lastSeenAt;
+  const detailCommHeadline =
+    USE_HIERARCHY_API && (runtimeForEquipment || persistedDbController)
+      ? runtimeForEquipment?.online === false
+        ? "OFFLINE"
+        : getEquipmentStatus({
+            lastSeenAt: detailLastSeen,
+            pollRateMs: detailPollMs,
+            now: nowTick,
+          })
+      : null;
+
   return (
     <Container fluid className="px-0 app-scale">
       <div className="px-3 px-md-4 pt-3">
@@ -454,17 +474,12 @@ export default function EquipmentDetailPage() {
                                   <span className="text-white fw-semibold small text-uppercase">
                                     Controller runtime
                                   </span>
-                                  {runtimeForEquipment ? (
-                                    <>
-                                      <span
-                                        className={`badge ${runtimeForEquipment.online ? "bg-success" : "bg-secondary"}`}
-                                      >
-                                        {runtimeForEquipment.online ? "Online" : "Offline"}
-                                      </span>
-                                      {runtimeForEquipment.online && runtimeForEquipment.simEnabled ? (
-                                        <span className="badge bg-info bg-opacity-50">Live</span>
-                                      ) : null}
-                                    </>
+                                  {detailCommHeadline ? (
+                                    <span
+                                      className={`legion-comm-badge legion-comm-badge--${detailCommHeadline.toLowerCase()}`}
+                                    >
+                                      {detailCommHeadline}
+                                    </span>
                                   ) : null}
                                 </div>
                                 {persistedDbController ? (
@@ -483,10 +498,7 @@ export default function EquipmentDetailPage() {
                                 {runtimeForEquipment ? (
                                   <div className="text-white-50 small d-flex flex-wrap gap-3">
                                     <span>Protocol: {runtimeForEquipment.protocol || "—"}</span>
-                                    <span>
-                                      Last seen:{" "}
-                                      {formatDiscoveryLastSeen(runtimeForEquipment.lastSeenAt) || "—"}
-                                    </span>
+                                    <span>Last seen: {formatLastSeenSecondsAgo(detailLastSeen, nowTick)}</span>
                                     <span>
                                       Poll rate: {Math.round((runtimeForEquipment.pollRateMs || 5000) / 1000)}s
                                     </span>
@@ -494,7 +506,12 @@ export default function EquipmentDetailPage() {
                                   </div>
                                 ) : (
                                   <div className="text-white-50 small">
-                                    In-memory runtime stats appear when the simulator exposes this equipment.
+                                    <div>
+                                      Last seen: {formatLastSeenSecondsAgo(detailLastSeen, nowTick)}
+                                    </div>
+                                    <div className="mt-1">
+                                      In-memory runtime stats appear when the simulator exposes this equipment.
+                                    </div>
                                   </div>
                                 )}
                               </div>
@@ -595,23 +612,30 @@ export default function EquipmentDetailPage() {
                                             </div>
                                           </td>
                                           <td className="legion-workspace-td legion-workspace-td--status">
-                                            <StatusDotLabel
-                                              value={
-                                                p.status === "OK"
-                                                  ? "online"
-                                                  : p.status === "OFFLINE"
-                                                    ? "offline"
-                                                    : p.status === "Pending"
-                                                      ? "pending"
-                                                      : p.status === "Unbound"
-                                                        ? "unbound"
-                                                        : "offline"
-                                              }
-                                              kind="status"
-                                              dotOnly={["ok", "normal", "online"].includes(
-                                                (p.status || "").toLowerCase()
-                                              )}
-                                            />
+                                            {p.commFreshnessStatus ? (
+                                              <OperatorCommFreshnessLabel
+                                                status={p.commFreshnessStatus}
+                                                variant="table"
+                                              />
+                                            ) : (
+                                              <StatusDotLabel
+                                                value={
+                                                  p.status === "OK"
+                                                    ? "online"
+                                                    : p.status === "OFFLINE"
+                                                      ? "offline"
+                                                      : p.status === "Pending"
+                                                        ? "pending"
+                                                        : p.status === "Unbound"
+                                                          ? "unbound"
+                                                          : "offline"
+                                                }
+                                                kind="status"
+                                                dotOnly={["ok", "normal", "online"].includes(
+                                                  (p.status || "").toLowerCase()
+                                                )}
+                                              />
+                                            )}
                                           </td>
                                         </tr>
                                       );

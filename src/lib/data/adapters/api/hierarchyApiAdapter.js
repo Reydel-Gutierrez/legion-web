@@ -108,6 +108,8 @@ export function normalizePoint(api) {
     writable: api.writable !== false,
     presentValue: api.presentValue,
     status: api.status,
+    lastSeenAt: api.lastSeenAt != null ? String(api.lastSeenAt) : null,
+    commState: api.commState != null ? String(api.commState) : null,
   };
 }
 

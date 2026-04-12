@@ -3590,16 +3590,8 @@ button.legion-service-state-option {
       gap: 0.5rem;
     }
 
-    /* Equipment rows: status = simple dot only, no square/box */
-    .site-tree-icon:has(.legion-dot-label) {
-      width: auto;
-      min-width: 0;
-      height: auto;
-      padding: 0;
-      background: transparent !important;
-      border-radius: 0;
-      box-shadow: none;
-    }
+    /* Keep default .site-tree-icon 28×28 tinted box for all equipment leaves (runtime comm dot + StatusDotLabel)
+       so offline/red dots match the same framed format as live/stale rows. */
 
     .site-tree-name-wrap {
       gap: 0.5rem;

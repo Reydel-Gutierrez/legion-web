@@ -10,6 +10,7 @@ const {
 } = require('./siteVersion.payload');
 const { buildWorkingSiteEquipmentFromDb } = require('../siteHierarchy/siteHierarchy.service');
 const { ensureSeedOwnerSiteAccess } = require('../../lib/siteAccess');
+const { syncSimCatalogBindingsForSiteId } = require('../../lib/simCatalogBindingSync');
 
 /**
  * Operator / active-release snapshot uses a slightly flatter site tree than engineering working state.
@@ -317,6 +318,11 @@ async function deployWorkingVersion(siteId, options = {}) {
     });
 
     return updatedVersion;
+  });
+
+  await syncSimCatalogBindingsForSiteId(siteId).catch((e) => {
+    // eslint-disable-next-line no-console
+    console.warn('[deploy] SIM catalog binding sync skipped:', e?.message || e);
   });
 
   return released;

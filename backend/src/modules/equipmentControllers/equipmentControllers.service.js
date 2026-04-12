@@ -3,6 +3,49 @@
 const prisma = require('../../lib/prisma');
 const { HttpError } = require('../../lib/httpError');
 const runtimeService = require('../runtime/runtime.service');
+const { syncSimCatalogBindingsForEquipmentId } = require('../../lib/simCatalogBindingSync');
+const {
+  getCatalogEntryByControllerCode,
+  getCatalogEntryByDeviceInstance,
+  isNumericOnlyString,
+  simCatalogRepairPatchForNumericControllerCode,
+} = require('../../lib/simulatedControllers/catalog');
+
+const DEV_ASSIGN_SIM = process.env.NODE_ENV === 'development';
+
+/**
+ * Normalize SIM assign payload: catalog `controllerCode` (FCU-2) is canonical; discovery may send instance only.
+ * @param {string} bodyControllerCode
+ * @param {string|null|undefined} bodyDeviceInstance
+ */
+function resolveSimAssignIdentity(bodyControllerCode, bodyDeviceInstance) {
+  const rawCode = String(bodyControllerCode || '').trim();
+  const di =
+    bodyDeviceInstance != null && String(bodyDeviceInstance).trim() !== ''
+      ? String(bodyDeviceInstance).trim()
+      : null;
+
+  const byCode = getCatalogEntryByControllerCode(rawCode);
+  if (byCode) {
+    return {
+      controllerCode: byCode.controllerCode,
+      deviceInstance: di ?? String(byCode.deviceInstance),
+    };
+  }
+
+  const instCandidate = di || (isNumericOnlyString(rawCode) ? rawCode : null);
+  if (instCandidate) {
+    const byInst = getCatalogEntryByDeviceInstance(instCandidate);
+    if (byInst) {
+      return {
+        controllerCode: byInst.controllerCode,
+        deviceInstance: String(byInst.deviceInstance),
+      };
+    }
+  }
+
+  return { controllerCode: rawCode, deviceInstance: di };
+}
 
 function toDto(row) {
   if (!row) return null;
@@ -52,8 +95,39 @@ async function assign(body) {
     throw new HttpError(400, 'equipmentId, controllerCode, and protocol are required');
   }
 
-  const code = String(controllerCode).trim();
-  if (!code) throw new HttpError(400, 'controllerCode is required');
+  const protocolNorm = String(protocol).trim();
+  /** Omitted isSimulated + SIM protocol → true (matches runtime + catalog sync expectations). */
+  const resolvedIsSimulated =
+    isSimulated !== undefined ? Boolean(isSimulated) : protocolNorm.toUpperCase() === 'SIM';
+
+  const rawControllerCode = String(controllerCode).trim();
+  if (!rawControllerCode) throw new HttpError(400, 'controllerCode is required');
+
+  const inputDeviceInstanceForLog =
+    deviceInstance != null && String(deviceInstance).trim() !== '' ? String(deviceInstance).trim() : null;
+
+  let finalCode = rawControllerCode;
+  let finalDeviceInstance =
+    deviceInstance != null && String(deviceInstance).trim() !== ''
+      ? String(deviceInstance).trim()
+      : null;
+
+  if (protocolNorm.toUpperCase() === 'SIM') {
+    const resolved = resolveSimAssignIdentity(rawControllerCode, deviceInstance);
+    finalCode = resolved.controllerCode;
+    finalDeviceInstance = resolved.deviceInstance;
+
+    if (DEV_ASSIGN_SIM) {
+      // eslint-disable-next-line no-console
+      console.log('[DEV assign SIM controller]', {
+        inputDeviceInstance: inputDeviceInstanceForLog,
+        inputControllerCode: rawControllerCode,
+        resolvedControllerCode: resolved.controllerCode,
+        finalStoredControllerCode: finalCode,
+        finalStoredDeviceInstance: finalDeviceInstance,
+      });
+    }
+  }
 
   const equipment = await prisma.equipment.findUnique({
     where: { id: String(equipmentId).trim() },
@@ -65,12 +139,12 @@ async function assign(body) {
   const otherEquipment = await prisma.controllersMapped.findFirst({
     where: {
       siteId: equipment.siteId,
-      controllerCode: { equals: code, mode: 'insensitive' },
+      controllerCode: { equals: finalCode, mode: 'insensitive' },
       NOT: { equipmentId: equipment.id },
     },
   });
   if (otherEquipment) {
-    throw new HttpError(409, `controllerCode "${code}" is already assigned to another equipment on this site`);
+    throw new HttpError(409, `controllerCode "${finalCode}" is already assigned to another equipment on this site`);
   }
 
   const existingForEquipment = await prisma.controllersMapped.findUnique({
@@ -79,7 +153,7 @@ async function assign(body) {
 
   if (
     existingForEquipment &&
-    String(existingForEquipment.controllerCode).toLowerCase() !== code.toLowerCase()
+    String(existingForEquipment.controllerCode).toLowerCase() !== finalCode.toLowerCase()
   ) {
     await prisma.controllersMapped.delete({ where: { id: existingForEquipment.id } });
   }
@@ -90,27 +164,33 @@ async function assign(body) {
     where: { equipmentId: equipment.id },
     create: {
       equipmentId: equipment.id,
-      controllerCode: code,
+      controllerCode: finalCode,
       displayName: displayName != null ? String(displayName).trim() || null : null,
-      protocol: String(protocol).trim(),
-      deviceInstance: deviceInstance != null ? String(deviceInstance).trim() || null : null,
+      protocol: protocolNorm,
+      deviceInstance: finalDeviceInstance,
       ipAddress: ipAddress != null ? String(ipAddress).trim() || null : null,
       networkAddress: networkAddress != null ? String(networkAddress).trim() || null : null,
       siteId: equipment.siteId,
       buildingId: equipment.buildingId,
       floorId: equipment.floorId,
       pollRateMs: pollRateMs != null ? Number(pollRateMs) : 5000,
-      isSimulated: Boolean(isSimulated),
+      isSimulated: resolvedIsSimulated,
       isEnabled: true,
       status: 'ASSIGNED',
       metadataJson: meta === undefined ? undefined : meta,
     },
     update: {
-      controllerCode: code,
+      controllerCode: finalCode,
       displayName: displayName !== undefined ? (displayName != null ? String(displayName).trim() || null : null) : undefined,
-      protocol: String(protocol).trim(),
+      protocol: protocolNorm,
       deviceInstance:
-        deviceInstance !== undefined ? (deviceInstance != null ? String(deviceInstance).trim() || null : null) : undefined,
+        protocolNorm.toUpperCase() === 'SIM'
+          ? finalDeviceInstance
+          : deviceInstance !== undefined
+            ? deviceInstance != null
+              ? String(deviceInstance).trim() || null
+              : null
+            : undefined,
       ipAddress: ipAddress !== undefined ? (ipAddress != null ? String(ipAddress).trim() || null : null) : undefined,
       networkAddress:
         networkAddress !== undefined
@@ -122,7 +202,11 @@ async function assign(body) {
       buildingId: equipment.buildingId,
       floorId: equipment.floorId,
       ...(pollRateMs !== undefined ? { pollRateMs: pollRateMs != null ? Number(pollRateMs) : 5000 } : {}),
-      ...(isSimulated !== undefined ? { isSimulated: Boolean(isSimulated) } : {}),
+      ...(isSimulated !== undefined
+        ? { isSimulated: Boolean(isSimulated) }
+        : protocolNorm.toUpperCase() === 'SIM'
+          ? { isSimulated: true }
+          : {}),
       status: 'ASSIGNED',
       ...(meta !== undefined ? { metadataJson: meta } : {}),
     },
@@ -143,13 +227,34 @@ async function assign(body) {
     console.warn('[equipment-controllers] runtime store sync skipped:', e?.message || e);
   }
 
+  try {
+    await syncSimCatalogBindingsForEquipmentId(saved.equipmentId);
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.warn('[equipment-controllers] SIM catalog binding sync skipped:', e?.message || e);
+  }
+
   return toDto(saved);
 }
 
 async function getByEquipmentId(equipmentId) {
-  const row = await prisma.controllersMapped.findUnique({
-    where: { equipmentId: String(equipmentId || '').trim() },
+  const eid = String(equipmentId || '').trim();
+  let row = await prisma.controllersMapped.findUnique({
+    where: { equipmentId: eid },
   });
+  if (!row) return null;
+  const patch = simCatalogRepairPatchForNumericControllerCode(row);
+  if (patch) {
+    row = await prisma.controllersMapped.update({
+      where: { id: row.id },
+      data: patch,
+    });
+    try {
+      await runtimeService.refreshInMemoryBindingForEquipmentId(row.equipmentId);
+    } catch (_) {
+      /* ignore */
+    }
+  }
   return toDto(row);
 }
 

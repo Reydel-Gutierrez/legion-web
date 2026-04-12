@@ -16,6 +16,8 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import LegionHeroHeader from "../../../components/legion/LegionHeroHeader";
 import StatusDotLabel from "../../../components/legion/StatusDotLabel";
+import OperatorCommFreshnessLabel from "../../../components/legion/OperatorCommFreshnessLabel";
+import { getEquipmentStatus } from "../../../lib/operator/statusUtils";
 import { operatorRepository } from "../../../lib/data";
 import { USE_HIERARCHY_API } from "../../../lib/data/config";
 import { listRuntimeControllers } from "../../../lib/data/adapters/api/runtimeApiAdapter";
@@ -64,7 +66,11 @@ function EquipmentTreeRow({ level = 0, active, onClick, isGroup, isOpen, node, i
   const showCaret = isGroup;
   const Icon = NODE_ICONS[node.type] || faFolder;
   const status = (node.status || "Normal").toString().trim().toLowerCase();
-  const isOfflineOrWarn = ["offline", "unbound", "down", "disabled", "warn", "warning", "alarm", "fault"].includes(status);
+  const runtimeComm = isLeaf && node.equipmentCommStatus != null ? node.equipmentCommStatus : null;
+  const isOfflineOrWarn = runtimeComm
+    ? runtimeComm === "OFFLINE"
+    : ["offline", "unbound", "down", "disabled", "warn", "warning", "alarm", "fault"].includes(status);
+  const showEngStatusPill = isLeaf && isOfflineOrWarn && !runtimeComm;
 
   const content = (
     <>
@@ -77,7 +83,11 @@ function EquipmentTreeRow({ level = 0, active, onClick, isGroup, isOpen, node, i
       </span>
       <span className="site-tree-icon">
         {isLeaf ? (
-          <StatusDotLabel value={node.status || "Normal"} kind="status" dotOnly />
+          runtimeComm ? (
+            <OperatorCommFreshnessLabel status={runtimeComm} variant="tree" />
+          ) : (
+            <StatusDotLabel value={node.status || "Normal"} kind="status" dotOnly />
+          )
         ) : (
           <FontAwesomeIcon icon={Icon} className="fa-sm" />
         )}
@@ -87,7 +97,7 @@ function EquipmentTreeRow({ level = 0, active, onClick, isGroup, isOpen, node, i
         {!isLeaf && node.sub ? (
           <span className="site-tree-subtext text-white-50"> · {node.sub}</span>
         ) : null}
-        {isLeaf && isOfflineOrWarn && (
+        {showEngStatusPill && (
           <span className="operator-equipment-status-pill" data-status={status}>
             {getStatusPillLabel(node.status)}
           </span>
@@ -181,6 +191,7 @@ function WorkspacePanel({
   activeReleaseData,
   siteId,
   runtimeControllersList,
+  nowTick,
 }) {
   const pointsOptions = useMemo(
     () => (activeReleaseData ? { activeRelease: activeReleaseData } : undefined),
@@ -218,10 +229,12 @@ function WorkspacePanel({
   );
 
   const [equipmentLiveBundles, setEquipmentLiveBundles] = useState(() => new Map());
+  const loadLiveBundlesRef = useRef(async () => {});
 
   useEffect(() => {
     if (!USE_HIERARCHY_API || !isBackendSiteId(siteId) || !activeReleaseData || !equipmentIdsKey) {
       setEquipmentLiveBundles(new Map());
+      loadLiveBundlesRef.current = async () => {};
       return undefined;
     }
     const eqIds = equipmentIdsKey.split(",").filter(Boolean);
@@ -230,6 +243,8 @@ function WorkspacePanel({
     async function load() {
       const next = new Map();
       const rtList = Array.isArray(runtimeControllersList) ? runtimeControllersList : [];
+      const dev = typeof process !== "undefined" && process.env.NODE_ENV === "development";
+      const matchedRtEq = new Set();
       await Promise.all(
         eqIds.map(async (eqId) => {
           try {
@@ -243,6 +258,21 @@ function WorkspacePanel({
               rtList.find((c) => c && String(c.equipmentId) === String(eqId)) ||
               rtList.find((c) => c && String(c.equipmentId) === String(sourceEqId)) ||
               null;
+            if (rt) matchedRtEq.add(String(eqId));
+            if (dev) {
+              // eslint-disable-next-line no-console
+              console.debug("[operator live refresh]", {
+                workspaceEquipmentId: eqId,
+                pointsSourceEquipmentId: sourceEqId,
+                pointsFetched: Array.isArray(dbPoints) ? dbPoints.length : 0,
+                mappingCount: Array.isArray(mappings) ? mappings.length : 0,
+                hasController: Boolean(ctrl),
+                runtimeOnline: rt?.online,
+                runtimeLastSeenAt: rt?.lastSeenAt,
+                controllerStatus: ctrl?.status,
+                controllerLastSeenAt: ctrl?.lastSeenAt,
+              });
+            }
             if (!cancelled) {
               next.set(eqId, {
                 points: Array.isArray(dbPoints) ? dbPoints : [],
@@ -256,14 +286,27 @@ function WorkspacePanel({
           }
         })
       );
+      if (dev) {
+        // eslint-disable-next-line no-console
+        console.debug("[operator live refresh summary]", {
+          runtimeControllersListLength: rtList.length,
+          workspaceEquipmentCount: eqIds.length,
+          equipmentIdsWithRuntimeMatch: [...matchedRtEq],
+          bundlesBuilt: next.size,
+        });
+      }
       if (!cancelled) setEquipmentLiveBundles(next);
     }
 
+    loadLiveBundlesRef.current = load;
     load();
-    const t = window.setInterval(load, 5000);
+    const t = window.setInterval(() => {
+      loadLiveBundlesRef.current();
+    }, 5000);
     return () => {
       cancelled = true;
       window.clearInterval(t);
+      loadLiveBundlesRef.current = async () => {};
     };
   }, [siteId, activeReleaseData, equipmentIdsKey, runtimeControllersList]);
 
@@ -271,8 +314,51 @@ function WorkspacePanel({
     if (!USE_HIERARCHY_API || !isBackendSiteId(siteId) || !equipmentLiveBundles.size) {
       return rows;
     }
-    return applyHierarchyLiveToWorkspaceRows(rows, activeReleaseData, equipmentLiveBundles);
-  }, [rows, siteId, activeReleaseData, equipmentLiveBundles]);
+    return applyHierarchyLiveToWorkspaceRows(rows, activeReleaseData, equipmentLiveBundles, nowTick);
+  }, [rows, siteId, activeReleaseData, equipmentLiveBundles, nowTick]);
+
+  useEffect(() => {
+    if (typeof process === "undefined" || process.env.NODE_ENV !== "development") return;
+    if (!USE_HIERARCHY_API || !isBackendSiteId(siteId)) return;
+    const rtLen = Array.isArray(runtimeControllersList) ? runtimeControllersList.length : 0;
+    const equipmentBundles = {};
+    for (const [eqId, b] of equipmentLiveBundles.entries()) {
+      equipmentBundles[eqId] = {
+        dbPointsLoaded: Array.isArray(b.points) ? b.points.length : 0,
+        mappingsLoaded: Array.isArray(b.mappings) ? b.mappings.length : 0,
+        hasController: Boolean(b.controller),
+        runtimeOnline: b.runtime?.online,
+      };
+    }
+    // eslint-disable-next-line no-console
+    console.debug("[operator workspace refresh cycle]", {
+      runtimeControllersLoaded: rtLen,
+      equipmentBundles,
+      hydratedRowCount: hydratedRows.length,
+      hydratedStatusCounts: {
+        OK: hydratedRows.filter((r) => r.status === "OK").length,
+        OFFLINE: hydratedRows.filter((r) => r.status === "OFFLINE").length,
+        Unbound: hydratedRows.filter((r) => r.status === "Unbound").length,
+      },
+    });
+  }, [siteId, runtimeControllersList, equipmentLiveBundles, hydratedRows]);
+
+  useEffect(() => {
+    if (typeof process === "undefined" || process.env.NODE_ENV !== "development") return;
+    if (!USE_HIERARCHY_API || !equipmentLiveBundles.size) return;
+    const offline = hydratedRows.filter((r) => r.status === "OFFLINE");
+    if (!offline.length) return;
+    // eslint-disable-next-line no-console
+    console.debug(
+      "[operator workspace OFFLINE rows]",
+      offline.map((r) => ({
+        rowId: r.id,
+        equipmentId: r.equipmentId,
+        pointKey: r.pointKey || r.pointId,
+        reason: r.__liveDebug ?? "(see merge / binding)",
+      }))
+    );
+  }, [hydratedRows, equipmentLiveBundles]);
 
   // Filter mode: filter rows by equipmentName, pointName, value, status
   const filteredRows = useMemo(() => {
@@ -289,7 +375,8 @@ function WorkspacePanel({
         String(r.pointAddress || "").toLowerCase().includes(q) ||
         String(r.pointPathKey || "").toLowerCase().includes(q) ||
         String(r.value || "").toLowerCase().includes(q) ||
-        String(r.status || "").toLowerCase().includes(q)
+        String(r.status || "").toLowerCase().includes(q) ||
+        String(r.commFreshnessStatus || "").toLowerCase().includes(q)
     );
   }, [hydratedRows, workspace.searchMode, workspace.filterText]);
 
@@ -778,7 +865,15 @@ function WorkspacePanel({
             <Button size="sm" variant="dark" className="workspace-table-action-btn" onClick={removeSelected} disabled={selectedCount === 0}>
               Remove selected
             </Button>
-            <Button size="sm" variant="dark" className="workspace-table-action-btn">
+            <Button
+              size="sm"
+              variant="dark"
+              className="workspace-table-action-btn"
+              onClick={() => {
+                const run = loadLiveBundlesRef.current;
+                if (typeof run === "function") run();
+              }}
+            >
               Refresh
             </Button>
             <Button size="sm" variant="dark" className="workspace-table-action-btn" onClick={clearSearch}>
@@ -1002,11 +1097,15 @@ function WorkspacePanel({
                       </div>
                     </td>
                     <td className="legion-workspace-td legion-workspace-td--status">
-                      <StatusDotLabel
-                        value={row.status || "Normal"}
-                        kind="status"
-                        dotOnly={["ok", "normal", "online"].includes((row.status || "").toLowerCase())}
-                      />
+                      {row.commFreshnessStatus ? (
+                        <OperatorCommFreshnessLabel status={row.commFreshnessStatus} variant="table" />
+                      ) : (
+                        <StatusDotLabel
+                          value={row.status || "Normal"}
+                          kind="status"
+                          dotOnly={["ok", "normal", "online"].includes((row.status || "").toLowerCase())}
+                        />
+                      )}
                     </td>
                   </tr>
                 ))
@@ -1221,6 +1320,12 @@ function WorkspacePanel({
 export default function EquipmentPage() {
   const history = useHistory();
   const { siteId, apiSites } = useSite();
+  const [nowTick, setNowTick] = useState(() => Date.now());
+
+  useEffect(() => {
+    const id = window.setInterval(() => setNowTick(Date.now()), 5000);
+    return () => window.clearInterval(id);
+  }, []);
   /** Match useActiveRelease: sidebar may hold site name until coerced to UUID. */
   const apiSiteId = useMemo(
     () => coerceSiteKeyToApiId(siteId, apiSites) ?? (isBackendSiteId(siteId) ? siteId : null),
@@ -1262,7 +1367,7 @@ export default function EquipmentPage() {
         .catch(() => {});
     }
     tick();
-    const id = window.setInterval(tick, 10000);
+    const id = window.setInterval(tick, 5000);
     return () => {
       cancelled = true;
       window.clearInterval(id);
@@ -1279,17 +1384,23 @@ export default function EquipmentPage() {
         }
         if (n.type === "equip" && runtimeByEquipmentId.has(String(n.id))) {
           const r = runtimeByEquipmentId.get(String(n.id));
-          const live = r?.online && r?.simEnabled;
+          const equipmentCommStatus =
+            r?.online === false
+              ? "OFFLINE"
+              : getEquipmentStatus({
+                  lastSeenAt: r?.lastSeenAt,
+                  pollRateMs: r?.pollRateMs,
+                  now: nowTick,
+                });
           return {
             ...n,
-            status: r?.online ? "Online" : n.status,
-            label: live ? `${n.label} · Live` : n.label,
+            equipmentCommStatus,
           };
         }
         return n;
       });
     return patch(base);
-  }, [activeReleaseData, runtimeByEquipmentId]);
+  }, [activeReleaseData, runtimeByEquipmentId, nowTick]);
 
   const [treeSearch, setTreeSearch] = useState("");
   const [openMap, setOpenMap] = useState({ plant: true, f1: true, ahu1: true });
@@ -1437,6 +1548,7 @@ export default function EquipmentPage() {
                   activeReleaseData={activeReleaseData}
                   siteId={apiSiteId || siteId}
                   runtimeControllersList={runtimeControllersList}
+                  nowTick={nowTick}
                 />
 
                 {showSecondaryWorkspace ? (
@@ -1453,6 +1565,7 @@ export default function EquipmentPage() {
                       activeReleaseData={activeReleaseData}
                       siteId={apiSiteId || siteId}
                       runtimeControllersList={runtimeControllersList}
+                      nowTick={nowTick}
                     />
                   </div>
                 ) : (

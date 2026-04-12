@@ -4,6 +4,7 @@
 
 import { pointToWorkspaceRow } from "../data/adapters/api/hierarchyApiAdapter";
 import { getTemplatePoints } from "../../modules/engineering/data/mockPointMappingData";
+import { getEquipmentStatus, getOfflineThresholdMs, DEFAULT_OPERATOR_POLL_MS } from "./statusUtils";
 
 /**
  * Template library keys (often camelCase) vs Legion / SIM `pointCode` (SCREAMING_SNAKE) when mappingHint is blank.
@@ -120,17 +121,35 @@ export function resolveControllerDisplayLabel(bundle, eqMeta) {
 }
 
 /**
- * Find Phase 2 mapping row for this workspace row.
+ * Resolve PointsMapped row for a workspace row.
+ * Preferred order: explicit DB / release ids → exact pointCode/key ↔ fieldPointKey → template-hint fallback.
  * @param {object} row
  * @param {object[]} mappings
  * @param {string} mappedIdFromRelease - Legion point UUID from engineering mappings[templateId]
  */
 function findPointMappingForRow(row, mappings, mappedIdFromRelease, releaseData, equipmentId) {
   const list = Array.isArray(mappings) ? mappings : [];
+  if (!list.length) return null;
+
+  if (row.databasePointId) {
+    const hit = list.find((m) => m && String(m.pointId) === String(row.databasePointId));
+    if (hit) return hit;
+  }
   if (mappedIdFromRelease) {
     const hit = list.find((m) => m && String(m.pointId) === String(mappedIdFromRelease));
     if (hit) return hit;
   }
+
+  const pk = normKey(row.pointKey);
+  const pr = normKey(row.pointReferenceId);
+  for (const m of list) {
+    if (!m) continue;
+    const fk = normKey(m.fieldPointKey);
+    const lk = normKey(m.legionPointCode);
+    if (pk && (fk === pk || lk === pk)) return m;
+    if (pr && (fk === pr || lk === pr)) return m;
+  }
+
   const variantArr = [
     ...collectDbPointCodeHints(row, releaseData, equipmentId),
     ...pointKeyMatchVariants(row.pointKey),
@@ -168,16 +187,68 @@ function indexDbPoints(points) {
  * @param {object} m - point mapping DTO
  */
 /**
- * Runtime API already folds poll staleness into `online` for SIM controllers.
- * @param {{ controller?: object|null, runtime?: object|null }|null|undefined} bundle
+ * Offline band (legacy name): max(90000, poll*4). Used by diagnostics; freshness UI uses {@link getEquipmentStatus}.
+ * @param {unknown} pollRateMs
  */
-function isSimEquipmentRuntimeOffline(bundle) {
-  if (!bundle?.controller) return false;
-  const proto = String(bundle.controller.protocol || "").trim().toUpperCase();
-  if (proto !== "SIM") return false;
+export function staleThresholdMsFromPollRate(pollRateMs) {
+  return getOfflineThresholdMs(pollRateMs);
+}
+
+function pollMsFromBundle(bundle) {
+  return bundle?.controller?.pollRateMs ?? bundle?.runtime?.pollRateMs ?? DEFAULT_OPERATOR_POLL_MS;
+}
+
+function isRuntimeHardOffline(bundle) {
+  const c = bundle?.controller;
+  const rt = bundle?.runtime;
+  if (c && String(c.status || "").trim().toUpperCase() === "OFFLINE") return true;
+  if (rt && rt.online === false) return true;
+  return false;
+}
+
+/**
+ * Controller LIVE or STALE (still allowed to show last values); OFFLINE blocks the bundle.
+ *
+ * @param {{ controller?: object|null, runtime?: object|null }|null|undefined} bundle
+ * @param {number} [now]
+ */
+export function isControllerFresh(bundle, now = Date.now()) {
+  if (!bundle) return false;
+  if (isRuntimeHardOffline(bundle)) return false;
   const rt = bundle.runtime;
-  if (rt == null) return true;
-  return rt.online !== true;
+  const c = bundle.controller;
+  const lastSeen = rt?.lastSeenAt || c?.lastSeenAt;
+  const s = getEquipmentStatus({ lastSeenAt: lastSeen, pollRateMs: pollMsFromBundle(bundle), now });
+  return s === "LIVE" || s === "STALE";
+}
+
+/**
+ * Point freshness for merged rows (comm OFFLINE forces OFFLINE; else {@link getEquipmentStatus} on lastSeenAt).
+ *
+ * @param {object|null|undefined} point - normalized DB point
+ * @param {{ controller?: object|null, runtime?: object|null }|null|undefined} bundle
+ * @param {number} [now]
+ * @returns {"LIVE"|"STALE"|"OFFLINE"}
+ */
+export function getPointCommFreshness(point, bundle, now = Date.now()) {
+  if (!point) return "OFFLINE";
+  const comm = String(point.commState || "").trim().toUpperCase();
+  if (comm === "OFFLINE") return "OFFLINE";
+  return getEquipmentStatus({
+    lastSeenAt: point.lastSeenAt,
+    pollRateMs: pollMsFromBundle(bundle),
+    now,
+  });
+}
+
+/**
+ * @param {object|null|undefined} point
+ * @param {{ controller?: object|null, runtime?: object|null }|null|undefined} bundle
+ * @param {number} [now]
+ */
+export function isPointFresh(point, bundle, now = Date.now()) {
+  const s = getPointCommFreshness(point, bundle, now);
+  return s === "LIVE" || s === "STALE";
 }
 
 export function formatHierarchyMappedToLabel(controllerLabel, m) {
@@ -215,6 +286,7 @@ function resolveDbPointForWorkspaceRow(row, releaseData, equipmentId, idx, mappi
   let mappedId =
     mappedIdRaw != null && String(mappedIdRaw).trim() !== "" ? String(mappedIdRaw).trim() : "";
 
+  /** 1) Explicit Phase-2 mapping → Point by id, then by legionPointCode (canonical SIM code). */
   if (mappingRow?.pointId) {
     mappedId = String(mappingRow.pointId).trim() || mappedId;
     const hit = idx.byId.get(String(mappingRow.pointId));
@@ -248,29 +320,37 @@ function resolveDbPointForWorkspaceRow(row, releaseData, equipmentId, idx, mappi
   return { pt: null, mappedId };
 }
 
+const isDev =
+  typeof process !== "undefined" && process.env.NODE_ENV === "development";
+
 /**
  * @param {object[]} rows
  * @param {object|null|undefined} releaseData
  * @param {Map<string, { points?: object[], mappings?: object[], controller?: object|null }>} bundlesByEquipmentId
+ * @param {number} [now] - pass a ticking timestamp so LIVE→STALE transitions without waiting on API
  * @returns {object[]}
  */
-export function applyHierarchyLiveToWorkspaceRows(rows, releaseData, bundlesByEquipmentId) {
+export function applyHierarchyLiveToWorkspaceRows(rows, releaseData, bundlesByEquipmentId, now = Date.now()) {
   if (!Array.isArray(rows) || rows.length === 0 || !bundlesByEquipmentId || bundlesByEquipmentId.size === 0) {
     return rows;
   }
 
-  return rows.map((row) => {
+  const devDiag = isDev ? [] : null;
+
+  const out = rows.map((row) => {
     const bid = String(row.equipmentId ?? "");
     const bundle = bid ? bundlesByEquipmentId.get(bid) : null;
-    if (!bundle || !Array.isArray(bundle.points)) return row;
-
-    if (isSimEquipmentRuntimeOffline(bundle)) {
-      return {
-        ...row,
-        value: "—",
-        presentValueRaw: null,
-        status: "OFFLINE",
-      };
+    if (!bundle || !Array.isArray(bundle.points)) {
+      if (devDiag) {
+        devDiag.push({
+          equipmentId: bid,
+          templatePointId: row.templatePointId ?? null,
+          rowPointKey: row.pointKey,
+          rowPointId: row.pointId,
+          skip: "no_bundle_or_points",
+        });
+      }
+      return row;
     }
 
     const idx = indexDbPoints(bundle.points);
@@ -319,26 +399,127 @@ export function applyHierarchyLiveToWorkspaceRows(rows, releaseData, bundlesByEq
       mappedToLabel = `${ctrlLabel} → Legion point (${mid.slice(0, 8)}…)`;
     }
 
+    const pushDiag = (extra) => {
+      if (!devDiag) return;
+      devDiag.push({
+        equipmentId: bid,
+        templatePointId: row.templatePointId ?? null,
+        rowPointKey: row.pointKey,
+        rowPointId: row.pointId,
+        databasePointIdOnRow: row.databasePointId ?? null,
+        mappingId: mappingRow?.id ?? null,
+        mappingFieldKey: mappingRow?.fieldPointKey ?? null,
+        mappingPointId: mappingRow?.pointId ?? null,
+        resolvedPointId: pt?.id ?? null,
+        resolvedPointCode: pt?.pointCode ?? null,
+        presentValue: pt?.presentValue ?? null,
+        commState: pt?.commState ?? null,
+        lastSeenAt: pt?.lastSeenAt ?? null,
+        controllerFresh: isControllerFresh(bundle, now),
+        ...extra,
+      });
+    };
+
     if (!pt) {
       const hasBinding = Boolean(mappedId || mappedIdFromRelease || mappingRow);
-      return {
+      const dbg = hasBinding ? "bound_but_point_row_missing" : "unbound";
+      const result = {
         ...row,
         mappedToLabel: hasBinding ? mappedToLabel : "—",
         /** Binding exists in engineering DB but point row missing — comm loss, not an "unmapped" template state. */
         status: hasBinding ? "OFFLINE" : "Unbound",
+        ...(isDev && hasBinding ? { __liveDebug: dbg } : {}),
       };
+      pushDiag({
+        finalStatus: result.status,
+        valueShown: result.value,
+        dashReason: hasBinding ? "no_relational_point_for_binding" : "unbound",
+        __liveDebug: dbg,
+      });
+      return result;
+    }
+
+    if (!isControllerFresh(bundle, now)) {
+      const result = {
+        ...row,
+        mappedToLabel,
+        value: "—",
+        presentValueRaw: null,
+        status: "OFFLINE",
+        commFreshnessStatus: "OFFLINE",
+        ...(isDev ? { __liveDebug: "controller_stale_or_offline" } : {}),
+      };
+      pushDiag({
+        finalStatus: result.status,
+        valueShown: "—",
+        dashReason: "controller_stale_or_offline",
+        __liveDebug: "controller_stale_or_offline",
+      });
+      return result;
+    }
+
+    const pointFreshness = getPointCommFreshness(pt, bundle, now);
+    if (pointFreshness === "OFFLINE") {
+      const comm = String(pt.commState || "").trim().toUpperCase();
+      const reason = comm === "OFFLINE" ? "point_comm_state_offline" : "point_last_seen_stale_or_unknown";
+      const result = {
+        ...row,
+        mappedToLabel,
+        value: "—",
+        presentValueRaw: null,
+        status: "OFFLINE",
+        commFreshnessStatus: "OFFLINE",
+        lastSeenAt: pt.lastSeenAt ?? null,
+        commState: pt.commState ?? null,
+        ...(isDev ? { __liveDebug: reason } : {}),
+      };
+      pushDiag({
+        finalStatus: result.status,
+        valueShown: "—",
+        dashReason: reason,
+        __liveDebug: reason,
+      });
+      return result;
     }
 
     const ws = pointToWorkspaceRow(row.equipmentId, row.equipmentName, pt);
-    if (!ws) return { ...row, mappedToLabel };
+    if (!ws) {
+      const result = { ...row, mappedToLabel, ...(isDev ? { __liveDebug: "workspace_adapter_rejected" } : {}) };
+      pushDiag({
+        finalStatus: result.status,
+        valueShown: result.value,
+        dashReason: "workspace_adapter_rejected",
+        __liveDebug: "workspace_adapter_rejected",
+      });
+      return result;
+    }
 
-    return {
+    const result = {
       ...row,
       value: ws.value,
       presentValueRaw: ws.presentValueRaw,
       databasePointId: ws.databasePointId,
       status: "OK",
       mappedToLabel,
+      lastSeenAt: pt.lastSeenAt ?? null,
+      commState: pt.commState ?? null,
+      commFreshnessStatus: pointFreshness,
     };
+    pushDiag({
+      finalStatus: "OK",
+      valueShown: ws.value,
+      dashReason: null,
+    });
+    return result;
   });
+
+  if (isDev && devDiag && devDiag.length) {
+    // eslint-disable-next-line no-console
+    console.debug("[operator merge cycle]", {
+      workspaceRowCount: devDiag.length,
+      perRow: devDiag,
+    });
+  }
+
+  return out;
 }

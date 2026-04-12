@@ -12,12 +12,28 @@ async function getEquipmentContext(equipmentId) {
   return equipment;
 }
 
-async function listPointsByEquipment(equipmentId) {
+/**
+ * @param {string} equipmentId
+ * @param {{ skipSelfHeal?: boolean }} [options]
+ */
+async function listPointsByEquipment(equipmentId, options = {}) {
   await getEquipmentContext(equipmentId);
-  return prisma.point.findMany({
+  const skipSelfHeal = options.skipSelfHeal === true;
+  let rows = await prisma.point.findMany({
     where: { equipmentId },
     orderBy: { pointName: 'asc' },
   });
+  if (rows.length === 0 && !skipSelfHeal) {
+    const { syncSimCatalogBindingsForEquipmentId } = require('../../lib/simCatalogBindingSync');
+    const synced = await syncSimCatalogBindingsForEquipmentId(equipmentId).catch(() => null);
+    if (synced?.ok) {
+      rows = await prisma.point.findMany({
+        where: { equipmentId },
+        orderBy: { pointName: 'asc' },
+      });
+    }
+  }
+  return rows;
 }
 
 async function createPoint(equipmentId, data) {
@@ -95,6 +111,8 @@ async function updatePoint(id, data) {
     'writable',
     'presentValue',
     'status',
+    'lastSeenAt',
+    'commState',
   ];
   const update = {};
   for (const key of allowed) {
@@ -104,6 +122,15 @@ async function updatePoint(id, data) {
       } else if (key === 'presentValue' || key === 'unit') {
         update[key] =
           data[key] == null ? null : String(data[key]);
+      } else if (key === 'lastSeenAt') {
+        const v = data.lastSeenAt;
+        update.lastSeenAt =
+          v == null || v === '' ? null : v instanceof Date ? v : new Date(v);
+      } else if (key === 'commState') {
+        update.commState =
+          data.commState == null || data.commState === ''
+            ? null
+            : String(data.commState).trim();
       } else {
         update[key] =
           typeof data[key] === 'string' ? data[key].trim() : data[key];
