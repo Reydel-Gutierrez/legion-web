@@ -53,7 +53,12 @@ export default function EngineeringSidebarTreeGroup({
           .join(" ")}
       >
         <div className="legion-sidebar-tree__parent-shell">
-          <Link to={parentPath} className="legion-sidebar-tree__parent-link" onClick={closeMobile}>
+          <Link
+            to={parentPath}
+            className="legion-sidebar-tree__parent-link"
+            title={title}
+            onClick={closeMobile}
+          >
             <span className="sidebar-icon legion-sidebar-tree__parent-icon">
               <FontAwesomeIcon icon={parentIcon} />
             </span>

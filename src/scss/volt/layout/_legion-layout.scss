@@ -7,30 +7,70 @@
 $legion-panel-bg: #0F1520;
 $legion-panel-border: rgba(255, 255, 255, 0.08);
 $legion-panel-radius: 4px;
-$legion-sidebar-width: 250px;
+$legion-sidebar-width: 280px;
+$legion-sidebar-width-contracted: 76px;
+$legion-sidebar-nav-radius: 8px;
+$legion-sidebar-nav-height: 44px;
+$legion-sidebar-parent-height: 48px;
+$legion-sidebar-icon-size: 20px;
 $legion-accent: rgba(13, 202, 240, 0.95);
 $legion-accent-engineering: #D38001; /* gold - matches LCC logo */
 $legion-text: rgba(255, 255, 255, 0.92);
 $legion-text-muted: rgba(255, 255, 255, 0.55);
 $legion-hover-bg: rgba(255, 255, 255, 0.06);
 $legion-active-bg: rgba(255, 255, 255, 0.08);
-$legion-accent-bar: 3px;
+$legion-active-bg-strong: rgba($blue, 0.38);
+$legion-parent-card-bg: rgba(255, 255, 255, 0.03);
+$legion-parent-card-border: rgba(255, 255, 255, 0.07);
+$legion-accent-bar: 4px;
+$legion-tree-line: rgba(255, 255, 255, 0.18);
+
+@mixin legion-sidebar-active-row($accent-color) {
+  color: $white !important;
+  background: $legion-active-bg-strong !important;
+  font-weight: 600;
+  box-shadow: none !important;
+
+  &::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 6px;
+    bottom: 6px;
+    width: $legion-accent-bar;
+    border-radius: 0 3px 3px 0;
+    background: $accent-color;
+    pointer-events: none;
+  }
+
+  .sidebar-icon,
+  .legion-sidebar-tree__parent-icon,
+  .legion-sidebar-tree__leaf-icon {
+    color: $white !important;
+    opacity: 1 !important;
+  }
+}
 
 /* ========== SIDEBAR ========== */
-/* Sidebar starts below navbar (no overlap) */
+/* Full-height column; content clears topbar/footer via inner padding */
 .legion-sidebar-wrapper {
   position: fixed !important;
-  top: var(--legion-topbar-h, 44px) !important;
+  top: 0 !important;
   left: 0 !important;
   width: 100%;
   max-width: $legion-sidebar-width;
-  height: calc(100vh - var(--legion-topbar-h, 44px) - var(--legion-footer-h, 40px)) !important;
-  max-height: calc(100vh - var(--legion-topbar-h, 44px) - var(--legion-footer-h, 40px)) !important;
+  height: 100vh !important;
+  max-height: 100vh !important;
   z-index: 100;
   background: $legion-panel-bg;
   border-right: 1px solid $legion-panel-border;
   box-shadow: inset -1px 0 0 rgba(0, 0, 0, 0.08);
   overflow: hidden;
+  transition: max-width 0.25s ease;
+
+  &.legion-sidebar--contracted {
+    max-width: $legion-sidebar-width-contracted;
+  }
 }
 
 /* Inner SimpleBar fills the wrapper; no independent positioning */
@@ -57,39 +97,171 @@ $legion-accent-bar: 3px;
   background: transparent;
   color: $legion-text;
 
-  .sidebar-inner {
-    padding-top: 1rem;
-    padding-bottom: 1rem;
+  /* Override Volt .sidebar bordered tiles — flat list except active row */
+  .nav-item {
+    border: none !important;
+
+    > .nav-link {
+      border: none !important;
+    }
+
+    &:not(.active) > .nav-link {
+      background: transparent !important;
+    }
+
+    &.active > .nav-link {
+      border: none !important;
+    }
+  }
+
+  .sidebar-inner,
+  .legion-sidebar-inner {
+    padding: calc(var(--legion-topbar-h, 44px) + 0.85rem) 1.25rem calc(var(--legion-footer-h, 40px) + 0.85rem);
     display: flex;
     flex-direction: column;
     min-height: 100%;
     min-width: 0;
     max-width: 100%;
 
-    .nav.flex-column {
-      flex: 1 1 auto;
-      min-height: 0;
-    }
-
     > .mb-3 {
       min-width: 0;
       max-width: 100%;
+      flex-shrink: 0;
     }
+  }
+
+  .legion-sidebar-main {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .legion-sidebar-section-label {
+    flex-shrink: 0;
+    margin: 0.35rem 0 0.85rem;
+    padding: 0 0.15rem;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.38);
+  }
+
+  .legion-sidebar-nav.flex-column {
+    flex: 1 1 auto;
+    min-height: 0;
+    padding-top: 0.15rem;
+  }
+
+  .legion-sidebar-bottom {
+    flex-shrink: 0;
+    margin-top: 1.25rem;
+    padding-top: 1rem;
+    border-top: 1px solid $legion-panel-border;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .legion-sidebar-collapse-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    width: 100%;
+    padding: 0.55rem 0.65rem;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: $legion-text-muted;
+    background: transparent;
+    border: none;
+    border-radius: $legion-sidebar-nav-radius;
+    transition: color 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+
+    svg {
+      font-size: 0.75rem;
+      opacity: 0.85;
+    }
+
+    &:hover {
+      color: $legion-text;
+      background: transparent;
+    }
+
+    &:focus {
+      outline: none;
+      box-shadow: none;
+    }
+  }
+
+  .legion-sidebar-user {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    min-width: 0;
+    padding: 0.35rem 0.15rem;
+  }
+
+  .legion-sidebar-user__avatar {
+    flex-shrink: 0;
+    width: 2.25rem;
+    height: 2.25rem;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    color: $white;
+    background: rgba($blue, 0.55);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+  }
+
+  .legion-sidebar-user__body {
+    min-width: 0;
+    flex: 1 1 auto;
+  }
+
+  .legion-sidebar-user__name {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: $legion-text;
+    line-height: 1.25;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .legion-sidebar-user__role {
+    font-size: 0.75rem;
+    color: $legion-text-muted;
+    line-height: 1.3;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .legion-sidebar-meta {
+    font-size: 0.6875rem;
+    color: rgba(255, 255, 255, 0.35);
+    letter-spacing: 0.04em;
+    padding: 0 0.15rem 0.15rem;
   }
 
   .legion-sidebar-site {
     width: 100%;
     max-width: 100%;
     min-width: 0;
-    padding: 0.5rem 0.75rem;
-    margin-bottom: 1rem;
-    font-size: 0.8125rem;
+    padding: 0.65rem 0.85rem;
+    margin-bottom: 0.35rem;
+    font-size: 0.875rem;
     font-weight: 600;
     color: $legion-text-muted;
     background: transparent;
     border: none;
-    border-radius: $legion-panel-radius;
-    min-height: 36px;
+    border-radius: $legion-sidebar-nav-radius;
+    min-height: $legion-sidebar-nav-height;
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -134,35 +306,41 @@ $legion-accent-bar: 3px;
   }
 
   .nav-item {
-    margin-bottom: 0.1rem;
+    margin-bottom: 0.35rem;
     border: none;
 
     .nav-link {
-      font-size: 0.8125rem;
-      padding: 0.5rem 0.75rem;
+      position: relative;
+      font-size: 0.875rem;
+      padding: 0.65rem 0.85rem 0.65rem 1rem;
       color: $legion-text-muted;
       background: transparent;
       border: none;
-      border-radius: $legion-panel-radius;
-      min-height: 36px;
+      border-radius: $legion-sidebar-nav-radius;
+      min-height: $legion-sidebar-nav-height;
       display: flex;
       align-items: center;
 
       .sidebar-icon {
-        margin-right: 0.5rem;
+        margin-right: 0.65rem;
         color: inherit;
-        opacity: 0.9;
+        opacity: 0.92;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: $legion-sidebar-icon-size;
+        flex-shrink: 0;
 
         svg {
-          min-width: 18px;
-          width: 18px;
-          font-size: 0.875rem;
+          min-width: $legion-sidebar-icon-size;
+          width: $legion-sidebar-icon-size;
+          font-size: 1rem;
         }
       }
 
       &:hover {
         color: $legion-text;
-        background: $legion-hover-bg;
+        background: transparent;
       }
 
       &:focus {
@@ -172,17 +350,27 @@ $legion-accent-bar: 3px;
     }
 
     &.active .nav-link {
-      color: $legion-text;
-      background: $legion-active-bg;
-      box-shadow: inset $legion-accent-bar 0 0 $legion-accent;
-      font-weight: 600;
+      @include legion-sidebar-active-row($legion-accent);
+    }
+
+    &:not(.active) .nav-link:hover {
+      background: transparent;
+    }
+  }
+
+  /* Flat rows: no Volt default bordered nav tiles */
+  .legion-sidebar-tree__nav-item {
+    border: none !important;
+
+    .nav-link {
+      border: none !important;
     }
   }
 
   .dropdown-divider {
     border-color: $legion-panel-border;
     opacity: 0.6;
-    margin: 0.5rem 0;
+    margin: 0.85rem 0 0.25rem;
   }
 
 
@@ -246,39 +434,37 @@ $legion-accent-bar: 3px;
   }
 }
 
-/* Engineering mode: gold accent bar on active nav item instead of blue */
+/* Engineering mode: gold accent on active nav item instead of cyan */
 .legion-sidebar-wrapper.legion-sidebar--engineering .legion-sidebar.sidebar .nav-item.active .nav-link {
-  box-shadow: inset $legion-accent-bar 0 0 $legion-accent-engineering !important;
+  @include legion-sidebar-active-row($legion-accent-engineering);
 }
 
 /* Engineering — Network tree (parent row + branch lines to sub-pages) */
 .legion-sidebar-wrapper.legion-sidebar--engineering .legion-sidebar-tree {
-  margin-bottom: 0.12rem;
+  margin-bottom: 0.55rem;
 }
 
 .legion-sidebar-wrapper.legion-sidebar--engineering .legion-sidebar-tree__parent-shell {
   display: flex;
   align-items: stretch;
-  min-height: 36px;
-  border-radius: $legion-panel-radius;
+  min-height: $legion-sidebar-parent-height;
+  border-radius: $legion-sidebar-nav-radius;
   border: none;
   background: transparent;
-  transition: background 0.15s ease, color 0.15s ease;
+  transition: color 0.15s ease;
 }
 
-/* Match standard nav row: no panel behind parent; hover treats entire row like other items */
 .legion-sidebar-wrapper.legion-sidebar--engineering .legion-sidebar-tree__parent-shell:hover {
-  background: $legion-hover-bg;
+  background: transparent;
 }
 
 .legion-sidebar-wrapper.legion-sidebar--engineering .legion-sidebar-tree__parent-link {
   flex: 1 1 auto;
   display: flex;
   align-items: center;
-  /* Match .nav-link horizontal padding so icon + label align with User Manager etc. */
-  padding: 0.5rem 0.5rem 0.5rem 0.75rem;
-  font-size: 0.8125rem;
-  font-weight: inherit;
+  padding: 0.65rem 0.5rem 0.65rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
   color: $legion-text-muted;
   text-decoration: none;
   border: none;
@@ -287,14 +473,18 @@ $legion-accent-bar: 3px;
 
 .legion-sidebar-wrapper.legion-sidebar--engineering .legion-sidebar-tree__parent-link .sidebar-icon {
   flex-shrink: 0;
-  margin-right: 0.5rem;
+  margin-right: 0.65rem;
   color: inherit;
-  opacity: 0.9;
+  opacity: 0.92;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: $legion-sidebar-icon-size;
 
   svg {
-    min-width: 18px;
-    width: 18px;
-    font-size: 0.875rem;
+    min-width: $legion-sidebar-icon-size;
+    width: $legion-sidebar-icon-size;
+    font-size: 1rem;
   }
 }
 
@@ -307,7 +497,7 @@ $legion-accent-bar: 3px;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 2rem;
+  width: 2.5rem;
   padding: 0;
   margin: 0;
   border: none;
@@ -326,19 +516,19 @@ $legion-accent-bar: 3px;
 }
 
 .legion-sidebar-wrapper.legion-sidebar--engineering .legion-sidebar-tree__expand-icon {
-  font-size: 0.65rem;
+  font-size: 0.7rem;
   opacity: 0.88;
 }
 
 .legion-sidebar-wrapper.legion-sidebar--engineering .legion-sidebar-tree__branch {
   position: relative;
-  padding: 0.2rem 0 0.15rem 0;
-  margin-left: 0.75rem;
+  padding: 0.35rem 0 0.2rem 0;
+  margin-left: 1.15rem;
 }
 
 .legion-sidebar-wrapper.legion-sidebar--engineering .legion-sidebar-tree__leaves {
   position: relative;
-  padding-left: 0.9rem;
+  padding-left: 1.35rem;
   margin: 0;
 }
 
@@ -348,9 +538,9 @@ $legion-accent-bar: 3px;
   position: absolute;
   left: 0;
   top: 0;
-  bottom: 1rem;
+  bottom: 1.25rem;
   width: 1px;
-  background: rgba(255, 255, 255, 0.22);
+  background: $legion-tree-line;
   border-radius: 1px;
 }
 
@@ -363,12 +553,12 @@ $legion-accent-bar: 3px;
 .legion-sidebar-wrapper.legion-sidebar--engineering .legion-sidebar-tree__leaf::before {
   content: "";
   position: absolute;
-  left: -0.9rem;
+  left: -1.35rem;
   top: 0;
-  width: 0.75rem;
-  height: 1.125rem;
-  border-left: 1px solid rgba(255, 255, 255, 0.22);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.22);
+  width: 1rem;
+  height: 1.35rem;
+  border-left: 1px solid $legion-tree-line;
+  border-bottom: 1px solid $legion-tree-line;
   border-bottom-left-radius: 10px;
   pointer-events: none;
 }
@@ -377,8 +567,8 @@ $legion-accent-bar: 3px;
 .legion-sidebar-wrapper.legion-sidebar--engineering .legion-sidebar-tree__leaf--last::after {
   content: "";
   position: absolute;
-  left: -0.9rem;
-  top: 1.125rem;
+  left: -1.35rem;
+  top: 1.35rem;
   bottom: -0.15rem;
   width: 3px;
   background: $legion-panel-bg;
@@ -386,57 +576,161 @@ $legion-accent-bar: 3px;
 }
 
 .legion-sidebar-wrapper.legion-sidebar--engineering .legion-sidebar-tree__nav-item {
-  margin-bottom: 0.06rem;
+  margin-bottom: 0.2rem;
   border: none;
 }
 
 .legion-sidebar-wrapper.legion-sidebar--engineering .legion-sidebar-tree__leaf-link {
-  font-size: 0.75rem !important;
-  /* Left padding aligns label with parent row text; icon gap matches standard nav */
-  padding: 0.4rem 0.75rem 0.4rem 0.75rem !important;
+  position: relative;
+  font-size: 0.8125rem !important;
+  padding: 0.5rem 0.85rem 0.5rem 0.85rem !important;
   color: $legion-text-muted !important;
   background: transparent !important;
   border: none !important;
-  border-radius: $legion-panel-radius !important;
-  min-height: 32px;
+  border-radius: $legion-sidebar-nav-radius !important;
+  min-height: 40px;
   display: flex !important;
   align-items: center;
 }
 
 .legion-sidebar-wrapper.legion-sidebar--engineering .legion-sidebar-tree__leaf-link .sidebar-icon {
   flex-shrink: 0;
-  margin-right: 0.5rem;
+  margin-right: 0.65rem;
   color: inherit;
-  opacity: 0.9;
+  opacity: 0.92;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: $legion-sidebar-icon-size;
 
   svg {
-    min-width: 18px;
-    width: 18px;
-    font-size: 0.875rem;
+    min-width: $legion-sidebar-icon-size;
+    width: $legion-sidebar-icon-size;
+    font-size: 0.9375rem;
   }
 }
 
 .legion-sidebar-wrapper.legion-sidebar--engineering .legion-sidebar-tree__leaf-link:hover {
   color: $legion-text !important;
-  background: $legion-hover-bg !important;
+  background: transparent !important;
 }
 
 .legion-sidebar-wrapper.legion-sidebar--engineering .legion-sidebar-tree__nav-item.active .legion-sidebar-tree__leaf-link {
-  color: $legion-text !important;
-  background: $legion-active-bg !important;
-  font-weight: 600;
-  box-shadow: inset $legion-accent-bar 0 0 $legion-accent-engineering !important;
+  @include legion-sidebar-active-row($legion-accent-engineering);
 }
 
 /* Content area margin when legion sidebar is present */
 main.content.legion-bg {
   margin-left: $legion-sidebar-width;
   padding-bottom: var(--legion-footer-h, 40px);
+  transition: margin-left 0.25s ease;
+}
+
+/* Collapsed sidebar (desktop): narrow rail + content shift */
+@include media-breakpoint-up(md) {
+  body.legion-sidebar-contracted {
+    main.content.legion-bg {
+      margin-left: $legion-sidebar-width-contracted;
+    }
+
+    .legion-footer::before {
+      width: $legion-sidebar-width-contracted;
+    }
+
+    .legion-footer .legion-footer-inner {
+      padding-left: calc(#{$legion-sidebar-width-contracted} + 14px);
+    }
+
+    .legion-sidebar-wrapper {
+      max-width: $legion-sidebar-width-contracted;
+    }
+
+    .legion-sidebar-inner {
+      padding-left: 0.65rem;
+      padding-right: 0.65rem;
+    }
+
+    .legion-sidebar-section-label,
+    .legion-sidebar-meta,
+    .legion-sidebar-user__body,
+    .legion-sidebar-collapse-btn__label,
+    .legion-sidebar-site .fw-semibold,
+    .legion-sidebar-site > .flex-shrink-0,
+    .legion-sidebar-tree__branch,
+    .legion-sidebar-tree__expand-toggle,
+    .sidebar-text,
+    .legion-sidebar-tree__parent-title,
+    .legion-sidebar-tree__leaf-label {
+      display: none !important;
+    }
+
+    .legion-sidebar-site {
+      justify-content: center;
+      padding-left: 0.5rem;
+      padding-right: 0.5rem;
+
+      .me-2 {
+        margin-right: 0 !important;
+      }
+    }
+
+    .legion-sidebar-collapse-btn {
+      justify-content: center;
+      padding-left: 0.5rem;
+      padding-right: 0.5rem;
+    }
+
+    .legion-sidebar-user {
+      justify-content: center;
+      padding-left: 0;
+      padding-right: 0;
+    }
+
+    .legion-sidebar-tree__parent-shell {
+      min-height: $legion-sidebar-nav-height;
+    }
+
+    .legion-sidebar-tree__parent-link {
+      justify-content: center;
+      padding-left: 0.5rem;
+      padding-right: 0.5rem;
+
+      .sidebar-icon {
+        margin-right: 0 !important;
+      }
+    }
+
+    .legion-sidebar.sidebar .nav-item .nav-link {
+      justify-content: center;
+      padding-left: 0.5rem;
+      padding-right: 0.5rem;
+
+      .sidebar-icon {
+        margin-right: 0 !important;
+      }
+    }
+
+    .legion-sidebar-tree {
+      margin-bottom: 0.35rem;
+    }
+  }
 }
 
 @include media-breakpoint-down(md) {
   main.content.legion-bg {
     margin-left: 0;
+  }
+
+  .legion-sidebar-wrapper {
+    top: var(--legion-topbar-h, 44px) !important;
+    height: calc(100vh - var(--legion-topbar-h, 44px)) !important;
+    max-height: calc(100vh - var(--legion-topbar-h, 44px)) !important;
+  }
+
+  .legion-sidebar.sidebar .legion-sidebar-inner,
+  .legion-sidebar-wrapper .legion-sidebar.sidebar .legion-sidebar-inner {
+    padding-top: 1rem;
+    padding-bottom: 1.25rem;
   }
 
   /* Mobile overlay sidebar: when expanded, starts below topbar */
@@ -1628,19 +1922,21 @@ $legion-search-placeholder: #7B818F;
 }
 
 .floor-zone-glass-chip__eq {
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  color: rgba(255, 255, 255, 0.55);
-  text-transform: uppercase;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: #fff;
+  text-transform: none;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 120px;
+  max-width: 160px;
+  line-height: 1.2;
 }
 
 .floor-zone-glass-chip--expanded .floor-zone-glass-chip__eq {
-  max-width: 140px;
+  font-size: 14px;
+  max-width: 200px;
 }
 
 .floor-zone-glass-chip__header-actions {
@@ -2805,30 +3101,35 @@ $legion-search-placeholder: #7B818F;
 
 /* Shared sidebar tree styles (Operator + Engineering) */
 .legion-sidebar-wrapper .legion-sidebar-tree {
-  margin-bottom: 0.12rem;
+  margin-bottom: 0.55rem;
 }
 
 .legion-sidebar-wrapper .legion-sidebar-tree__parent-shell {
   display: flex;
   align-items: stretch;
-  min-height: 36px;
-  border-radius: $legion-panel-radius;
+  min-height: $legion-sidebar-parent-height;
+  border-radius: $legion-sidebar-nav-radius;
   border: none;
   background: transparent;
-  transition: background 0.15s ease, color 0.15s ease;
+  transition: color 0.15s ease;
 }
 
 .legion-sidebar-wrapper .legion-sidebar-tree__parent-shell:hover {
-  background: $legion-hover-bg;
+  background: transparent;
+}
+
+.legion-sidebar-wrapper .legion-sidebar-tree__parent--within .legion-sidebar-tree__parent-shell {
+  border: none;
+  background: transparent;
 }
 
 .legion-sidebar-wrapper .legion-sidebar-tree__parent-link {
   flex: 1 1 auto;
   display: flex;
   align-items: center;
-  padding: 0.5rem 0.5rem 0.5rem 0.75rem;
-  font-size: 0.8125rem;
-  font-weight: inherit;
+  padding: 0.65rem 0.5rem 0.65rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
   color: $legion-text-muted;
   text-decoration: none;
   border: none;
@@ -2837,14 +3138,18 @@ $legion-search-placeholder: #7B818F;
 
 .legion-sidebar-wrapper .legion-sidebar-tree__parent-link .sidebar-icon {
   flex-shrink: 0;
-  margin-right: 0.5rem;
+  margin-right: 0.65rem;
   color: inherit;
-  opacity: 0.9;
+  opacity: 0.92;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: $legion-sidebar-icon-size;
 
   svg {
-    min-width: 18px;
-    width: 18px;
-    font-size: 0.875rem;
+    min-width: $legion-sidebar-icon-size;
+    width: $legion-sidebar-icon-size;
+    font-size: 1rem;
   }
 }
 
@@ -2857,7 +3162,7 @@ $legion-search-placeholder: #7B818F;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 2rem;
+  width: 2.5rem;
   padding: 0;
   margin: 0;
   border: none;
@@ -2876,7 +3181,7 @@ $legion-search-placeholder: #7B818F;
 }
 
 .legion-sidebar-wrapper .legion-sidebar-tree__expand-icon {
-  font-size: 0.65rem;
+  font-size: 0.7rem;
   opacity: 0.88;
 }
 
@@ -2912,13 +3217,13 @@ $legion-search-placeholder: #7B818F;
 
 .legion-sidebar-wrapper .legion-sidebar-tree__branch {
   position: relative;
-  padding: 0.2rem 0 0.15rem 0;
-  margin-left: 0.75rem;
+  padding: 0.35rem 0 0.2rem 0;
+  margin-left: 1.15rem;
 }
 
 .legion-sidebar-wrapper .legion-sidebar-tree__leaves {
   position: relative;
-  padding-left: 0.9rem;
+  padding-left: 1.35rem;
   margin: 0;
 }
 
@@ -2927,9 +3232,9 @@ $legion-search-placeholder: #7B818F;
   position: absolute;
   left: 0;
   top: 0;
-  bottom: 1rem;
+  bottom: 1.25rem;
   width: 1px;
-  background: rgba(255, 255, 255, 0.22);
+  background: $legion-tree-line;
   border-radius: 1px;
 }
 
@@ -2941,12 +3246,12 @@ $legion-search-placeholder: #7B818F;
 .legion-sidebar-wrapper .legion-sidebar-tree__leaf::before {
   content: "";
   position: absolute;
-  left: -0.9rem;
+  left: -1.35rem;
   top: 0;
-  width: 0.75rem;
-  height: 1.125rem;
-  border-left: 1px solid rgba(255, 255, 255, 0.22);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.22);
+  width: 1rem;
+  height: 1.35rem;
+  border-left: 1px solid $legion-tree-line;
+  border-bottom: 1px solid $legion-tree-line;
   border-bottom-left-radius: 10px;
   pointer-events: none;
 }
@@ -2954,8 +3259,8 @@ $legion-search-placeholder: #7B818F;
 .legion-sidebar-wrapper .legion-sidebar-tree__leaf--last::after {
   content: "";
   position: absolute;
-  left: -0.9rem;
-  top: 1.125rem;
+  left: -1.35rem;
+  top: 1.35rem;
   bottom: -0.15rem;
   width: 3px;
   background: $legion-panel-bg;
@@ -2963,50 +3268,56 @@ $legion-search-placeholder: #7B818F;
 }
 
 .legion-sidebar-wrapper .legion-sidebar-tree__nav-item {
-  margin-bottom: 0.06rem;
+  margin-bottom: 0.2rem;
   border: none;
 }
 
 .legion-sidebar-wrapper .legion-sidebar-tree__leaf-link {
-  font-size: 0.75rem !important;
-  padding: 0.4rem 0.75rem 0.4rem 0.75rem !important;
+  position: relative;
+  font-size: 0.8125rem !important;
+  padding: 0.5rem 0.85rem 0.5rem 0.85rem !important;
   color: $legion-text-muted !important;
   background: transparent !important;
   border: none !important;
-  border-radius: $legion-panel-radius !important;
-  min-height: 32px;
+  border-radius: $legion-sidebar-nav-radius !important;
+  min-height: 40px;
   display: flex !important;
   align-items: center;
 }
 
 .legion-sidebar-wrapper .legion-sidebar-tree__leaf-link .sidebar-icon {
   flex-shrink: 0;
-  margin-right: 0.5rem;
+  margin-right: 0.65rem;
   color: inherit;
-  opacity: 0.9;
+  opacity: 0.92;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: $legion-sidebar-icon-size;
 
   svg {
-    min-width: 18px;
-    width: 18px;
-    font-size: 0.875rem;
+    min-width: $legion-sidebar-icon-size;
+    width: $legion-sidebar-icon-size;
+    font-size: 0.9375rem;
   }
 }
 
 .legion-sidebar-wrapper .legion-sidebar-tree__leaf-link:hover {
   color: $legion-text !important;
-  background: $legion-hover-bg !important;
+  background: transparent !important;
+}
+
+.legion-sidebar-wrapper .legion-sidebar-tree__nav-item:not(.active) .legion-sidebar-tree__leaf-link:hover {
+  background: transparent !important;
 }
 
 .legion-sidebar-wrapper .legion-sidebar-tree__nav-item.active .legion-sidebar-tree__leaf-link {
-  color: $legion-text !important;
-  background: $legion-active-bg !important;
-  font-weight: 600;
-  box-shadow: inset $legion-accent-bar 0 0 $legion-accent !important;
+  @include legion-sidebar-active-row($legion-accent);
 }
 
 /* Keep engineering tree active accent gold */
 .legion-sidebar-wrapper.legion-sidebar--engineering .legion-sidebar-tree__nav-item.active .legion-sidebar-tree__leaf-link {
-  box-shadow: inset $legion-accent-bar 0 0 $legion-accent-engineering !important;
+  @include legion-sidebar-active-row($legion-accent-engineering);
 }
 
 /* Workspace table: dark rows, white text — professional operator look */

@@ -25,6 +25,7 @@ import { engineeringRepository } from "../../../lib/data";
 import { USE_HIERARCHY_API } from "../../../lib/data/config";
 import { isBackendSiteId } from "../../../lib/data/siteIdUtils";
 import { saveWorkingVersion } from "../../../lib/data/repositories/engineeringRepository";
+import { appNotify, appLogger, withEngineeringAction } from "../../../lib/app-activity";
 import { Routes } from "../../../routes";
 import EquipmentTemplatesTable from "./components/EquipmentTemplatesTable";
 import GraphicTemplatesTable from "./components/GraphicTemplatesTable";
@@ -175,10 +176,22 @@ export default function TemplateLibraryPage() {
     const nextTemplates = { equipmentTemplates: nextEq, graphicTemplates: nextGfx };
     actions.setTemplates(nextTemplates);
     if (USE_HIERARCHY_API && isBackendSiteId(site) && backendWorkingVersionSynced) {
-      saveWorkingVersion(site, { ...workingState, templates: nextTemplates }).catch((err) => {
-        // eslint-disable-next-line no-console
-        console.error("Failed to persist imported templates", err);
-      });
+      saveWorkingVersion(site, { ...workingState, templates: nextTemplates })
+        .then(() => {
+          appNotify.success("Templates imported successfully");
+          appLogger.success("Templates imported successfully", {
+            area: "Template Library",
+            action: "Import templates",
+          });
+        })
+        .catch((err) => {
+          appNotify.error("Failed to save equipment template");
+          appLogger.error("Failed to save equipment template", {
+            area: "Template Library",
+            action: "Import templates",
+            details: err?.message,
+          });
+        });
     }
   }, [workingState, site, actions, backendWorkingVersionSynced]);
 
@@ -239,9 +252,19 @@ export default function TemplateLibraryPage() {
     }
     actions.setTemplates(nextTemplates);
     if (USE_HIERARCHY_API && isBackendSiteId(site) && backendWorkingVersionSynced) {
-      saveWorkingVersion(site, { ...workingState, templates: nextTemplates }).catch((err) => {
-        // eslint-disable-next-line no-console
-        console.error("Failed to persist equipment template", err);
+      withEngineeringAction({
+        area: "Template Library",
+        action: payload.id ? "Update equipment template" : "Create equipment template",
+        infoMessage: "Saving equipment template...",
+        successMessage: "Equipment template updated successfully",
+        errorMessage: "Failed to save equipment template",
+        run: () => saveWorkingVersion(site, { ...workingState, templates: nextTemplates }),
+      }).catch(() => {});
+    } else {
+      appNotify.success("Equipment template updated successfully");
+      appLogger.success("Equipment template updated successfully", {
+        area: "Template Library",
+        action: "Save equipment template",
       });
     }
     setShowEquipmentEditorDrawer(false);

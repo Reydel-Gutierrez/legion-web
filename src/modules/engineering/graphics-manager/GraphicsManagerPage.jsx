@@ -10,11 +10,14 @@ import { useWorkingVersion, useActiveDeployment, selectSiteTree } from "../../..
 import { findNodeById } from "../site-builder/utils/siteTreeUtils";
 import LegionHeroHeader from "../../../components/legion/LegionHeroHeader";
 import { engineeringRepository, USE_HIERARCHY_API } from "../../../lib/data";
+import { appNotify, appLogger, withEngineeringAction } from "../../../lib/app-activity";
 import { createGraphicTemplate } from "../working-version/workingVersionModel";
 import {
   cloneGraphicEditorState,
+  cloneGraphicCanvasObject,
   countBoundTemplatePointBindings,
   generateGraphicTemplateId,
+  GRAPHIC_OBJECT_CLONE_OFFSET,
 } from "./graphicTemplateUtils";
 import GraphicsToolbar from "./components/GraphicsToolbar";
 import SaveGraphicTemplateModal from "./components/SaveGraphicTemplateModal";
@@ -166,6 +169,8 @@ export default function GraphicsManagerPage() {
   const [zoneModalInitialTab, setZoneModalInitialTab] = useState("general");
   const importImageInputRef = useRef(null);
   const importSvgInputRef = useRef(null);
+  const clipboardObjectRef = useRef(null);
+  const lastPastePositionRef = useRef(null);
 
   const isNewBuilding = engineeringRepository.isNewEngineeringBuildingFlow(site);
   const hasNoSite = isNewBuilding && !workingState?.site;
@@ -755,25 +760,25 @@ export default function GraphicsManagerPage() {
     [selectedEquipmentId, selectedLayoutNodeId, selectedObject?.id, workingGraphics, workingSiteLayoutGraphics, actions]
   );
 
-  const handleDuplicateObject = useCallback(
-    (objectId) => {
-      if (!objectId) return;
+  const insertGraphicObject = useCallback(
+    (newObj, insertAfterId = null) => {
+      if (!newObj) return;
 
-      const cloneOffset = 12;
+      const appendObject = (objects) => {
+        if (!insertAfterId) return [...objects, newObj];
+        const idx = objects.findIndex((o) => o.id === insertAfterId);
+        if (idx < 0) return [...objects, newObj];
+        return [...objects.slice(0, idx + 1), newObj, ...objects.slice(idx + 1)];
+      };
 
       if (selectedLayoutNodeId) {
         const current = workingSiteLayoutGraphics[selectedLayoutNodeId] || { objects: [] };
         const objects = current.objects || [];
-        const idx = objects.findIndex((o) => o.id === objectId);
-        if (idx < 0) return;
-
-        const original = objects[idx];
-        if (!original) return;
-
-        const clone = { ...original, id: generateObjectId(), x: (original.x ?? 0) + cloneOffset, y: (original.y ?? 0) + cloneOffset };
-        const nextObjects = [...objects.slice(0, idx + 1), clone, ...objects.slice(idx + 1)];
-        actions.setGraphicForSiteLayout(selectedLayoutNodeId, { ...current, objects: nextObjects });
-        setSelectedObject(clone);
+        actions.setGraphicForSiteLayout(selectedLayoutNodeId, {
+          ...current,
+          objects: appendObject(objects),
+        });
+        setSelectedObject(newObj);
         return;
       }
 
@@ -789,35 +794,84 @@ export default function GraphicsManagerPage() {
               canvasSize: { ...EQUIPMENT_GRAPHIC_CANVAS_DEFAULT },
             };
           const objects = base.objects || [];
-          const idx = objects.findIndex((o) => o.id === objectId);
-          if (idx < 0) return base;
-
-          const original = objects[idx];
-          if (!original) return base;
-
-          const clone = { ...original, id: generateObjectId(), x: (original.x ?? 0) + cloneOffset, y: (original.y ?? 0) + cloneOffset };
-          const nextObjects = [...objects.slice(0, idx + 1), clone, ...objects.slice(idx + 1)];
-          setSelectedObject(clone);
-          return { ...base, objects: nextObjects };
+          setSelectedObject(newObj);
+          return { ...base, objects: appendObject(objects) };
         });
         return;
       }
 
       const current = workingGraphics[selectedEquipmentId] || { objects: [] };
       const objects = current.objects || [];
-      const idx = objects.findIndex((o) => o.id === objectId);
-      if (idx < 0) return;
+      actions.setGraphicForEquipment(selectedEquipmentId, {
+        ...current,
+        objects: appendObject(objects),
+      });
+      setSelectedObject(newObj);
+    },
+    [selectedEquipmentId, selectedLayoutNodeId, workingGraphics, workingSiteLayoutGraphics, actions]
+  );
 
-      const original = objects[idx];
+  const handleDuplicateObject = useCallback(
+    (objectId) => {
+      if (!objectId) return;
+
+      const resolveObjects = () => {
+        if (selectedLayoutNodeId) {
+          return (workingSiteLayoutGraphics[selectedLayoutNodeId] || { objects: [] }).objects || [];
+        }
+        if (!selectedEquipmentId) {
+          return (workingGraphic?.objects) || [];
+        }
+        return (workingGraphics[selectedEquipmentId] || { objects: [] }).objects || [];
+      };
+
+      const objects = resolveObjects();
+      const original = objects.find((o) => o.id === objectId);
       if (!original) return;
 
-      const clone = { ...original, id: generateObjectId(), x: (original.x ?? 0) + cloneOffset, y: (original.y ?? 0) + cloneOffset };
-      const nextObjects = [...objects.slice(0, idx + 1), clone, ...objects.slice(idx + 1)];
-      actions.setGraphicForEquipment(selectedEquipmentId, { ...current, objects: nextObjects });
-      setSelectedObject(clone);
+      const clone = cloneGraphicCanvasObject(original, {
+        id: generateObjectId(),
+        x: (original.x ?? 0) + GRAPHIC_OBJECT_CLONE_OFFSET,
+        y: (original.y ?? 0) + GRAPHIC_OBJECT_CLONE_OFFSET,
+      });
+
+      const idx = objects.findIndex((o) => o.id === objectId);
+      const insertAfterId = idx >= 0 ? objectId : null;
+      insertGraphicObject(clone, insertAfterId);
     },
-    [selectedEquipmentId, selectedLayoutNodeId, workingGraphics, workingSiteLayoutGraphics, actions, generateObjectId]
+    [
+      selectedEquipmentId,
+      selectedLayoutNodeId,
+      workingGraphics,
+      workingSiteLayoutGraphics,
+      workingGraphic,
+      generateObjectId,
+      insertGraphicObject,
+    ]
   );
+
+  const handleCopyObject = useCallback(() => {
+    if (!selectedObject) return;
+    clipboardObjectRef.current = cloneGraphicCanvasObject(selectedObject);
+    lastPastePositionRef.current = null;
+  }, [selectedObject]);
+
+  const handlePasteObject = useCallback(() => {
+    const source = clipboardObjectRef.current;
+    if (!source) return;
+
+    const offset = GRAPHIC_OBJECT_CLONE_OFFSET;
+    const anchor = lastPastePositionRef.current ?? { x: source.x ?? 0, y: source.y ?? 0 };
+    const position = { x: anchor.x + offset, y: anchor.y + offset };
+    const clone = cloneGraphicCanvasObject(source, {
+      id: generateObjectId(),
+      x: position.x,
+      y: position.y,
+    });
+
+    lastPastePositionRef.current = position;
+    insertGraphicObject(clone);
+  }, [generateObjectId, insertGraphicObject]);
 
   const handleReorderObject = useCallback(
     (objectId, direction) => {
@@ -1085,20 +1139,29 @@ export default function GraphicsManagerPage() {
     setPublishingGraphicToGlobal(true);
     setGlobalLibraryToast(null);
     try {
-      const editorState = cloneGraphicEditorState(selectedGraphic);
-      const boundPointCount = countBoundTemplatePointBindings(editorState.objects);
-      const payload = {
-        ...templateBeingEdited,
-        name: (selectedGraphic.name || templateBeingEdited.name || "").trim() || templateBeingEdited.name,
-        graphicEditorState: editorState,
-        boundPointCount,
-      };
-      const eqSummary = (workingState.templates?.equipmentTemplates || []).map((e) => ({
-        id: e.id,
-        name: e.name,
-        equipmentType: e.equipmentType,
-      }));
-      await engineeringRepository.pushGraphicTemplateToGlobal(payload, eqSummary);
+      await withEngineeringAction({
+        area: "Graphics Manager",
+        action: "Publish graphic template",
+        infoMessage: "Publishing graphic template...",
+        successMessage: "Floor graphic saved successfully",
+        errorMessage: "Failed to update graphic",
+        run: async () => {
+          const editorState = cloneGraphicEditorState(selectedGraphic);
+          const boundPointCount = countBoundTemplatePointBindings(editorState.objects);
+          const payload = {
+            ...templateBeingEdited,
+            name: (selectedGraphic.name || templateBeingEdited.name || "").trim() || templateBeingEdited.name,
+            graphicEditorState: editorState,
+            boundPointCount,
+          };
+          const eqSummary = (workingState.templates?.equipmentTemplates || []).map((e) => ({
+            id: e.id,
+            name: e.name,
+            equipmentType: e.equipmentType,
+          }));
+          await engineeringRepository.pushGraphicTemplateToGlobal(payload, eqSummary);
+        },
+      });
       setGlobalLibraryToast({
         variant: "success",
         message: "Graphic template saved to Global Template Library. Other projects can import it from Template Library.",
@@ -1286,7 +1349,18 @@ export default function GraphicsManagerPage() {
             objectPositionX: 50,
             objectPositionY: 50,
           });
+          const imageMsg = selectedLayoutNodeId
+            ? "Building image updated successfully"
+            : "Floor graphic saved successfully";
+          appNotify.success(imageMsg);
+          appLogger.success(imageMsg, { area: "Graphics Manager", action: "Import background image" });
         } catch (err) {
+          appNotify.error("Image upload failed");
+          appLogger.error("Image upload failed", {
+            area: "Graphics Manager",
+            action: "Import background image",
+            details: err?.message,
+          });
           console.error("Failed to import image (downscale)", err);
           // Do not embed full-file base64 for layout graphics — it exceeds localStorage and freezes the app.
           if (selectedLayoutNodeId) return;
@@ -1306,7 +1380,18 @@ export default function GraphicsManagerPage() {
               objectPositionX: 50,
               objectPositionY: 50,
             });
+            appNotify.success("Floor graphic saved successfully");
+            appLogger.success("Floor graphic saved successfully", {
+              area: "Graphics Manager",
+              action: "Import background image",
+            });
           } catch (err2) {
+            appNotify.error("Image upload failed");
+            appLogger.error("Image upload failed", {
+              area: "Graphics Manager",
+              action: "Import background image",
+              details: err2?.message,
+            });
             console.error("Failed to import image", err2);
           }
         }
@@ -1343,8 +1428,12 @@ export default function GraphicsManagerPage() {
       setShowAssignModal(true);
       return;
     }
+    if (selectedObject?.id) {
+      handleDuplicateObject(selectedObject.id);
+      return;
+    }
     console.log("Duplicate");
-  }, [hasSelection, selectedLayoutNodeId, selectedEquipmentId]);
+  }, [hasSelection, selectedLayoutNodeId, selectedEquipmentId, selectedObject?.id, handleDuplicateObject]);
   const handleDelete = useCallback(() => {
     if (!hasSelection) {
       setAssignPendingLayoutNodeId(selectedLayoutNodeId);
@@ -1562,6 +1651,7 @@ export default function GraphicsManagerPage() {
           publishingGraphicToGlobal={publishingGraphicToGlobal}
           onPublishGraphicToGlobal={handlePublishGraphicTemplateToGlobal}
           selectedObjectIsShape={selectedObject?.type === "shape"}
+          duplicateCanvasObjectSelected={!!selectedObject}
           selectedZoneEnabled={isZoneShape(selectedObject)}
           onAddZone={handleAddZone}
           onOpenZoneSettings={handleOpenZoneSettings}
@@ -1599,6 +1689,9 @@ export default function GraphicsManagerPage() {
               onBackgroundCropChange={handleBackgroundCropChange}
               onUpdateBackgroundImage={handleBackgroundStyleChange}
               onDeleteObject={handleDeleteObject}
+              onCopyObject={handleCopyObject}
+              onPasteObject={handlePasteObject}
+              onDuplicateObject={handleDuplicateObject}
               availablePoints={selectedLayoutNodeId ? [] : availablePoints}
               equipmentList={equipmentList}
               templates={workingState?.templates}

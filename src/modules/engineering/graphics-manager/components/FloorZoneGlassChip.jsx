@@ -7,6 +7,7 @@ import {
   ZONE_RUNTIME_STATES,
   fieldEnabled,
 } from "../floorZoneModel";
+import { buildEmptyZonePointValues } from "../../../../lib/operator/siteLayoutLivePoints";
 
 function parseTempMainDisplay(raw) {
   if (raw == null || raw === "—" || raw === "Offline") return { main: "—", unit: "" };
@@ -64,13 +65,16 @@ export default function FloorZoneGlassChip({
   expanded = false,
   onToggleExpand,
   onOpenEquipmentDetail,
+  allowSimulatedFallback = true,
 }) {
   const zc = zoneObject?.zoneConfig || {};
   const zoneObjectId = zoneObject?.id;
   const values = useMemo(() => {
-    const sim = buildSimulatedPointValuesForObjectId(zoneObjectId);
+    const sim = allowSimulatedFallback
+      ? buildSimulatedPointValuesForObjectId(zoneObjectId)
+      : buildEmptyZonePointValues();
     return { ...sim, ...(mergedValues || {}) };
-  }, [zoneObjectId, mergedValues]);
+  }, [zoneObjectId, mergedValues, allowSimulatedFallback]);
   const zoneName = (zc.zoneName || "").trim();
   const eqTitle = useMemo(
     () =>

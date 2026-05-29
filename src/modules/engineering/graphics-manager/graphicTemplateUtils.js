@@ -13,6 +13,16 @@ export function countBoundTemplatePointBindings(objects) {
   return n;
 }
 
+/** Pixel offset applied when duplicating or pasting canvas objects. */
+export const GRAPHIC_OBJECT_CLONE_OFFSET = 12;
+
+/** Deep-clone a canvas object (shape, text, value, link) including zoneConfig. */
+export function cloneGraphicCanvasObject(obj, overrides = {}) {
+  if (!obj) return null;
+  const clone = JSON.parse(JSON.stringify(obj));
+  return { ...clone, ...overrides };
+}
+
 export function cloneGraphicEditorState(graphic) {
   if (!graphic) {
     return { objects: [], canvasSize: { width: 800, height: 800 }, backgroundImage: undefined };

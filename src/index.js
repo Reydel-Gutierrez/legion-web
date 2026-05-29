@@ -18,19 +18,22 @@ import { SiteProvider } from "./app/providers/SiteProvider";
 import { EngineeringVersionProvider } from "./app/providers/EngineeringVersionProvider";
 import { WorkspaceModeProvider } from "./app/providers/WorkspaceModeProvider";
 import { ValidationProvider } from "./app/providers/ValidationProvider";
+import { AppActivityProvider } from "./app/providers/AppActivityProvider";
 
 ReactDOM.render(
   <HashRouter>
-    <SiteProvider>
-      <EngineeringVersionProvider>
-        <WorkspaceModeProvider>
-          <ValidationProvider>
-            <ScrollToTop />
-            <AppRoutes />
-          </ValidationProvider>
-        </WorkspaceModeProvider>
-      </EngineeringVersionProvider>
-    </SiteProvider>
+    <AppActivityProvider>
+      <SiteProvider>
+        <EngineeringVersionProvider>
+          <WorkspaceModeProvider>
+            <ValidationProvider>
+              <ScrollToTop />
+              <AppRoutes />
+            </ValidationProvider>
+          </WorkspaceModeProvider>
+        </EngineeringVersionProvider>
+      </SiteProvider>
+    </AppActivityProvider>
   </HashRouter>,
   document.getElementById("root")
 );

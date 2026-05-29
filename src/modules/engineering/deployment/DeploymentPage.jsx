@@ -27,6 +27,7 @@ import { engineeringRepository, deploymentRepository, USE_HIERARCHY_API, accessR
 import { useSite } from "../../../app/providers/SiteProvider";
 import { WORKING_VERSION_ACTIONS } from "../working-version/workingVersionReducer";
 import { isBackendSiteId } from "../../../lib/data/siteIdUtils";
+import { appNotify, appLogger } from "../../../lib/app-activity";
 
 function getDeployerDisplayName() {
   try {
@@ -66,7 +67,6 @@ export default function DeploymentPage() {
   }, [workingState.equipment, workingState.mappings, workingState.graphics, workingState.templates]);
 
   const [showOverrideModal, setShowOverrideModal] = useState(false);
-  const [toastMessage, setToastMessage] = useState(null);
   const useApiDeploy = USE_HIERARCHY_API && isBackendSiteId(site);
   const [apiDeployLoading, setApiDeployLoading] = useState(false);
   const [apiVersionSummary, setApiVersionSummary] = useState(null);
@@ -150,6 +150,8 @@ export default function DeploymentPage() {
     if (errors > 0) return;
     if (useApiDeploy) {
       setApiDeployLoading(true);
+      appNotify.info("Deploying version...");
+      appLogger.info("Deploying version...", { area: "Deployment", action: "Deploy to live" });
       try {
         const res = await engineeringRepository.postDeployWorkingVersion(site, undefined, {
           deployedBy: getDeployerDisplayName(),
@@ -157,18 +159,19 @@ export default function DeploymentPage() {
         applyApiDeploySuccess(res);
         engineeringRepository.notifyEngineeringHierarchyChanged(site);
         setVersionMetaTick((t) => t + 1);
-        setToastMessage("Version deployed successfully");
-        setTimeout(() => setToastMessage(null), 3000);
+        appNotify.success("Version deployed successfully");
+        appLogger.success("Version deployed successfully", { area: "Deployment", action: "Deploy to live" });
       } catch (e) {
-        setToastMessage(e?.message ? `Deploy failed: ${e.message}` : "Deploy failed");
-        setTimeout(() => setToastMessage(null), 5000);
+        const msg = e?.message ? `Deploy failed: ${e.message}` : "Deploy failed";
+        appNotify.error(msg);
+        appLogger.error(msg, { area: "Deployment", action: "Deploy to live", details: e?.message });
       } finally {
         setApiDeployLoading(false);
       }
       return;
     }
-    setToastMessage("Deployment successful.");
-    setTimeout(() => setToastMessage(null), 3000);
+    appNotify.success("Version deployed successfully");
+    appLogger.success("Version deployed successfully", { area: "Deployment", action: "Deploy to live" });
     actions.deployWorkingVersion();
   }, [errors, useApiDeploy, site, applyApiDeploySuccess, actions]);
 
@@ -186,6 +189,8 @@ export default function DeploymentPage() {
       const notes = reason || "Override activation";
       if (useApiDeploy) {
         setApiDeployLoading(true);
+        appNotify.info("Deploying version...");
+        appLogger.info("Deploying version...", { area: "Deployment", action: "Deploy override" });
         try {
           const res = await engineeringRepository.postDeployWorkingVersion(site, notes, {
             deployedBy: getDeployerDisplayName(),
@@ -193,18 +198,19 @@ export default function DeploymentPage() {
           applyApiDeploySuccess(res);
           engineeringRepository.notifyEngineeringHierarchyChanged(site);
           setVersionMetaTick((t) => t + 1);
-          setToastMessage("Version deployed successfully");
-          setTimeout(() => setToastMessage(null), 3000);
+          appNotify.success("Version deployed successfully");
+          appLogger.success("Version deployed successfully", { area: "Deployment", action: "Deploy override" });
         } catch (e) {
-          setToastMessage(e?.message ? `Deploy failed: ${e.message}` : "Deploy failed");
-          setTimeout(() => setToastMessage(null), 5000);
+          const msg = e?.message ? `Deploy failed: ${e.message}` : "Deploy failed";
+          appNotify.error(msg);
+          appLogger.error(msg, { area: "Deployment", action: "Deploy override", details: e?.message });
         } finally {
           setApiDeployLoading(false);
         }
         return;
       }
-      setToastMessage("Deployment successful.");
-      setTimeout(() => setToastMessage(null), 3000);
+      appNotify.success("Version deployed successfully");
+      appLogger.success("Version deployed successfully", { area: "Deployment", action: "Deploy override" });
       actions.deployWorkingVersion({ notes });
     },
     [useApiDeploy, site, applyApiDeploySuccess, actions]
@@ -423,14 +429,6 @@ export default function DeploymentPage() {
           </Card.Body>
         </Card>
 
-        {toastMessage && (
-          <div
-            className="position-fixed bottom-0 end-0 m-3 p-3 bg-success text-white rounded shadow"
-            style={{ zIndex: 1100 }}
-          >
-            {toastMessage}
-          </div>
-        )}
       </div>
 
       <DeployAnywayModal

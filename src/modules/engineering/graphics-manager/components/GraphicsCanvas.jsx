@@ -10,6 +10,7 @@ import {
   faLink,
   faHashtag,
   faTrash,
+  faCopy,
   faExternalLinkAlt,
 } from "@fortawesome/free-solid-svg-icons";
 import FloorZoneGlassChip from "./FloorZoneGlassChip";
@@ -43,6 +44,9 @@ function CanvasToolbar({
   onAddLink,
   onAddShape,
   onDeleteObject,
+  onCopyObject,
+  onPasteObject,
+  onDuplicateObject,
   hasSelection,
   canBindPoint,
   liveZonePreview = false,
@@ -148,6 +152,16 @@ function CanvasToolbar({
         Bind Point
       </button>
       <div className="site-builder-toolbar-divider" />
+      <button
+        type="button"
+        className="btn btn-sm legion-hero-btn legion-hero-btn--secondary"
+        title="Duplicate selected object (Ctrl+C / Ctrl+V also supported)"
+        disabled={!hasSelection || !onDuplicateObject}
+        onClick={() => onDuplicateObject?.()}
+      >
+        <FontAwesomeIcon icon={faCopy} className="me-1" />
+        Duplicate
+      </button>
       <button
         type="button"
         className="btn btn-sm legion-hero-btn legion-hero-btn--secondary"
@@ -437,6 +451,9 @@ export default function GraphicsCanvas({
   onBackgroundCropChange,
   onUpdateBackgroundImage,
   onDeleteObject,
+  onCopyObject,
+  onPasteObject,
+  onDuplicateObject,
   availablePoints = [],
   equipmentList = [],
   templates = null,
@@ -983,13 +1000,29 @@ export default function GraphicsCanvas({
       const active = document.activeElement;
       const isInput = active && (active.tagName === "INPUT" || active.tagName === "TEXTAREA" || active.isContentEditable);
       if (isInput) return;
+      if (liveZonePreview) return;
+
+      const mod = e.ctrlKey || e.metaKey;
+      const key = e.key?.toLowerCase();
+
+      if (mod && key === "c" && selectedObjectId && onCopyObject) {
+        e.preventDefault();
+        onCopyObject();
+        return;
+      }
+      if (mod && key === "v" && onPasteObject) {
+        e.preventDefault();
+        onPasteObject();
+        return;
+      }
+
       if (!selectedObjectId || !onDeleteObject) return;
       if (e.key === "Delete" || e.key === "Backspace") {
         e.preventDefault();
         onDeleteObject(selectedObjectId);
       }
     },
-    [selectedObjectId, onDeleteObject]
+    [selectedObjectId, onDeleteObject, onCopyObject, onPasteObject, onDuplicateObject, liveZonePreview]
   );
 
   useEffect(() => {
@@ -1059,6 +1092,9 @@ export default function GraphicsCanvas({
         onAddLink={onAddLink}
         onAddShape={onAddShape}
         onDeleteObject={selectedObjectId ? () => onDeleteObject(selectedObjectId) : undefined}
+        onDuplicateObject={
+          selectedObjectId && onDuplicateObject ? () => onDuplicateObject(selectedObjectId) : undefined
+        }
         hasSelection={!!selectedObjectId}
         canBindPoint={canBindPoint}
         liveZonePreview={liveZonePreview}

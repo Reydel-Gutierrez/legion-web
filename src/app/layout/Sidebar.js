@@ -3,7 +3,18 @@ import SimpleBar from 'simplebar-react';
 import { useLocation } from "react-router-dom";
 import { CSSTransition } from 'react-transition-group';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faUsers, faBoxOpen, faCog, faSignOutAlt, faTimes, faCalendarAlt, faMapPin, faInbox } from "@fortawesome/free-solid-svg-icons";
+import {
+  faUsers,
+  faBoxOpen,
+  faCog,
+  faSignOutAlt,
+  faTimes,
+  faCalendarAlt,
+  faMapPin,
+  faInbox,
+  faChevronLeft,
+  faChevronRight,
+} from "@fortawesome/free-solid-svg-icons";
 import { Nav, Badge, Image, Button, Dropdown, Navbar } from '@themesberg/react-bootstrap';
 import { Link } from "react-router-dom";
 
@@ -24,6 +35,16 @@ import { getPersistedWorkingVersionSiteNames } from "../../lib/data/persistence/
 import EngineeringSidebarTreeGroup from "./EngineeringSidebarTreeGroup";
 import { getEngineeringSidebarGroups } from "./engineeringSidebarConfig";
 import { getOperatorSidebarGroups } from "./operatorSidebarConfig";
+
+const LEGION_SIDEBAR_CONTRACTED_KEY = "legionSidebarContracted";
+
+function readSidebarContracted() {
+  try {
+    return localStorage.getItem(LEGION_SIDEBAR_CONTRACTED_KEY) === "true";
+  } catch {
+    return false;
+  }
+}
 
 export default function Sidebar() {
   const { setSite, apiSites, sitesLoading, sitesError, refreshSites } = useSite();
@@ -71,8 +92,42 @@ export default function Sidebar() {
   const { pathname } = location;
   const [show, setShow] = useState(false);
   const showClass = show ? "show" : "";
+  const [contracted, setContracted] = useState(() => {
+    const stored = readSidebarContracted();
+    if (stored && typeof document !== "undefined") {
+      document.body.classList.add("legion-sidebar-contracted");
+    }
+    return stored;
+  });
 
   const onCollapse = () => setShow(!show);
+  const toggleSidebarContracted = () => setContracted((v) => !v);
+
+  useEffect(() => {
+    document.body.classList.toggle("legion-sidebar-contracted", contracted);
+    try {
+      localStorage.setItem(LEGION_SIDEBAR_CONTRACTED_KEY, contracted ? "true" : "false");
+    } catch {
+      /* ignore storage errors */
+    }
+    return () => document.body.classList.remove("legion-sidebar-contracted");
+  }, [contracted]);
+
+  const sidebarUser = useMemo(() => {
+    try {
+      return accessRepository.getCurrentUserForAccess();
+    } catch {
+      return null;
+    }
+  }, []);
+
+  const sidebarUserInitials = useMemo(() => {
+    const name = sidebarUser?.fullName || "";
+    const parts = name.trim().split(/\s+/).filter(Boolean);
+    if (parts.length >= 2) return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
+    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+    return "LC";
+  }, [sidebarUser]);
 
   /** Truncates in CSS; label is also shortened when UUID / very long (see formatSiteNameForDisplay). */
   const SiteMenuRow = ({ label, onSelect, showNoRelease }) => (
@@ -146,9 +201,20 @@ export default function Sidebar() {
         </Navbar.Toggle>
       </Navbar>
       <CSSTransition timeout={300} in={show} classNames="sidebar-transition">
-        <div className={`legion-sidebar-wrapper collapse ${showClass} d-md-block ${currentMode === "engineering" ? "legion-sidebar--engineering" : ""}`}>
-          <SimpleBar className="sidebar legion-sidebar text-white">
-            <div className="sidebar-inner px-4 pt-3">
+        <div
+          className={[
+            "legion-sidebar-wrapper",
+            "collapse",
+            showClass,
+            "d-md-block",
+            currentMode === "engineering" ? "legion-sidebar--engineering" : "",
+            contracted ? "legion-sidebar--contracted" : "",
+          ]
+            .filter(Boolean)
+            .join(" ")}
+        >
+          <SimpleBar className={`sidebar legion-sidebar text-white${contracted ? " contracted" : ""}`}>
+            <div className="sidebar-inner legion-sidebar-inner">
             <div className="user-card d-flex d-md-none align-items-center justify-content-between justify-content-md-center pb-4">
               <div className="d-flex align-items-center">
                 <div className="user-avatar lg-avatar me-4">
@@ -165,8 +231,7 @@ export default function Sidebar() {
                 <FontAwesomeIcon icon={faTimes} />
               </Nav.Link>
             </div>
-            <Nav className="flex-column pt-3 pt-md-0">
-              <div className="mb-3">
+            <div className="mb-3">
               <Dropdown>
                 <Dropdown.Toggle
                   variant="link"
@@ -264,47 +329,81 @@ export default function Sidebar() {
               </Dropdown>
             </div>
 
-              {/* LEGION BAS */}
               <Dropdown.Divider className="my-3 border-indigo" />
 
-              {currentMode === "operator" ? (
-                <>
-                  <NavItem
-                    title="Site Layout"
-                    link={Routes.LegionSite.path}
-                    icon={faMapPin}
-                    linkClassName="legion-sidebar-parent-tone-link"
-                  />
-                  {getOperatorSidebarGroups().map((group) => (
-                    <EngineeringSidebarTreeGroup
-                      key={group.title}
-                      title={group.title}
-                      parentIcon={group.parentIcon}
-                      parentPath={group.parentPath}
-                      sectionPaths={group.sectionPaths}
-                      children={group.children}
-                      onNavigate={() => setShow(false)}
-                    />
-                  ))}
-                </>
-              ) : (
-                <>
-                  {getEngineeringSidebarGroups({
-                    includeAdministration: canViewUserManager(accessRepository.getCurrentUserForAccess()),
-                  }).map((group) => (
-                    <EngineeringSidebarTreeGroup
-                      key={group.title}
-                      title={group.title}
-                      parentIcon={group.parentIcon}
-                      parentPath={group.parentPath}
-                      sectionPaths={group.sectionPaths}
-                      children={group.children}
-                      onNavigate={() => setShow(false)}
-                    />
-                  ))}
-                </>
-              )}
-            </Nav>
+              <div className="legion-sidebar-main">
+                <div className="legion-sidebar-section-label" aria-hidden="true">
+                  Navigation
+                </div>
+                <Nav className="flex-column legion-sidebar-nav">
+                  {currentMode === "operator" ? (
+                    <>
+                      <NavItem
+                        title="Site Layout"
+                        link={Routes.LegionSite.path}
+                        icon={faMapPin}
+                        linkClassName="legion-sidebar-parent-tone-link"
+                      />
+                      {getOperatorSidebarGroups().map((group) => (
+                        <EngineeringSidebarTreeGroup
+                          key={group.title}
+                          title={group.title}
+                          parentIcon={group.parentIcon}
+                          parentPath={group.parentPath}
+                          sectionPaths={group.sectionPaths}
+                          children={group.children}
+                          onNavigate={() => setShow(false)}
+                        />
+                      ))}
+                    </>
+                  ) : (
+                    <>
+                      {getEngineeringSidebarGroups({
+                        includeAdministration: canViewUserManager(accessRepository.getCurrentUserForAccess()),
+                      }).map((group) => (
+                        <EngineeringSidebarTreeGroup
+                          key={group.title}
+                          title={group.title}
+                          parentIcon={group.parentIcon}
+                          parentPath={group.parentPath}
+                          sectionPaths={group.sectionPaths}
+                          children={group.children}
+                          onNavigate={() => setShow(false)}
+                        />
+                      ))}
+                    </>
+                  )}
+                </Nav>
+              </div>
+
+              <div className="legion-sidebar-bottom d-none d-md-flex">
+                <button
+                  type="button"
+                  className="legion-sidebar-collapse-btn"
+                  aria-label={contracted ? "Expand sidebar" : "Collapse sidebar"}
+                  aria-expanded={!contracted}
+                  onClick={toggleSidebarContracted}
+                >
+                  <FontAwesomeIcon icon={contracted ? faChevronRight : faChevronLeft} />
+                  <span className="legion-sidebar-collapse-btn__label">
+                    {contracted ? "Expand" : "Collapse"}
+                  </span>
+                </button>
+                {sidebarUser ? (
+                  <div className="legion-sidebar-user">
+                    <div className="legion-sidebar-user__avatar" aria-hidden="true">
+                      {sidebarUserInitials}
+                    </div>
+                    <div className="legion-sidebar-user__body">
+                      <div className="legion-sidebar-user__name">{sidebarUser.fullName}</div>
+                      {sidebarUser.roleName ? (
+                        <div className="legion-sidebar-user__role">{sidebarUser.roleName}</div>
+                      ) : null}
+                    </div>
+                  </div>
+                ) : null}
+                <div className="legion-sidebar-meta">Legion Controls</div>
+              </div>
           </div>
           </SimpleBar>
         </div>

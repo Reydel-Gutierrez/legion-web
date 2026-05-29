@@ -50,6 +50,7 @@ export default function GraphicsToolbar({
   onPreview,
   onValidate,
   hasSelection,
+  duplicateCanvasObjectSelected = false,
   canPublishGraphicToGlobal = false,
   publishingGraphicToGlobal = false,
   onPublishGraphicToGlobal,
@@ -139,7 +140,13 @@ export default function GraphicsToolbar({
         size="sm"
         className="legion-hero-btn legion-hero-btn--secondary"
         onClick={onDuplicate}
-        title={hasSelection ? "Duplicate this graphic" : "Assign a site, building, floor, or equipment first (opens Assign Graphic)"}
+        title={
+          !hasSelection
+            ? "Assign a site, building, floor, or equipment first (opens Assign Graphic)"
+            : duplicateCanvasObjectSelected
+              ? "Duplicate selected floor zone / canvas object"
+              : "Duplicate this graphic"
+        }
       >
         <FontAwesomeIcon icon={faCopy} className="me-1" />
         Duplicate

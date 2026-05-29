@@ -14,10 +14,12 @@ import PageBreadcrumbs from "../../components/ui/PageBreadcrumbs";
 import NOTIFICATIONS_DATA from "../../lib/data/notifications";
 import { useSite } from "../providers/SiteProvider";
 import { useWorkspaceMode } from "../providers/WorkspaceModeProvider";
+import { useAppActivity } from "../providers/AppActivityProvider";
 
 export default function TopNavbar() {
   const { site } = useSite();
   const { currentMode } = useWorkspaceMode();
+  const { openLogs } = useAppActivity();
   const history = useHistory();
   const [notifications, setNotifications] = useState(NOTIFICATIONS_DATA);
   const [showHelp, setShowHelp] = useState(false);
@@ -59,6 +61,16 @@ export default function TopNavbar() {
                 </div>
 
                 <Nav className="align-items-center">
+                  {currentMode === "engineering" && (
+                    <button
+                      type="button"
+                      className="legion-topbar-btn legion-topbar-btn--logs me-1"
+                      onClick={openLogs}
+                      aria-label="Open app activity logs"
+                    >
+                      Logs
+                    </button>
+                  )}
                   {/* Notifications */}
                   <Dropdown as={Nav.Item} onToggle={markNotificationsAsRead} align="end">
                     <Dropdown.Toggle

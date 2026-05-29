@@ -178,14 +178,28 @@ export default function SiteGlobalMapView({
     }
 
     const onResize = () => {
-      map.invalidateSize();
+      try {
+        if (mapRef.current === map) map.invalidateSize();
+      } catch {
+        /* ignore */
+      }
     };
     window.addEventListener("resize", onResize);
-    requestAnimationFrame(() => map.invalidateSize());
+    requestAnimationFrame(() => {
+      try {
+        if (mapRef.current === map) map.invalidateSize();
+      } catch {
+        /* ignore */
+      }
+    });
 
     return () => {
       window.removeEventListener("resize", onResize);
-      map.remove();
+      try {
+        map.remove();
+      } catch {
+        /* ignore */
+      }
       mapRef.current = null;
       markerByIdRef.current = new Map();
     };
@@ -194,37 +208,60 @@ export default function SiteGlobalMapView({
   // Fly to selection or refit when selection cleared (geo buildings only).
   useEffect(() => {
     const map = mapRef.current;
-    if (!map || !panelBuildings.length) return;
+    if (!map || !panelBuildings.length) return undefined;
+
+    let cancelled = false;
+    let timerId = null;
 
     const run = () => {
-      if (selectedBuildingId) {
-        const one = panelBuildings.find((b) => b.id === selectedBuildingId);
-        if (one && one.hasGeo) {
-          map.flyTo([one.lat, one.lng], 14, { duration: 0.55, easeLinearity: 0.25 });
+      if (cancelled || mapRef.current !== map) return;
+      try {
+        const container = map.getContainer?.();
+        if (!container?.isConnected) return;
+
+        if (selectedBuildingId) {
+          const one = panelBuildings.find((b) => b.id === selectedBuildingId);
+          if (one && one.hasGeo) {
+            map.flyTo([one.lat, one.lng], 14, { duration: 0.55, easeLinearity: 0.25 });
+          }
+          return;
         }
-        return;
-      }
-      const pts = mapBuildings.map((b) => L.latLng(b.lat, b.lng));
-      if (pts.length > 1) {
-        map.flyToBounds(L.latLngBounds(pts), { padding: [52, 52], maxZoom: 14, duration: 0.75, easeLinearity: 0.2 });
-      } else if (pts.length === 1) {
-        map.flyTo(pts[0], 14, { duration: 0.55, easeLinearity: 0.25 });
+        const pts = mapBuildings.map((b) => L.latLng(b.lat, b.lng));
+        if (pts.length > 1) {
+          map.flyToBounds(L.latLngBounds(pts), { padding: [52, 52], maxZoom: 14, duration: 0.75, easeLinearity: 0.2 });
+        } else if (pts.length === 1) {
+          map.flyTo(pts[0], 14, { duration: 0.55, easeLinearity: 0.25 });
+        }
+      } catch {
+        /* map may have been torn down mid-navigation */
       }
     };
 
     map.whenReady(() => {
-      setTimeout(run, 0);
+      if (cancelled) return;
+      timerId = window.setTimeout(run, 0);
     });
+
+    return () => {
+      cancelled = true;
+      if (timerId != null) window.clearTimeout(timerId);
+    };
   }, [activeLayoutFingerprint, selectedBuildingId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    markerByIdRef.current.forEach((m, id) => {
-      const selected = id === selectedBuildingId;
-      m.setOpacity(selected ? 1 : 0.88);
-      m.setZIndexOffset(selected ? 1200 : 0);
-      const el = m.getElement();
-      if (el) {
-        el.classList.toggle("site-layout-marker--selected", selected);
+    const markers = markerByIdRef.current;
+    if (!markers.size) return;
+    markers.forEach((m, id) => {
+      try {
+        const selected = id === selectedBuildingId;
+        m.setOpacity(selected ? 1 : 0.88);
+        m.setZIndexOffset(selected ? 1200 : 0);
+        const el = m.getElement();
+        if (el) {
+          el.classList.toggle("site-layout-marker--selected", selected);
+        }
+      } catch {
+        /* marker may belong to a removed map */
       }
     });
   }, [selectedBuildingId]);

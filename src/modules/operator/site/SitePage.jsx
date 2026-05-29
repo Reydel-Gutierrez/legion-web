@@ -1,7 +1,11 @@
-import React, { useMemo, useState, useEffect, useCallback } from "react";
+import React, { useMemo, useState, useEffect, useCallback, useRef } from "react";
 import { useHistory, useLocation } from "react-router-dom";
+import { useSite } from "../../../app/providers/SiteProvider";
 import { useSiteDisplayLabel } from "../../../hooks/useSiteDisplayLabel";
 import { useActiveDeployment } from "../../../hooks/useWorkingVersion";
+import { useSiteLayoutLivePoints } from "../../../hooks/useSiteLayoutLivePoints";
+import { coerceSiteKeyToApiId } from "../../../lib/data/siteApiResolution";
+import { isBackendSiteId } from "../../../lib/data/siteIdUtils";
 import { Container, Card, Button } from "@themesberg/react-bootstrap";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faChevronRight, faExclamationTriangle } from "@fortawesome/free-solid-svg-icons";
@@ -62,55 +66,111 @@ function getEquipmentOnFloor(releaseData, floorId) {
   return releaseData.equipment.filter((e) => String(e.floorId) === String(floorId));
 }
 
+function siteLayoutStorageKey(siteId) {
+  return siteId ? `legionSiteLayoutSelection:${siteId}` : null;
+}
+
+function readSiteLayoutStorage(key) {
+  if (!key || typeof sessionStorage === "undefined") return null;
+  try {
+    const raw = sessionStorage.getItem(key);
+    if (!raw) return null;
+    if (!raw.startsWith("{")) {
+      return { layoutLevelId: null, selectedBuildingId: raw };
+    }
+    const parsed = JSON.parse(raw);
+    return {
+      layoutLevelId: parsed.layoutLevelId ?? null,
+      selectedBuildingId: parsed.selectedBuildingId ?? null,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function writeSiteLayoutStorage(key, { layoutLevelId, selectedBuildingId }) {
+  if (!key || typeof sessionStorage === "undefined") return;
+  try {
+    sessionStorage.setItem(key, JSON.stringify({ layoutLevelId, selectedBuildingId: selectedBuildingId || null }));
+  } catch {
+    /* ignore */
+  }
+}
+
 export default function SitePage() {
   const siteLabel = useSiteDisplayLabel();
   const history = useHistory();
   const location = useLocation();
+  const { siteId, apiSites } = useSite();
   const { deployment, loading: releaseLoading, error: releaseError } = useActiveDeployment();
   const activeReleaseData = deployment;
   const siteDisplayName = activeReleaseData?.site?.name || siteLabel;
+  const apiSiteId = useMemo(
+    () => coerceSiteKeyToApiId(siteId, apiSites) ?? (isBackendSiteId(siteId) ? siteId : null),
+    [siteId, apiSites]
+  );
   const layoutLevels = useMemo(() => buildLayoutLevels(activeReleaseData), [activeReleaseData]);
 
   const hasLevels = layoutLevels.length > 0;
   const [levelIndex, setLevelIndex] = useState(0);
   const [selectedBuildingId, setSelectedBuildingId] = useState(null);
+  const [layoutHydrated, setLayoutHydrated] = useState(false);
+  const skipPersistRef = useRef(true);
+  const restoredLayoutRef = useRef(false);
 
-  const siteStorageKey = activeReleaseData?.site?.id ? `legionSiteLayoutSelection:${activeReleaseData.site.id}` : null;
+  const siteStorageKey = siteLayoutStorageKey(activeReleaseData?.site?.id);
 
-  useEffect(() => {
-    const targetId = location.state?.selectLayoutLevelId;
-    if (targetId && layoutLevels.length > 0) {
+  const applyLayoutLevelId = useCallback(
+    (targetId) => {
       const idx = layoutLevels.findIndex((lev) => lev.id === targetId);
-      if (idx >= 0) {
-        setLevelIndex(idx);
-        const lev = layoutLevels[idx];
-        if (lev?.type === "building") setSelectedBuildingId(lev.id);
-      }
-      history.replace(location.pathname, {}); // clear state so we don't re-apply on refresh
-    }
-  }, [location.state?.selectLayoutLevelId, layoutLevels, history, location.pathname]);
+      if (idx < 0) return false;
+      setLevelIndex(idx);
+      const lev = layoutLevels[idx];
+      if (lev?.type === "building") setSelectedBuildingId(lev.id);
+      return true;
+    },
+    [layoutLevels]
+  );
 
   useEffect(() => {
-    if (!siteStorageKey || typeof sessionStorage === "undefined") {
-      setSelectedBuildingId(null);
-      return;
-    }
-    try {
-      const v = sessionStorage.getItem(siteStorageKey);
-      setSelectedBuildingId(v || null);
-    } catch {
-      setSelectedBuildingId(null);
-    }
+    skipPersistRef.current = true;
+    restoredLayoutRef.current = false;
+    setLayoutHydrated(false);
   }, [siteStorageKey]);
 
   useEffect(() => {
-    if (!siteStorageKey || !selectedBuildingId) return;
-    try {
-      sessionStorage.setItem(siteStorageKey, selectedBuildingId);
-    } catch {
-      /* ignore */
+    if (layoutLevels.length === 0) return;
+
+    const targetId = location.state?.selectLayoutLevelId;
+    if (targetId) {
+      applyLayoutLevelId(targetId);
+      history.replace(location.pathname, {});
+    } else if (!restoredLayoutRef.current && siteStorageKey) {
+      const stored = readSiteLayoutStorage(siteStorageKey);
+      if (stored?.layoutLevelId) applyLayoutLevelId(stored.layoutLevelId);
+      if (stored?.selectedBuildingId) setSelectedBuildingId(stored.selectedBuildingId);
     }
-  }, [siteStorageKey, selectedBuildingId]);
+
+    restoredLayoutRef.current = true;
+    skipPersistRef.current = false;
+    setLayoutHydrated(true);
+  }, [
+    layoutLevels,
+    siteStorageKey,
+    location.state?.selectLayoutLevelId,
+    location.pathname,
+    history,
+    applyLayoutLevelId,
+  ]);
+
+  useEffect(() => {
+    if (skipPersistRef.current || !siteStorageKey || layoutLevels.length === 0) return;
+    const level = layoutLevels[levelIndex];
+    writeSiteLayoutStorage(siteStorageKey, {
+      layoutLevelId: level?.id ?? null,
+      selectedBuildingId,
+    });
+  }, [siteStorageKey, levelIndex, selectedBuildingId, layoutLevels]);
 
   const selectedLevel = hasLevels ? layoutLevels[levelIndex] : null;
   const selectedNodeId = selectedLevel?.id ?? null;
@@ -118,6 +178,13 @@ export default function SitePage() {
     ? (activeReleaseData?.siteLayoutGraphics ?? {})[selectedNodeId]
     : null;
   const hasLayoutGraphic = layoutGraphic && (layoutGraphic?.objects?.length > 0 || layoutGraphic?.backgroundImage?.dataUrl);
+
+  const { points: layoutLivePoints, hydratedWorkspaceRows, equipmentLiveBundles, nowTick } =
+    useSiteLayoutLivePoints({
+    releaseData: activeReleaseData,
+    layoutGraphic: hasLayoutGraphic ? layoutGraphic : null,
+    siteId: apiSiteId,
+  });
 
   const breadcrumb = selectedLevel?.breadcrumb ?? [];
   const levelLabel = selectedLevel?.label ?? (levelIndex === 0 ? "Overview" : `Level ${levelIndex}`);
@@ -215,7 +282,7 @@ export default function SitePage() {
           </div>
         )}
         {/* Breadcrumb — hidden on building main page (hero + floor nav replace it) */}
-        {!isBuildingLayoutView ? (
+        {layoutHydrated && !isBuildingLayoutView ? (
           <nav aria-label="Site location" className="d-flex align-items-center flex-wrap gap-1 text-white-50 small mb-3">
             <span className="text-white-50">Site Layout</span>
             {breadcrumb.length > 0 && breadcrumb.map((seg, i) => (
@@ -238,7 +305,9 @@ export default function SitePage() {
         ) : null}
 
         <div className="site-layout-full-card-wrap">
-          {isGlobalSiteView ? (
+          {hasLevels && !layoutHydrated ? (
+            <div className="text-white-50 small py-4 text-center">Loading site layout…</div>
+          ) : isGlobalSiteView ? (
             <>
               <SiteGlobalMapView
                 activeReleaseData={activeReleaseData}
@@ -300,11 +369,15 @@ export default function SitePage() {
                   {hasLayoutGraphic ? (
                     <DeployedGraphicPreview
                       graphic={layoutGraphic}
-                      points={[]}
+                      points={layoutLivePoints}
                       onLinkClick={handleGraphicLinkClick}
                       presentation={DEPLOYED_GRAPHIC_PRESENTATION.layout}
                       onOpenEquipmentDetail={goToEquipmentDetail}
                       resolveEquipmentLabel={resolveEquipmentLabelForLayout}
+                      allowSimulatedFallback={false}
+                      equipmentLiveBundles={equipmentLiveBundles}
+                      hydratedWorkspaceRows={hydratedWorkspaceRows}
+                      nowTick={nowTick}
                     />
                   ) : (
                     <div className="legion-map-image d-flex align-items-center justify-content-center text-white-50 small">

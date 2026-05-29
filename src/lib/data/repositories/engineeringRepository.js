@@ -79,9 +79,9 @@ export async function fetchEngineeringSiteDraftFromApi(siteId) {
 }
 
 /** Persist working version — API hook; no-op when hierarchy API is off. */
-export async function saveWorkingVersion(siteId, payload, notes) {
+export async function saveWorkingVersion(siteId, payload, notes, fetchOptions = {}) {
   if (!USE_HIERARCHY_API) return Promise.resolve();
-  return hierarchyRepository.saveWorkingVersionToApi(siteId, payload, notes);
+  return hierarchyRepository.saveWorkingVersionToApi(siteId, payload, notes, fetchOptions);
 }
 
 /**

@@ -7,6 +7,11 @@ import {
   resolveZonePointValuesForDisplay,
   buildSimulatedPointValuesForObjectId,
 } from "../../engineering/graphics-manager/floorZoneModel";
+import {
+  buildEmptyZonePointValues,
+  enrichZoneValuesWithEquipmentComm,
+  resolveOperatorZonePointValues,
+} from "../../../lib/operator/siteLayoutLivePoints";
 
 /**
  * Read-only preview of a deployed equipment graphic.
@@ -153,6 +158,11 @@ export default function DeployedGraphicPreview({
   onOpenEquipmentDetail,
   enableFloorZones = true,
   resolveEquipmentLabel,
+  /** When false, zone widgets show real/empty values only (operator site layout). */
+  allowSimulatedFallback = true,
+  equipmentLiveBundles = null,
+  hydratedWorkspaceRows = null,
+  nowTick = Date.now(),
 }) {
   const objects = graphic?.objects ?? [];
   const backgroundImage = graphic?.backgroundImage;
@@ -175,6 +185,17 @@ export default function DeployedGraphicPreview({
 
   const floorZonesActive = Boolean(isLayoutPresentation && enableFloorZones);
 
+  const hydratedRowsByEquipmentId = useMemo(() => {
+    const m = new Map();
+    (hydratedWorkspaceRows || []).forEach((r) => {
+      const eqId = String(r.equipmentId ?? "");
+      if (!eqId) return;
+      if (!m.has(eqId)) m.set(eqId, []);
+      m.get(eqId).push(r);
+    });
+    return m;
+  }, [hydratedWorkspaceRows]);
+
   const pointsAsAuthoringList = useMemo(
     () =>
       (points || []).map((p) => ({
@@ -188,14 +209,40 @@ export default function DeployedGraphicPreview({
 
   const zonePointValuesById = useMemo(() => {
     const map = {};
+    const emptyFallback = buildEmptyZonePointValues();
     (objects || []).forEach((o) => {
       if (!isZoneShape(o)) return;
-      const raw = resolveZonePointValuesForDisplay(o.zoneConfig, pointsAsAuthoringList);
-      const sim = buildSimulatedPointValuesForObjectId(o.id);
-      map[o.id] = { ...sim, ...raw };
+      const linkedEqId = o.zoneConfig?.linkedEquipmentId;
+      const eqRows = linkedEqId ? hydratedRowsByEquipmentId.get(String(linkedEqId)) : null;
+      const bundle = linkedEqId && equipmentLiveBundles ? equipmentLiveBundles.get(String(linkedEqId)) : null;
+      const raw =
+        !allowSimulatedFallback && eqRows?.length
+          ? resolveOperatorZonePointValues(o.zoneConfig, eqRows, bundle)
+          : resolveZonePointValuesForDisplay(o.zoneConfig, pointsAsAuthoringList);
+      const sim = allowSimulatedFallback
+        ? buildSimulatedPointValuesForObjectId(o.id)
+        : emptyFallback;
+      let merged = { ...sim, ...raw };
+      if (!allowSimulatedFallback && floorZonesActive) {
+        merged = enrichZoneValuesWithEquipmentComm(
+          merged,
+          linkedEqId,
+          equipmentLiveBundles,
+          nowTick
+        );
+      }
+      map[o.id] = merged;
     });
     return map;
-  }, [objects, pointsAsAuthoringList]);
+  }, [
+    objects,
+    pointsAsAuthoringList,
+    allowSimulatedFallback,
+    floorZonesActive,
+    equipmentLiveBundles,
+    hydratedRowsByEquipmentId,
+    nowTick,
+  ]);
 
   const [hoveredZoneId, setHoveredZoneId] = useState(null);
   const [expandedGlassZoneId, setExpandedGlassZoneId] = useState(null);
@@ -576,6 +623,7 @@ export default function DeployedGraphicPreview({
                     zoneObject={obj}
                     mergedValues={zonePointValuesById[obj.id]}
                     equipmentTitle={resolveEquipmentLabelFn(obj.zoneConfig?.linkedEquipmentId)}
+                    allowSimulatedFallback={allowSimulatedFallback}
                     expanded={
                       expandedGlassZoneId === obj.id && obj.zoneConfig?.wedgeEnabled !== false
                     }

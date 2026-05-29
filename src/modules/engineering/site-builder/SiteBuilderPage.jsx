@@ -39,6 +39,7 @@ import {
   toApiEquipmentUpdatePayload,
   resolveNetworkProtocolForControllerRef,
 } from "./siteBuilderEquipmentUtils";
+import { appNotify, appLogger, withEngineeringAction } from "../../../lib/app-activity";
 
 /** Apply full GET/PUT working-version payload so hierarchy fields (e.g. instance #) stay in sync with the API. */
 function resetWorkingVersionFromApiPayload(dispatch, siteKey, payload) {
@@ -254,24 +255,33 @@ export default function SiteBuilderPage() {
       if (USE_HIERARCHY_API) {
         setHierarchyMutationError(null);
         try {
-          const created = await hierarchyRepository.createSite({ name: data.name.trim() });
-          await hierarchyRepository.createBuilding(created.id, {
-            name: data.defaultBuildingName || "Building 1",
-            addressLine1: "TBD",
-            city: "—",
-            state: "—",
-            postalCode: "00000",
-            country: "US",
+          await withEngineeringAction({
+            area: "Site Builder",
+            action: "Create site",
+            infoMessage: "Creating site...",
+            successMessage: "Site created successfully",
+            errorMessage: "Failed to create site",
+            run: async () => {
+              const created = await hierarchyRepository.createSite({ name: data.name.trim() });
+              await hierarchyRepository.createBuilding(created.id, {
+                name: data.defaultBuildingName || "Building 1",
+                addressLine1: "TBD",
+                city: "—",
+                state: "—",
+                postalCode: "00000",
+                country: "US",
+              });
+              const payload = await engineeringRepository.fetchWorkingVersion(created.id);
+              if (payload) {
+                resetWorkingVersionFromApiPayload(dispatch, created.id, payload);
+              }
+              setExpandedIds(new Set());
+              setSelectedId(null);
+              setShowCreateModal(false);
+              setSite(created.id);
+              engineeringRepository.notifyEngineeringHierarchyChanged();
+            },
           });
-          const payload = await engineeringRepository.fetchWorkingVersion(created.id);
-          if (payload) {
-            resetWorkingVersionFromApiPayload(dispatch, created.id, payload);
-          }
-          setExpandedIds(new Set());
-          setSelectedId(null);
-          setShowCreateModal(false);
-          setSite(created.id);
-          engineeringRepository.notifyEngineeringHierarchyChanged();
         } catch (e) {
           setHierarchyMutationError(e?.message || String(e));
         }
@@ -360,49 +370,59 @@ export default function SiteBuilderPage() {
         (node.type === "site" || node.type === "building" || node.type === "floor")
       ) {
         setHierarchyMutationError(null);
+        const nodeLabel = node.type === "site" ? "Site" : node.type === "building" ? "Building" : "Floor";
         try {
-          if (node.type === "site") {
-            await hierarchyRepository.updateSite(site, {
-              name: form.name.trim(),
-              timezone: form.timezone != null && String(form.timezone).trim() ? String(form.timezone).trim() : null,
-              siteType: form.siteType != null && String(form.siteType).trim() ? String(form.siteType).trim() : null,
-              description: form.description != null && String(form.description).trim() ? String(form.description).trim() : null,
-              displayLabel: form.displayLabel != null && String(form.displayLabel).trim() ? String(form.displayLabel).trim() : null,
-              engineeringNotes:
-                form.engineeringNotes != null && String(form.engineeringNotes).trim()
-                  ? String(form.engineeringNotes).trim()
-                  : null,
-              icon: form.icon != null && String(form.icon).trim() ? String(form.icon).trim() : null,
-            });
-          } else if (node.type === "building") {
-            await hierarchyRepository.updateBuilding(id, {
-              name: form.name.trim(),
-              addressLine1:
-                form.address != null && String(form.address).trim() ? String(form.address).trim() : "TBD",
-              city: form.city != null && String(form.city).trim() ? String(form.city).trim() : "—",
-              state: form.state != null && String(form.state).trim() ? String(form.state).trim() : "—",
-              postalCode: "00000",
-              country: "US",
-              latitude: parseCoord(form.lat),
-              longitude: parseCoord(form.lng),
-              buildingType: form.buildingType != null && String(form.buildingType).trim() ? String(form.buildingType).trim() : null,
-              buildingCode: form.buildingCode != null && String(form.buildingCode).trim() ? String(form.buildingCode).trim() : null,
-              sortOrder: Number.isFinite(Number(form.sortOrder)) ? Number(form.sortOrder) : 0,
-            });
-          } else {
-            await hierarchyRepository.updateFloor(id, {
-              name: form.name.trim(),
-              floorType: form.floorType != null && String(form.floorType).trim() ? String(form.floorType).trim() : null,
-              occupancyType:
-                form.occupancyType != null && String(form.occupancyType).trim() ? String(form.occupancyType).trim() : null,
-              sortOrder: Number.isFinite(Number(form.sortOrder)) ? Number(form.sortOrder) : 0,
-            });
-          }
-          const payload = await engineeringRepository.fetchWorkingVersion(site);
-          if (payload) {
-            resetWorkingVersionFromApiPayload(dispatch, site, payload);
-          }
-          engineeringRepository.notifyEngineeringHierarchyChanged();
+          await withEngineeringAction({
+            area: "Site Builder",
+            action: `Save ${nodeLabel}`,
+            infoMessage: `Saving ${nodeLabel.toLowerCase()}...`,
+            successMessage: `${nodeLabel} saved successfully`,
+            errorMessage: `Failed to save ${nodeLabel.toLowerCase()}`,
+            run: async () => {
+              if (node.type === "site") {
+                await hierarchyRepository.updateSite(site, {
+                  name: form.name.trim(),
+                  timezone: form.timezone != null && String(form.timezone).trim() ? String(form.timezone).trim() : null,
+                  siteType: form.siteType != null && String(form.siteType).trim() ? String(form.siteType).trim() : null,
+                  description: form.description != null && String(form.description).trim() ? String(form.description).trim() : null,
+                  displayLabel: form.displayLabel != null && String(form.displayLabel).trim() ? String(form.displayLabel).trim() : null,
+                  engineeringNotes:
+                    form.engineeringNotes != null && String(form.engineeringNotes).trim()
+                      ? String(form.engineeringNotes).trim()
+                      : null,
+                  icon: form.icon != null && String(form.icon).trim() ? String(form.icon).trim() : null,
+                });
+              } else if (node.type === "building") {
+                await hierarchyRepository.updateBuilding(id, {
+                  name: form.name.trim(),
+                  addressLine1:
+                    form.address != null && String(form.address).trim() ? String(form.address).trim() : "TBD",
+                  city: form.city != null && String(form.city).trim() ? String(form.city).trim() : "—",
+                  state: form.state != null && String(form.state).trim() ? String(form.state).trim() : "—",
+                  postalCode: "00000",
+                  country: "US",
+                  latitude: parseCoord(form.lat),
+                  longitude: parseCoord(form.lng),
+                  buildingType: form.buildingType != null && String(form.buildingType).trim() ? String(form.buildingType).trim() : null,
+                  buildingCode: form.buildingCode != null && String(form.buildingCode).trim() ? String(form.buildingCode).trim() : null,
+                  sortOrder: Number.isFinite(Number(form.sortOrder)) ? Number(form.sortOrder) : 0,
+                });
+              } else {
+                await hierarchyRepository.updateFloor(id, {
+                  name: form.name.trim(),
+                  floorType: form.floorType != null && String(form.floorType).trim() ? String(form.floorType).trim() : null,
+                  occupancyType:
+                    form.occupancyType != null && String(form.occupancyType).trim() ? String(form.occupancyType).trim() : null,
+                  sortOrder: Number.isFinite(Number(form.sortOrder)) ? Number(form.sortOrder) : 0,
+                });
+              }
+              const payload = await engineeringRepository.fetchWorkingVersion(site);
+              if (payload) {
+                resetWorkingVersionFromApiPayload(dispatch, site, payload);
+              }
+              engineeringRepository.notifyEngineeringHierarchyChanged();
+            },
+          });
         } catch (e) {
           setHierarchyMutationError(e?.message || String(e));
         }
@@ -431,6 +451,9 @@ export default function SiteBuilderPage() {
       });
       const newSite = siteTreeToWorkingSite(updated);
       if (newSite) actions.setSite(newSite);
+      const nodeLabel = node.type === "site" ? "Site" : node.type === "building" ? "Building" : "Floor";
+      appNotify.success(`${nodeLabel} saved successfully`);
+      appLogger.success(`${nodeLabel} saved successfully`, { area: "Site Builder", action: `Save ${nodeLabel}` });
     },
     [siteTree, actions, site, dispatch]
   );
@@ -599,33 +622,42 @@ export default function SiteBuilderPage() {
       if (USE_HIERARCHY_API && isBackendSiteId(site)) {
         setHierarchyMutationError(null);
         try {
-          const tmpl = form.templateName != null && String(form.templateName).trim() ? String(form.templateName).trim() : null;
-          const addr = form.address != null && String(form.address).trim() ? String(form.address).trim() : null;
-          const instanceNum =
-            form.instanceNumber != null && String(form.instanceNumber).trim()
-              ? String(form.instanceNumber).trim()
-              : null;
-          await hierarchyRepository.updateEquipment(id, {
-            name: form.name,
-            code: (form.displayLabel && String(form.displayLabel).trim()) || form.name,
-            equipmentType: form.equipmentType,
-            templateName: tmpl,
-            address: addr,
-            instanceNumber: instanceNum,
+          await withEngineeringAction({
+            area: "Site Builder",
+            action: "Save equipment",
+            infoMessage: "Saving equipment...",
+            successMessage: "Equipment saved successfully",
+            errorMessage: "Failed to save equipment",
+            run: async () => {
+              const tmpl = form.templateName != null && String(form.templateName).trim() ? String(form.templateName).trim() : null;
+              const addr = form.address != null && String(form.address).trim() ? String(form.address).trim() : null;
+              const instanceNum =
+                form.instanceNumber != null && String(form.instanceNumber).trim()
+                  ? String(form.instanceNumber).trim()
+                  : null;
+              await hierarchyRepository.updateEquipment(id, {
+                name: form.name,
+                code: (form.displayLabel && String(form.displayLabel).trim()) || form.name,
+                equipmentType: form.equipmentType,
+                templateName: tmpl,
+                address: addr,
+                instanceNumber: instanceNum,
+              });
+              const protocol = resolveNetworkProtocolForControllerRef(
+                workingState.discoveredDevices ?? [],
+                form.controllerRef
+              );
+              await hierarchyRepository.syncEquipmentControllerAssignment(id, {
+                controllerRef: form.controllerRef,
+                protocol,
+              });
+              const payload = await engineeringRepository.fetchWorkingVersion(site);
+              if (payload) {
+                resetWorkingVersionFromApiPayload(dispatch, site, payload);
+              }
+              engineeringRepository.notifyEngineeringHierarchyChanged();
+            },
           });
-          const protocol = resolveNetworkProtocolForControllerRef(
-            workingState.discoveredDevices ?? [],
-            form.controllerRef
-          );
-          await hierarchyRepository.syncEquipmentControllerAssignment(id, {
-            controllerRef: form.controllerRef,
-            protocol,
-          });
-          const payload = await engineeringRepository.fetchWorkingVersion(site);
-          if (payload) {
-            resetWorkingVersionFromApiPayload(dispatch, site, payload);
-          }
-          engineeringRepository.notifyEngineeringHierarchyChanged();
         } catch (e) {
           setHierarchyMutationError(e?.message || String(e));
         }
@@ -662,6 +694,8 @@ export default function SiteBuilderPage() {
       }
       const next = (workingState.equipment || []).map((e) => (e.id === id ? { ...e, ...updates } : e));
       actions.setEquipment(next);
+      appNotify.success("Equipment saved successfully");
+      appLogger.success("Equipment saved successfully", { area: "Site Builder", action: "Save equipment" });
     },
     [workingState.equipment, workingState.discoveredDevices, actions, site, siteTree, dispatch]
   );

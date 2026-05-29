@@ -7,7 +7,10 @@ import { faMapMarkerAlt } from "@fortawesome/free-solid-svg-icons";
 import { useSite } from "../../../app/providers/SiteProvider";
 import { useWorkingVersion } from "../../../hooks/useWorkingVersion";
 import LegionHeroHeader from "../../../components/legion/LegionHeroHeader";
-import { engineeringRepository } from "../../../lib/data";
+import { engineeringRepository, USE_HIERARCHY_API } from "../../../lib/data";
+import { saveWorkingVersion } from "../../../lib/data/repositories/engineeringRepository";
+import { isBackendSiteId } from "../../../lib/data/siteIdUtils";
+import { appNotify, appLogger, withEngineeringAction } from "../../../lib/app-activity";
 import { selectSiteTree } from "../../../hooks/useWorkingVersion";
 import MappingContextCard from "./components/MappingContextCard";
 import MappingSummaryBar from "./components/MappingSummaryBar";
@@ -229,6 +232,37 @@ export default function PointMappingPage() {
     setAutoMappedIds((prev) => new Set([...prev, ...newAutoIds]));
   }, [templatePoints, discoveredObjects, mappings, equipment, actions]);
 
+  const handleSaveMappings = useCallback(async () => {
+    if (!equipment) return;
+    const persist = async () => {
+      actions.setMappingsForEquipment(equipment.id, mappings);
+      if (USE_HIERARCHY_API && isBackendSiteId(site)) {
+        await saveWorkingVersion(site, {
+          ...workingState,
+          mappings: { ...(workingState.mappings || {}), [equipment.id]: mappings },
+        });
+      }
+    };
+    if (USE_HIERARCHY_API && isBackendSiteId(site)) {
+      try {
+        await withEngineeringAction({
+          area: "Point Mapping",
+          action: "Save point mapping",
+          infoMessage: "Saving point mapping...",
+          successMessage: "Point mapping saved successfully",
+          errorMessage: "Failed to save point mapping",
+          run: persist,
+        });
+      } catch {
+        /* logged via withEngineeringAction */
+      }
+      return;
+    }
+    await persist();
+    appNotify.success("Point mapping saved successfully");
+    appLogger.success("Point mapping saved successfully", { area: "Point Mapping", action: "Save point mapping" });
+  }, [equipment, mappings, actions, site, workingState]);
+
   const handleClearUnmapped = useCallback(() => {
     setAutoMappedIds(new Set());
   }, []);
@@ -394,7 +428,7 @@ export default function PointMappingPage() {
           onAutoMap={handleAutoMap}
           onValidate={() => {}}
           onClearUnmapped={handleClearUnmapped}
-          onSaveWorkingVersion={() => {}}
+          onSaveWorkingVersion={handleSaveMappings}
           filterValue={filterValue}
           onFilterChange={setFilterValue}
           onShowUnused={() => setUnusedExpanded(true)}

@@ -415,8 +415,12 @@ export async function fetchActiveReleasePayload(siteId) {
   return n?.data ?? null;
 }
 
-export async function saveWorkingVersionToApi(siteId, payload, notes) {
-  return api.putWorkingVersion(siteId, { payload, ...(notes !== undefined ? { notes } : {}) });
+export async function saveWorkingVersionToApi(siteId, payload, notes, fetchOptions = {}) {
+  return api.putWorkingVersion(
+    siteId,
+    { payload, ...(notes !== undefined ? { notes } : {}) },
+    fetchOptions
+  );
 }
 
 export async function deployWorkingVersionViaApi(siteId, notes, options = {}) {

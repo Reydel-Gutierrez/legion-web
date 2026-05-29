@@ -1,0 +1,230 @@
+// App-level activity toasts & logs (not BAS alarms)
+
+.legion-app-toast-stack {
+  position: fixed;
+  top: calc(var(--legion-topbar-h, 44px) + 12px);
+  right: 16px;
+  z-index: 1400;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: min(420px, calc(100vw - 32px));
+  pointer-events: none;
+
+  .legion-app-toast {
+    pointer-events: auto;
+  }
+}
+
+.legion-app-toast {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 0.8125rem;
+  line-height: 1.35;
+  color: rgba(255, 255, 255, 0.92);
+  background: rgba(12, 18, 28, 0.94);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  animation: legion-app-toast-in 0.2s ease;
+
+  &--success {
+    border-left: 3px solid #3d9a6a;
+    .legion-app-toast-icon {
+      color: #5cb88a;
+    }
+  }
+
+  &--info {
+    border-left: 3px solid #4a8fd4;
+    .legion-app-toast-icon {
+      color: #6aa8e8;
+    }
+  }
+
+  &--error {
+    border-left: 3px solid #c45c5c;
+    .legion-app-toast-icon {
+      color: #e07a7a;
+    }
+  }
+}
+
+.legion-app-toast-icon {
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+
+.legion-app-toast-message {
+  flex: 1;
+  min-width: 0;
+}
+
+.legion-app-toast-close {
+  flex-shrink: 0;
+  border: 0;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.5);
+  padding: 0 2px;
+  line-height: 1;
+  cursor: pointer;
+
+  &:hover {
+    color: rgba(255, 255, 255, 0.9);
+  }
+}
+
+@keyframes legion-app-toast-in {
+  from {
+    opacity: 0;
+    transform: translateX(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.legion-topbar-btn--logs {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.88);
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.22);
+    color: #fff;
+  }
+}
+
+.legion-app-logs-drawer.legion-drawer-panel {
+  display: flex;
+  flex-direction: column;
+}
+
+.legion-app-logs {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  padding: 1rem 1.25rem;
+  color: rgba(255, 255, 255, 0.88);
+}
+
+.legion-app-logs-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.legion-app-logs-title {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #fff;
+}
+
+.legion-app-logs-subtitle {
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.5);
+  margin-bottom: 1rem;
+  line-height: 1.4;
+}
+
+.legion-app-logs-close-btn {
+  border: 0;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 1.5rem;
+  line-height: 1;
+  padding: 0 4px;
+  cursor: pointer;
+
+  &:hover {
+    color: #fff;
+  }
+}
+
+.legion-app-logs-clear-btn {
+  font-size: 0.75rem;
+}
+
+.legion-app-logs-list {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding-right: 4px;
+}
+
+.legion-app-logs-empty {
+  padding: 2rem 0;
+  text-align: center;
+}
+
+.legion-app-log-entry {
+  padding: 0.65rem 0.75rem;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.legion-app-log-entry-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.35rem;
+  font-size: 0.6875rem;
+}
+
+.legion-app-log-time {
+  color: rgba(255, 255, 255, 0.45);
+  font-variant-numeric: tabular-nums;
+}
+
+.legion-app-log-cat {
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+
+  &--success {
+    color: #5cb88a;
+  }
+  &--info {
+    color: #6aa8e8;
+  }
+  &--error {
+    color: #e07a7a;
+  }
+  &--api {
+    color: #b8a4e8;
+  }
+}
+
+.legion-app-log-duration {
+  color: rgba(255, 255, 255, 0.4);
+  margin-left: auto;
+}
+
+.legion-app-log-message {
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.legion-app-log-details {
+  margin-top: 0.25rem;
+}

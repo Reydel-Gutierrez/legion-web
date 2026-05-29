@@ -1,19 +1,57 @@
-import React from "react";
+import React, { useCallback } from "react";
 import { useHistory } from "react-router-dom";
 import { ReactComponent as LCILogo } from "../../assets/svgs/LCI-logo.svg";
 import { ReactComponent as LCCLogo } from "../../assets/svgs/LCC-logo.svg";
 import { useWorkspaceMode } from "../../app/providers/WorkspaceModeProvider";
 import { useValidation } from "../../app/providers/ValidationProvider";
+import { useSite } from "../../app/providers/SiteProvider";
+import { useEngineeringVersionContext } from "../../app/providers/EngineeringVersionProvider";
 import { Routes } from "../../routes";
 import LegionOperatorGlobalSearch from "./LegionOperatorGlobalSearch";
+import { USE_HIERARCHY_API } from "../../lib/data/config";
+import { saveWorkingVersion, notifyEngineeringHierarchyChanged } from "../../lib/data/repositories/engineeringRepository";
+import { isBackendSiteId } from "../../lib/data/siteIdUtils";
+import { coerceSiteKeyToApiId } from "../../lib/data/siteApiResolution";
+import { saveWorkingVersionForSite } from "../../lib/data/persistence/engineeringVersionPersistence";
+import { appNotify, appLogger, withEngineeringAction } from "../../lib/app-activity";
 
 export default function LegionHeroHeader() {
   const { currentMode } = useWorkspaceMode();
   const history = useHistory();
   const { validationSnapshot, hasBlockingErrors } = useValidation();
+  const { site, apiSites } = useSite();
+  const { workingState } = useEngineeringVersionContext();
   const BrandLogo = currentMode === "engineering" ? LCCLogo : LCILogo;
 
-  const handleSaveWorkingVersion = () => console.log("Save working version clicked");
+  const siteKeyForApi = coerceSiteKeyToApiId(site, apiSites) || (isBackendSiteId(site) ? site : null);
+
+  const handleSaveWorkingVersion = useCallback(async () => {
+    if (USE_HIERARCHY_API && siteKeyForApi) {
+      try {
+        await withEngineeringAction({
+          area: "Engineering",
+          action: "Save working version",
+          infoMessage: "Saving site...",
+          successMessage: "Site saved successfully",
+          errorMessage: "Failed to save site",
+          run: async () => {
+            await saveWorkingVersion(siteKeyForApi, workingState, undefined, { activity: { silent: true } });
+            notifyEngineeringHierarchyChanged(siteKeyForApi);
+          },
+        });
+      } catch {
+        /* surfaced via withEngineeringAction */
+      }
+      return;
+    }
+    saveWorkingVersionForSite(site, workingState);
+    if (workingState?.site?.name && workingState.site.name !== site) {
+      saveWorkingVersionForSite(workingState.site.name, workingState);
+    }
+    appNotify.success("Site saved successfully");
+    appLogger.success("Site saved successfully", { area: "Engineering", action: "Save working version" });
+  }, [site, siteKeyForApi, workingState]);
+
   const handleValidateConfiguration = () => {
     history.push(Routes.EngineeringValidationCenter.path);
   };

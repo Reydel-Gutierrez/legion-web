@@ -323,10 +323,13 @@ export async function getWorkingVersion(siteId) {
   return apiFetch(`/api/sites/${encodeURIComponent(siteId)}/working-version`);
 }
 
-export async function putWorkingVersion(siteId, body) {
+export async function putWorkingVersion(siteId, body, fetchOptions = {}) {
+  const { activity, ...rest } = fetchOptions;
   return apiFetch(`/api/sites/${encodeURIComponent(siteId)}/working-version`, {
     method: "PUT",
     body: body ?? {},
+    ...rest,
+    activity: activity ?? { silent: true },
   });
 }
 
@@ -345,6 +348,10 @@ export async function postDeploy(siteId, notes, options = {}) {
   return apiFetch(`/api/sites/${encodeURIComponent(siteId)}/deploy`, {
     method: "POST",
     body: Object.keys(body).length > 0 ? body : {},
+    activity: {
+      label: "Deploy version",
+      toastOnError: true,
+    },
   });
 }
 
