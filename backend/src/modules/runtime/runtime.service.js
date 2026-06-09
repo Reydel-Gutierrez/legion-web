@@ -565,8 +565,14 @@ async function hydrateSimulatedControllersFromCatalog() {
 
 async function initialize() {
   await hydrateSimulatedControllersFromCatalog();
+  const keys = Object.keys(store.controllers);
+  if (keys.length === 0) {
+    // eslint-disable-next-line no-console
+    console.log('[runtime] No SIM catalog devices; poll loop not started');
+    return;
+  }
   startPollLoop();
-  await Promise.all(Object.keys(store.controllers).map((k) => pollController(k).catch(() => {})));
+  await Promise.all(keys.map((k) => pollController(k).catch(() => {})));
   await reconcileSimMappedStaleState().catch(() => {});
 }
 

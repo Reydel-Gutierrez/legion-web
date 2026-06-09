@@ -25,7 +25,8 @@
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
     "helmet": "^7.1.0",
-    "morgan": "^1.10.0"
+    "morgan": "^1.10.0",
+    "node-bacnet": "^0.2.4"
   },
   "devDependencies": {
     "prisma": "4.16.2"

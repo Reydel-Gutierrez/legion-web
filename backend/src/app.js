@@ -18,6 +18,7 @@ const userRoutes = require('./modules/users/user.routes');
 const globalTemplateLibraryRoutes = require('./modules/globalTemplateLibrary/globalTemplateLibrary.routes');
 const geocodeRoutes = require('./modules/geocode/geocode.routes');
 const runtimeRoutes = require('./modules/runtime/runtime.routes');
+const bacnetRoutes = require('./modules/bacnet/bacnet.routes');
 const equipmentControllersRoutes = require('./modules/equipmentControllers/equipmentControllers.routes');
 const pointMappingsRoutes = require('./modules/pointMappings/pointMappings.routes');
 
@@ -52,6 +53,7 @@ app.use('/api/runtime', (req, res, next) => {
   next();
 });
 app.use('/api/runtime', runtimeRoutes);
+app.use('/api/runtime/bacnet', bacnetRoutes);
 app.use('/api/equipment-controllers', equipmentControllersRoutes);
 app.use('/api/point-mappings', pointMappingsRoutes);
 

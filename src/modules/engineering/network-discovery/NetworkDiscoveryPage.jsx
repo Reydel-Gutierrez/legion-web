@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo, useEffect, useRef } from "react";
+import React, { useState, useCallback, useMemo, useRef } from "react";
 import { Card } from "@themesberg/react-bootstrap";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faNetworkWired } from "@fortawesome/free-solid-svg-icons";
@@ -10,23 +10,7 @@ import {
   getMockDiscoveryScanResult,
   flattenDeviceCount,
   flattenDiscoveryTree,
-  appendRuntimeDevicesToDiscoveryTree,
-  mapEquipmentPointsToDiscoveryObjects,
-  mapRuntimeFieldPointsToDiscoveryObjects,
-  isRuntimeSimDiscoveryDevice,
-  getRuntimeSimEquipmentId,
 } from "../network/discoveryScan";
-import { USE_HIERARCHY_API } from "../../../lib/data/config";
-import { listPointsByEquipment } from "../../../lib/data/adapters/api/hierarchyApiAdapter";
-import { isBackendSiteId } from "../../../lib/data/siteIdUtils";
-import { coerceSiteKeyToApiId } from "../../../lib/data/siteApiResolution";
-import {
-  fetchRuntimeDiscoveryDevices,
-  fetchRuntimeFieldPoints,
-} from "../../../lib/data/adapters/api/runtimeApiAdapter";
-import { getEquipmentControllerByEquipment } from "../../../lib/data/adapters/api/equipmentControllerApiAdapter";
-import AssignRuntimeControllerModal from "./components/AssignRuntimeControllerModal";
-import MapFieldPointsModal from "./components/MapFieldPointsModal";
 import LegionTablePagination from "../../../components/legion/LegionTablePagination";
 import { useTablePagination } from "../../../hooks/useTablePagination";
 import { engineeringRepository } from "../../../lib/data";
@@ -112,7 +96,7 @@ function generateMockDiscoveredObjects(device) {
 // NetworkDiscoveryPage
 // ---------------------------------------------------------------------------
 export default function NetworkDiscoveryPage() {
-  const { site, apiSites } = useSite();
+  const { site } = useSite();
   const { workingVersion, workingState, actions } = useWorkingVersion();
   /** Avoid listing `actions` on poll effect deps — it can change when working state updates and would re-run the effect + immediate tick() every render. */
   const setDiscoveredForDeviceRef = useRef(actions.setDiscoveredObjectsForDevice);
@@ -135,9 +119,6 @@ export default function NetworkDiscoveryPage() {
   const [lastScanLines, setLastScanLines] = useState([]);
   const [showAdvancedScan, setShowAdvancedScan] = useState(false);
   const [inspectorDevice, setInspectorDevice] = useState(null);
-  const [persistedEquipmentController, setPersistedEquipmentController] = useState(null);
-  const [showAssignRuntimeModal, setShowAssignRuntimeModal] = useState(false);
-  const [showMapFieldModal, setShowMapFieldModal] = useState(false);
   /** Per-device point discovery state: deviceId -> { pointsStatus, lastPointDiscoveryTime } — UI only; objects live in workingState.discoveredObjects */
   const [devicePointDiscoveryMeta, setDevicePointDiscoveryMeta] = useState({});
 
@@ -189,30 +170,7 @@ export default function NetworkDiscoveryPage() {
   }, []);
 
   const includeUnconfigured = networkConfig?.scanDefaults?.includeUnconfiguredProtocols === true;
-  /** BACnet paths optional when API mode can still pull Legion SIM controllers from /api/runtime. */
-  const canRunScan =
-    hasEnabledDiscoveryPaths(networkConfig) || includeUnconfigured || USE_HIERARCHY_API;
-
-  /** Backend UUID for runtime discovery + Phase 2 assign (works while `site` is still a display name). */
-  const resolvedApiSiteId =
-    USE_HIERARCHY_API
-      ? coerceSiteKeyToApiId(site, apiSites) || (isBackendSiteId(site) ? site : null)
-      : null;
-
-  const mergeRuntimeIntoDeviceTree = useCallback(
-    async (deviceTree) => {
-      if (!USE_HIERARCHY_API) return deviceTree;
-      try {
-        const runtimeItems = await fetchRuntimeDiscoveryDevices(resolvedApiSiteId || undefined);
-        return appendRuntimeDevicesToDiscoveryTree(deviceTree, runtimeItems);
-      } catch (e) {
-        // eslint-disable-next-line no-console
-        console.warn("Runtime discovery merge failed:", e?.message || e);
-        return deviceTree;
-      }
-    },
-    [resolvedApiSiteId]
-  );
+  const canRunScan = hasEnabledDiscoveryPaths(networkConfig) || includeUnconfigured;
 
   const runDiscoveryScan = useCallback(
     (scanMode) => {
@@ -231,22 +189,12 @@ export default function NetworkDiscoveryPage() {
       const preview = getMockDiscoveryScanResult({ siteName: site, scanMode, networkConfig });
       setActiveScanLines(preview.scanLines || []);
 
-      window.setTimeout(async () => {
-        let { devices, scanLines, statusSummary } = getMockDiscoveryScanResult({
+      window.setTimeout(() => {
+        const { devices, scanLines, statusSummary } = getMockDiscoveryScanResult({
           siteName: site,
           scanMode,
           networkConfig,
         });
-        // API + no BACnet paths: mock result may be empty; still merge SIM controllers.
-        if (USE_HIERARCHY_API && (!devices || devices.length === 0) && statusSummary !== "ok") {
-          devices = [];
-          statusSummary = "ok";
-          scanLines = [
-            ...(scanLines || []),
-            "No BACnet paths enabled — showing Legion SIM controllers from runtime API only.",
-          ];
-        }
-        devices = await mergeRuntimeIntoDeviceTree(devices);
         actions.setDiscoveredDevices(devices);
         const count = flattenDeviceCount(devices);
         const summaryLine =
@@ -257,34 +205,27 @@ export default function NetworkDiscoveryPage() {
             : `${count} device(s) in result tree.`;
 
         setActiveScanLines([]);
-        const simNote = USE_HIERARCHY_API ? " Legion SIM controllers merged from runtime API." : "";
-        setLastScanLines([...(scanLines || []), summaryLine + simNote]);
+        setLastScanLines([...(scanLines || []), summaryLine]);
         setScanPhase("");
         setIsScanning(false);
       }, 1500);
     },
-    [actions, canRunScan, mergeRuntimeIntoDeviceTree, networkConfig, site]
+    [actions, canRunScan, networkConfig, site]
   );
 
   const handleScanNetwork = useCallback(() => runDiscoveryScan("all"), [runDiscoveryScan]);
   const handleScanBacnetIp = useCallback(() => runDiscoveryScan("bacnet_ip"), [runDiscoveryScan]);
   const handleScanMstp = useCallback(() => runDiscoveryScan("bacnet_mstp"), [runDiscoveryScan]);
 
-  const handleRefreshDiscovery = useCallback(async () => {
+  const handleRefreshDiscovery = useCallback(() => {
     if (!canRunScan) return;
-    try {
-      let next = getMockDiscoveryScanResult({
-        siteName: site,
-        scanMode: "all",
-        networkConfig,
-      }).devices;
-      next = await mergeRuntimeIntoDeviceTree(next);
-      actions.setDiscoveredDevices(next);
-    } catch (e) {
-      // eslint-disable-next-line no-console
-      console.warn("Discovery refresh failed:", e?.message || e);
-    }
-  }, [actions, canRunScan, mergeRuntimeIntoDeviceTree, networkConfig, site]);
+    const next = getMockDiscoveryScanResult({
+      siteName: site,
+      scanMode: "all",
+      networkConfig,
+    }).devices;
+    actions.setDiscoveredDevices(next);
+  }, [actions, canRunScan, networkConfig, site]);
 
   const handleAssign = useCallback((payload) => {
     console.log("Assign devices:", payload);
@@ -302,97 +243,13 @@ export default function NetworkDiscoveryPage() {
 
   const handleCloseInspector = useCallback(() => {
     setInspectorDevice(null);
-    setPersistedEquipmentController(null);
   }, []);
 
-  /** Equipment UUID for `/api/runtime/.../field-points` when multiple site SIM rows exist */
-  const inspectorRuntimeFieldPointsCode = useMemo(() => {
-    if (!inspectorDevice || !isRuntimeSimDiscoveryDevice(inspectorDevice)) return "";
-    return String(inspectorDevice.runtimeFieldPointsCode ?? inspectorDevice.code ?? "").trim();
-  }, [inspectorDevice]);
-
-  /** Human controller code for assign API (e.g. FCU-1) */
-  const inspectorAssignControllerCode = useMemo(() => {
-    if (!inspectorDevice || !isRuntimeSimDiscoveryDevice(inspectorDevice)) return "";
-    return String(
-      inspectorDevice.assignControllerCode ?? inspectorDevice.controllerCode ?? inspectorDevice.code ?? ""
-    ).trim();
-  }, [inspectorDevice]);
-
-  const refreshPersistedEquipmentController = useCallback(async () => {
-    if (!USE_HIERARCHY_API || !inspectorDevice || !resolvedApiSiteId) {
-      setPersistedEquipmentController(null);
-      return;
-    }
-    if (!isRuntimeSimDiscoveryDevice(inspectorDevice)) {
-      setPersistedEquipmentController(null);
-      return;
-    }
-    const eqId = getRuntimeSimEquipmentId(inspectorDevice);
-    if (!eqId) {
-      setPersistedEquipmentController(null);
-      return;
-    }
-    try {
-      const row = await getEquipmentControllerByEquipment(eqId);
-      setPersistedEquipmentController(row);
-    } catch {
-      setPersistedEquipmentController(null);
-    }
-  }, [inspectorDevice, resolvedApiSiteId]);
-
-  useEffect(() => {
-    refreshPersistedEquipmentController();
-  }, [refreshPersistedEquipmentController]);
-
-  const loadLivePointsForSimDevice = useCallback(async (device, deviceKeyForState) => {
-    if (!USE_HIERARCHY_API) return null;
-    const equipmentId = getRuntimeSimEquipmentId(device);
-    const runtimeCode = String(device?.runtimeFieldPointsCode || "").trim();
-
-    if (equipmentId) {
-      const rows = await listPointsByEquipment(equipmentId);
-      const discoveredObjects = mapEquipmentPointsToDiscoveryObjects(rows);
-      setDiscoveredForDeviceRef.current(deviceKeyForState, discoveredObjects);
-      return discoveredObjects;
-    }
-
-    if (runtimeCode) {
-      const fp = await fetchRuntimeFieldPoints(runtimeCode);
-      const discoveredObjects = mapRuntimeFieldPointsToDiscoveryObjects(fp);
-      setDiscoveredForDeviceRef.current(deviceKeyForState, discoveredObjects);
-      return discoveredObjects;
-    }
-
-    return null;
-  }, []);
-
-  /** Live DB points for Legion SIM devices; mock BACnet objects otherwise. */
   const handleDiscoverPoints = useCallback(
     async (deviceId) => {
       const device = inspectorDevice;
       if (!device) return;
       const key = String(device.deviceInstance ?? deviceId);
-      if (
-        USE_HIERARCHY_API &&
-        isRuntimeSimDiscoveryDevice(device) &&
-        (getRuntimeSimEquipmentId(device) || String(device?.runtimeFieldPointsCode || "").trim())
-      ) {
-        try {
-          await loadLivePointsForSimDevice(device, key);
-          setDevicePointDiscoveryMeta((prev) => ({
-            ...prev,
-            [deviceId]: {
-              pointsStatus: POINTS_STATUS.DISCOVERED,
-              lastPointDiscoveryTime: new Date().toLocaleString(),
-            },
-          }));
-        } catch (e) {
-          // eslint-disable-next-line no-console
-          console.warn("SIM point discovery failed:", e?.message || e);
-        }
-        return;
-      }
       const discoveredObjects = generateMockDiscoveredObjects(device);
       setDiscoveredForDeviceRef.current(key, discoveredObjects);
       setDevicePointDiscoveryMeta((prev) => ({
@@ -403,7 +260,7 @@ export default function NetworkDiscoveryPage() {
         },
       }));
     },
-    [inspectorDevice, loadLivePointsForSimDevice]
+    [inspectorDevice]
   );
 
   const handleRefreshPoints = useCallback(
@@ -411,27 +268,6 @@ export default function NetworkDiscoveryPage() {
       const device = inspectorDevice;
       if (!device) return;
       const key = String(device.deviceInstance ?? deviceId);
-      if (
-        USE_HIERARCHY_API &&
-        isRuntimeSimDiscoveryDevice(device) &&
-        (getRuntimeSimEquipmentId(device) || String(device?.runtimeFieldPointsCode || "").trim())
-      ) {
-        try {
-          await loadLivePointsForSimDevice(device, key);
-          setDevicePointDiscoveryMeta((prev) => ({
-            ...prev,
-            [deviceId]: {
-              ...prev[deviceId],
-              pointsStatus: POINTS_STATUS.DISCOVERED,
-              lastPointDiscoveryTime: new Date().toLocaleString(),
-            },
-          }));
-        } catch (e) {
-          // eslint-disable-next-line no-console
-          console.warn("SIM point refresh failed:", e?.message || e);
-        }
-        return;
-      }
       const discoveredObjects = generateMockDiscoveredObjects(device);
       setDiscoveredForDeviceRef.current(key, discoveredObjects);
       setDevicePointDiscoveryMeta((prev) => ({
@@ -443,52 +279,8 @@ export default function NetworkDiscoveryPage() {
         },
       }));
     },
-    [inspectorDevice, loadLivePointsForSimDevice]
+    [inspectorDevice]
   );
-
-  const simPollEquipmentId =
-    inspectorDevice && USE_HIERARCHY_API && isRuntimeSimDiscoveryDevice(inspectorDevice)
-      ? getRuntimeSimEquipmentId(inspectorDevice)
-      : null;
-  const simPollDeviceKey =
-    inspectorDevice && simPollEquipmentId
-      ? String(inspectorDevice.deviceInstance ?? inspectorDevice.id)
-      : null;
-  const simPollInspectorRowId = inspectorDevice?.id ?? null;
-
-  /** Poll live equipment points on the runtime interval while SIM device inspector is open. */
-  useEffect(() => {
-    if (!simPollEquipmentId || !simPollDeviceKey || !simPollInspectorRowId) {
-      return undefined;
-    }
-    let cancelled = false;
-
-    const tick = async () => {
-      try {
-        const rows = await listPointsByEquipment(simPollEquipmentId);
-        if (cancelled) return;
-        const discoveredObjects = mapEquipmentPointsToDiscoveryObjects(rows);
-        setDiscoveredForDeviceRef.current(simPollDeviceKey, discoveredObjects);
-        setDevicePointDiscoveryMeta((prev) => ({
-          ...prev,
-          [simPollInspectorRowId]: {
-            pointsStatus: POINTS_STATUS.DISCOVERED,
-            lastPointDiscoveryTime: new Date().toLocaleString(),
-          },
-        }));
-      } catch (e) {
-        // eslint-disable-next-line no-console
-        console.warn("SIM inspector live poll failed:", e?.message || e);
-      }
-    };
-
-    tick();
-    const intervalId = window.setInterval(tick, 20000);
-    return () => {
-      cancelled = true;
-      window.clearInterval(intervalId);
-    };
-  }, [simPollEquipmentId, simPollDeviceKey, simPollInspectorRowId]);
 
   const isNewBuilding = engineeringRepository.isNewEngineeringBuildingFlow(site);
   const hasNoSite = isNewBuilding && !workingState?.site;
@@ -644,43 +436,6 @@ export default function NetworkDiscoveryPage() {
             : undefined
         }
         onPatchDevice={handlePatchDiscoveredDevice}
-        phase2SiteId={
-          USE_HIERARCHY_API && resolvedApiSiteId && inspectorDevice && isRuntimeSimDiscoveryDevice(inspectorDevice)
-            ? resolvedApiSiteId
-            : null
-        }
-        persistedEquipmentController={persistedEquipmentController}
-        phase2ControllerCode={inspectorAssignControllerCode || inspectorRuntimeFieldPointsCode}
-        onPhase2AssignClick={() => setShowAssignRuntimeModal(true)}
-        onPhase2MapClick={() => setShowMapFieldModal(true)}
-      />
-
-      <AssignRuntimeControllerModal
-        show={showAssignRuntimeModal}
-        onHide={() => setShowAssignRuntimeModal(false)}
-        siteId={USE_HIERARCHY_API && resolvedApiSiteId ? resolvedApiSiteId : ""}
-        controllerCode={inspectorAssignControllerCode}
-        displayName={inspectorDevice?.name}
-        protocol={inspectorDevice?.protocol || "SIM"}
-        isSimulated
-        onAssigned={(row) => {
-          if (inspectorDevice?.id && row?.equipmentId) {
-            handlePatchDiscoveredDevice(inspectorDevice.id, {
-              assignedEquipmentId: row.equipmentId,
-            });
-          }
-          refreshPersistedEquipmentController();
-          handleRefreshDiscovery();
-        }}
-      />
-
-      <MapFieldPointsModal
-        show={showMapFieldModal}
-        onHide={() => setShowMapFieldModal(false)}
-        controllerCode={inspectorRuntimeFieldPointsCode}
-        equipmentControllerId={persistedEquipmentController?.id}
-        equipmentId={persistedEquipmentController?.equipmentId}
-        onMapped={() => refreshPersistedEquipmentController()}
       />
 
       <AdvancedScanModal show={showAdvancedScan} onHide={() => setShowAdvancedScan(false)} />

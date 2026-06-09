@@ -1,6 +1,6 @@
 const { PrismaClient } = require('@prisma/client');
 const { getGlobalStarterTemplateSeedRows } = require('../src/lib/legionStarterEquipmentTemplates');
-const { ensureFcuSimEquipmentAndPoints, ensureFcuPhase2Bindings } = require('../src/lib/seedFcuSimEquipment');
+const { removeLegacySimDemoData } = require('../src/lib/seedFcuSimEquipment');
 
 const prisma = new PrismaClient();
 
@@ -8,7 +8,7 @@ const prisma = new PrismaClient();
 const DEMO_CAMPUS_SITE_ID =
   process.env.DEMO_CAMPUS_SITE_ID || 'cafe0000-0000-4000-8000-00000000babe';
 
-/** Second demo project (buildings/floors only). Legion SIM controller is seeded on Demo Campus only. */
+/** Second demo project (buildings/floors only). */
 const SUNSET_STRIP_PLAZA_SITE_ID =
   process.env.SUNSET_STRIP_PLAZA_SITE_ID || 'decaf0000-0000-4000-8000-000000000001';
 
@@ -373,18 +373,7 @@ async function main() {
     },
   });
 
-  const fcuSimSeedSummary = await ensureFcuSimEquipmentAndPoints(prisma, {
-    siteId: site.id,
-    defaultBuildingId: buildingA.id,
-    defaultFloorId: a1.id,
-  });
-
-  let fcuPhase2Summary = null;
-  try {
-    fcuPhase2Summary = await ensureFcuPhase2Bindings(prisma, fcuSimSeedSummary.equipment);
-  } catch (e) {
-    console.warn('[seed] Phase 2 FCU bindings skipped (run migrations if tables are missing):', e?.message || e);
-  }
+  const legacySimRemoved = await removeLegacySimDemoData(prisma, site.id);
 
   await prisma.point.upsert({
     where: { equipmentId_pointCode: { equipmentId: equip1.id, pointCode: 'SAT' } },
@@ -618,17 +607,10 @@ async function main() {
     create: { buildingId: sunsetBuilding.id, name: 'Level 1' },
   });
 
-  const legacySunsetSim = await prisma.equipment.findFirst({
-    where: {
-      siteId: sunsetSite.id,
-      OR: [
-        { code: { equals: 'FCU-1', mode: 'insensitive' } },
-        { name: { equals: 'LC-CGC', mode: 'insensitive' } },
-      ],
-    },
-  });
-  if (legacySunsetSim) {
-    await prisma.equipment.delete({ where: { id: legacySunsetSim.id } });
+  const legacySunsetSimRemoved = await removeLegacySimDemoData(prisma, sunsetSite.id);
+  if (legacySunsetSimRemoved.removed > 0) {
+    // eslint-disable-next-line no-console
+    console.log('[seed] Removed legacy SIM demo equipment from Sunset Strip Plaza', legacySunsetSimRemoved);
   }
 
   const deploymentSnapshot = await buildDemoDeploymentSnapshot(site.id);
@@ -677,14 +659,7 @@ async function main() {
     activeReleaseVersionId: siteVersion.id,
     roles: roles.map((r) => r.name).sort(),
     users: usersForLog.map((u) => u.email),
-    fcu1Sim: {
-      equipmentId: fcuSimSeedSummary.equipment.id,
-      equipmentCreated: fcuSimSeedSummary.equipmentCreated,
-      pointsCreated: fcuSimSeedSummary.pointsCreated,
-      pointsAlreadyExisted: fcuSimSeedSummary.pointsAlreadyPresent,
-      totalPointDefinitions: fcuSimSeedSummary.totalPointDefinitions,
-      phase2: fcuPhase2Summary,
-    },
+    legacySimRemoved,
   });
 }
 
