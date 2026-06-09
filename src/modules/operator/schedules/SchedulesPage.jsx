@@ -73,26 +73,23 @@ export default function SchedulesPage() {
       <div className="px-3 px-md-4 pt-3"><LegionHeroHeader /><hr className="border-light border-opacity-25 my-3" /></div>
 
       <div className="px-3 px-md-4 pb-4 mt-3">
-        <div className="d-flex align-items-start justify-content-between flex-wrap gap-2 mb-2">
-          <div><h5 className="text-white fw-bold mb-1">Schedules</h5><div className="text-white small">Create and manage weekly schedules for equipment commands (occupancy, enable/disable, setpoints, etc.).</div></div>
-          <div className="d-flex align-items-center gap-2">
-            <span className="badge bg-primary border border-light border-opacity-25 text-white">Total: {counts.total}</span>
-            <span className="badge bg-primary border border-light border-opacity-25 text-white">Enabled: {counts.enabled}</span>
-            <span className="badge bg-primary border border-light border-opacity-25 text-white">Disabled: {counts.disabled}</span>
-            <Button size="sm" variant="outline-light" className="border-opacity-10" onClick={openCreate}>+ New Schedule</Button>
-          </div>
-        </div>
-
         <Row className="g-3">
           <Col xs={12}>
-            <Card className="bg-primary border border-light border-opacity-10 shadow-sm">
+            <Card className="legion-operator-log-card bg-primary border border-light border-opacity-10 shadow-sm">
+              <Card.Header className="legion-operator-log-card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
+                <span className="text-white fw-bold text-uppercase">Schedules</span>
+                <div className="d-flex align-items-center flex-wrap gap-2">
+                  <span className="badge bg-primary border border-light border-opacity-25 text-white">Total: {counts.total}</span>
+                  <span className="badge bg-primary border border-light border-opacity-25 text-white">Enabled: {counts.enabled}</span>
+                  <span className="badge bg-primary border border-light border-opacity-25 text-white">Disabled: {counts.disabled}</span>
+                  <Button size="sm" variant="outline-light" className="border-opacity-10" onClick={openCreate}>+ New Schedule</Button>
+                </div>
+              </Card.Header>
               <Card.Body>
-                <div className="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3"><div className="text-white fw-semibold">Schedule Log</div><div className="text-white fw-semibold">Showing {total === 0 ? "0" : `${startIndex + 1}–${endIndex}`} of {total}</div></div>
-
                 <Row className="g-2 align-items-end mb-3">
                   <Col xs={12} md={6} lg={6}>
                     <Form.Label className="text-white fw-semibold small mb-1">Search</Form.Label>
-                    <Form.Control value={search} onChange={(e) => { const v = e.target.value; setSearch(v); }} placeholder="Search schedule, equipment, point, action, ID…" className="bg-primary text-white border border-light border-opacity-10" />
+                    <Form.Control value={search} onChange={(e) => { const v = e.target.value; setSearch(v); }} placeholder="Search schedule, equipment, point, action, ID…" className="legion-operator-log-field text-white border border-light border-opacity-10" />
                   </Col>
                   <Col xs={6} md={3} lg={3}>
                     <Form.Label className="text-white fw-semibold small mb-1">Scope</Form.Label>
@@ -109,10 +106,10 @@ export default function SchedulesPage() {
                   <Col xs={12} md={12} lg={1} className="d-flex justify-content-end"><Button size="sm" variant="outline-light" className="border-opacity-10 w-100" onClick={() => { setSearch(""); setScope("All"); setStatus("All"); }}>Reset</Button></Col>
                 </Row>
 
-                <div className="border border-light border-opacity-10 rounded overflow-hidden">
-                  <Table responsive hover className="bg-primary border border-light border-opacity-10 shadow-sm h-100">
-                    <thead className="small">
-                      <tr>
+                <div className="legion-operator-log-table-wrap border border-light border-opacity-10 rounded overflow-hidden">
+                  <Table responsive hover className="h-100 mb-0">
+                    <thead>
+                      <tr className="text-white">
                         <th style={{ width: 260 }} className="text-white">Schedule</th>
                         <th style={{ width: 220 }} className="text-white">Equipment</th>
                         <th style={{ width: 220 }} className="text-white">Point</th>

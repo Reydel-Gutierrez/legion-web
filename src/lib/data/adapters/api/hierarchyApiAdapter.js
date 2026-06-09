@@ -69,6 +69,7 @@ export function normalizeFloor(api) {
     buildingId: api.buildingId,
     name: api.name,
     status: api.status,
+    displayLabel: api.displayLabel ?? "",
     floorType: api.floorType ?? "",
     occupancyType: api.occupancyType ?? "",
     sortOrder: api.sortOrder ?? 0,

@@ -135,46 +135,32 @@ export default function AlarmsPage() {
 
       {/* PAGE CONTENT */}
       <div className="px-3 px-md-4 pb-4 mt-3">
-        <div className="d-flex align-items-start justify-content-between flex-wrap gap-2 mb-2">
-          <div>
-            <h5 className="text-white fw-bold mb-1">Alarms</h5>
-            <div className="text-white small">
-              Active + historical alarm log for all equipment in this site.
-            </div>
-            {alarmsLoading ? (
-              <div className="text-white-50 small mt-1">Loading alarms…</div>
-            ) : null}
-            {alarmsError ? (
-              <div className="text-warning small mt-1" role="alert">
-                {alarmsError}
-              </div>
-            ) : null}
-          </div>
-
-          <div className="d-flex align-items-center gap-2">
-            <span className="badge bg-primary border border-light border-opacity-25 text-white">
-              Active: {counts.active}
-            </span>
-            <span className="badge bg-primary border border-light border-opacity-25 text-white">
-              Unacked: {counts.unackedActive}
-            </span>
-            <span className="badge bg-primary border border-light border-opacity-25 text-white">
-              Critical: {counts.criticalActive}
-            </span>
-          </div>
-        </div>
-
         <Row className="g-3">
           <Col xs={12}>
-            <Card className="bg-primary border border-light border-opacity-10 shadow-sm">
-              <Card.Body>
-                {/* Filters */}
-                <div className="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
-                  <div className="text-white fw-semibold">Alarm Log</div>
-                  <div className="text-white fw-semibold">
-                    Showing {total === 0 ? "0" : `${startIndex + 1}–${endIndex}`} of {total}
-                  </div>
+            <Card className="legion-operator-log-card bg-primary border border-light border-opacity-10 shadow-sm">
+              <Card.Header className="legion-operator-log-card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
+                <span className="text-white fw-bold text-uppercase">Alarms</span>
+                <div className="d-flex align-items-center flex-wrap gap-2">
+                  <span className="badge bg-primary border border-light border-opacity-25 text-white">
+                    Active: {counts.active}
+                  </span>
+                  <span className="badge bg-primary border border-light border-opacity-25 text-white">
+                    Unacked: {counts.unackedActive}
+                  </span>
+                  <span className="badge bg-primary border border-light border-opacity-25 text-white">
+                    Critical: {counts.criticalActive}
+                  </span>
                 </div>
+              </Card.Header>
+              <Card.Body>
+                {alarmsLoading ? (
+                  <div className="text-white-50 small mb-2">Loading alarms…</div>
+                ) : null}
+                {alarmsError ? (
+                  <div className="text-warning small mb-2" role="alert">
+                    {alarmsError}
+                  </div>
+                ) : null}
 
                 <Row className="g-2 align-items-end mb-3">
                   <Col xs={12} md={6} lg={5}>
@@ -185,7 +171,7 @@ export default function AlarmsPage() {
                       value={search}
                       onChange={(e) => setSearch(e.target.value)}
                       placeholder="Search equipment, point, message, ID…"
-                      className="bg-primary text-white border border-light border-opacity-10"
+                      className="legion-operator-log-field text-white border border-light border-opacity-10"
                     />
                   </Col>
 
@@ -253,8 +239,8 @@ export default function AlarmsPage() {
                 </Row>
 
                 {/* Table */}
-                <div className="border border-light border-opacity-10 rounded overflow-hidden">
-                  <Table responsive hover className="bg-primary border border-light border-opacity-10 shadow-sm h-100">
+                <div className="legion-operator-log-table-wrap border border-light border-opacity-10 rounded overflow-hidden">
+                  <Table responsive hover className="h-100 mb-0">
                     <thead>
                       <tr className="text-white">
                         <th style={{ width: 220 }} className="text-white" >Equipment</th>

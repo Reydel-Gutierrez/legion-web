@@ -254,8 +254,8 @@ export default function DeviceInspectorPanel({
                 </Button>
               </div>
             ) : (
-              <div className="discovery-table-wrap overflow-auto">
-                <Table className="discovery-table equipment-template-points-table mb-0" responsive>
+              <div className="legion-operator-log-table-wrap discovery-table-wrap overflow-auto">
+                <Table className="discovery-table equipment-template-points-table mb-0" responsive hover>
                   <thead>
                     <tr>
                       <th className="discovery-table-header">Object Name</th>

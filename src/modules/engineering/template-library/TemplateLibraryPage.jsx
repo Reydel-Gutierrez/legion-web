@@ -425,17 +425,13 @@ export default function TemplateLibraryPage() {
       </div>
 
       <div className="px-3 px-md-4 pb-4">
-        <div className="d-flex flex-wrap align-items-start justify-content-between gap-3 mb-3">
-          <div>
-            <h5 className="text-white fw-bold mb-1">
+        <Card className="legion-operator-log-card bg-primary border border-light border-opacity-10 shadow-sm">
+          <Card.Header className="legion-operator-log-card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
+            <span className="text-white fw-bold text-uppercase">
               <FontAwesomeIcon icon={faBook} className="me-2" />
               Template Library
-            </h5>
-            <div className="text-white-50 small">
-              Manage equipment and graphic templates available for this site.
-            </div>
-          </div>
-          <div className="d-flex align-items-center gap-2">
+            </span>
+            <div className="d-flex align-items-center gap-2">
             <Button
               size="sm"
               className="legion-hero-btn legion-hero-btn--secondary"
@@ -474,12 +470,12 @@ export default function TemplateLibraryPage() {
                 </Dropdown.Item>
               </Dropdown.Menu>
             </Dropdown>
-          </div>
-        </div>
-
-        <p className="text-white-50 small mb-3">
-          Templates in this library are available for use in this job. Import standards from the Legion Global Template Library or create site-specific templates.
-        </p>
+            </div>
+          </Card.Header>
+          <Card.Body>
+            <div className="text-white-50 small mb-3">
+              Manage equipment and graphic templates available for this site. Import standards from the Legion Global Template Library or create site-specific templates.
+            </div>
 
         <Nav variant="tabs" className="mb-3 template-library-tabs">
           <Nav.Item>
@@ -502,7 +498,12 @@ export default function TemplateLibraryPage() {
           </Nav.Item>
         </Nav>
 
-        <Card className="bg-primary border border-light border-opacity-10 shadow-sm">
+        <Card className="legion-operator-log-card bg-primary border border-light border-opacity-10 shadow-sm">
+          <Card.Header className="legion-operator-log-card-header">
+            <span className="text-white fw-bold text-uppercase">
+              {activeTab === "graphic" ? "Graphic Templates" : "Equipment Templates"}
+            </span>
+          </Card.Header>
           <Card.Body className="p-0">
             {activeTab === "equipment" && (
               <EquipmentTemplatesTable
@@ -523,6 +524,8 @@ export default function TemplateLibraryPage() {
                 onRemoveFromSite={handleRemoveGraphic}
               />
             )}
+          </Card.Body>
+        </Card>
           </Card.Body>
         </Card>
       </div>

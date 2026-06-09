@@ -187,8 +187,10 @@ export async function buildOperatorDeploymentSnapshot(siteId) {
       floorNodes.push({
         id: f.id,
         name: f.name,
+        displayLabel: f.displayLabel || f.name,
         sortOrder: fi,
-        floorType: "Standard Floor",
+        floorType: f.floorType || "Standard Floor",
+        occupancyType: f.occupancyType || "",
       });
     }
     siteBuildings.push({
@@ -293,6 +295,7 @@ export function normalizeWorkingPayloadFromApi(p) {
         floors: (b.floors || []).map((f) => ({
           id: f.id,
           name: f.name,
+          displayLabel: f.displayLabel || f.name,
           sortOrder: f.sortOrder ?? 0,
           floorType: f.floorType,
           occupancyType: f.occupancyType,

@@ -1,40 +1,30 @@
 import React, { useMemo } from "react";
 import SiteBuildingHero from "./SiteBuildingHero";
 import SiteQuickNavigation from "./SiteQuickNavigation";
-import SiteBuildingInsightWidgets from "./SiteBuildingInsightWidgets";
 import {
   findBuildingInRelease,
   sortedFloorsForBuilding,
-  equipmentForBuilding,
-  resolveBuildingHeroCopy,
+  formatBuildingHeroTitle,
 } from "../../../../lib/siteBuildingOverviewUtils";
 
-/**
- * Operator building main page: vignette, hero copy, Quick navigation card, bottom insight strip.
- */
-export default function SiteBuildingOverview({ releaseData, buildingId, onSelectFloor, onBackToMap }) {
+/** Operator building main page overlay: vignette, title, and quick navigation. */
+export default function SiteBuildingOverview({ releaseData, buildingId, onSelectFloor, navKey }) {
   const building = useMemo(() => findBuildingInRelease(releaseData, buildingId), [releaseData, buildingId]);
   const floors = useMemo(() => sortedFloorsForBuilding(building), [building]);
-  const buildingEquipment = useMemo(() => equipmentForBuilding(releaseData, buildingId), [releaseData, buildingId]);
-
-  const hero = useMemo(
-    () => resolveBuildingHeroCopy(building, releaseData?.site ?? null),
-    [building, releaseData?.site]
-  );
+  const buildingName = useMemo(() => formatBuildingHeroTitle(building?.name || "Building"), [building]);
 
   return (
     <div className="site-building-overview">
       <div className="site-building-overview__vignette" aria-hidden />
-      <SiteBuildingHero buildingName={hero.name} subtitle={hero.subtitle} tagline={hero.tagline} />
+      <SiteBuildingHero buildingName={buildingName} />
       <SiteQuickNavigation
         variant="building"
         releaseData={releaseData}
         building={building}
         floors={floors}
         onSelectFloor={onSelectFloor}
-        onBackToMap={onBackToMap}
+        navKey={navKey}
       />
-      <SiteBuildingInsightWidgets buildingId={buildingId} buildingEquipment={buildingEquipment} />
     </div>
   );
 }

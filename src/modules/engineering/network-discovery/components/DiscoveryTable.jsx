@@ -148,7 +148,7 @@ export default function DiscoveryTable({
 
   return (
     <div className="discovery-table-wrap">
-      <table className="table discovery-table">
+      <table className="table discovery-table mb-0">
         <thead>
           <tr>
             <th className="discovery-table-header discovery-table-header--checkbox">

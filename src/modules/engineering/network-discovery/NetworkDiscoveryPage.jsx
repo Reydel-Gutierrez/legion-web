@@ -516,13 +516,10 @@ export default function NetworkDiscoveryPage() {
     return (
       <>
         <div className="px-3 px-md-4 pb-4">
-          <div className="mb-3">
-            <h5 className="text-white fw-bold mb-1">Network Discovery</h5>
-            <div className="text-white-50 small">
-              Discover BACnet devices on the selected site network and assign them to equipment.
-            </div>
-          </div>
-          <Card className="bg-primary border border-light border-opacity-10 shadow-sm">
+          <Card className="legion-operator-log-card bg-primary border border-light border-opacity-10 shadow-sm">
+            <Card.Header className="legion-operator-log-card-header">
+              <span className="text-white fw-bold text-uppercase">Network Discovery</span>
+            </Card.Header>
             <Card.Body className="p-0">
               <NoSiteSelectedState />
             </Card.Body>
@@ -539,52 +536,50 @@ export default function NetworkDiscoveryPage() {
   return (
     <>
       <div className="px-3 px-md-4 pb-4">
-        <div className="mb-3">
-          <h5 className="text-white fw-bold mb-1">
-            <FontAwesomeIcon icon={faNetworkWired} className="me-2" />
-            Network Discovery
-          </h5>
-          <div className="text-white-50 small">
-            Discover BACnet devices on the selected site network and assign them to equipment.
-          </div>
-        </div>
-
-        <DiscoveryStatusBanner onAssign={handleAssignFromBanner} onMore={() => {}} />
-
-        <DiscoveryToolbar
-          searchValue={searchQuery}
-          onSearchChange={setSearchQuery}
-          onScanAll={handleScanNetwork}
-          onScanBacnetIp={handleScanBacnetIp}
-          onScanMstp={handleScanMstp}
-          onAdvancedScan={() => setShowAdvancedScan(true)}
-          onRefresh={handleRefreshDiscovery}
-          onAssign={handleAssignFromBanner}
-          isScanning={isScanning}
-          canRunScan={canRunScan}
-        />
-
-        <ScanStatusArea
-          isScanning={isScanning}
-          scanPhase={scanPhase}
-          lines={isScanning ? activeScanLines : lastScanLines}
-          idleHint={
-            !isScanning && lastScanLines.length === 0
-              ? canRunScan
-                ? "Scan uses enabled BACnet/IP networks and MS/TP trunks from Network Configuration. Open the split menu for protocol-specific scans."
-                : "Enable at least one network path in Network Configuration, or allow unconfigured protocols in Scan defaults."
-              : null
-          }
-        />
-
-        <Card className="bg-primary border border-light border-opacity-10 shadow-sm">
-          <Card.Header className="bg-transparent border-light border-opacity-10 d-flex align-items-center justify-content-between flex-wrap gap-2">
-            <span className="text-white fw-bold">Discovered Devices</span>
-            <span className="text-white-50 small">
+        <Card className="legion-operator-log-card bg-primary border border-light border-opacity-10 shadow-sm">
+          <Card.Header className="legion-operator-log-card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
+            <span className="text-white fw-bold text-uppercase">
+              <FontAwesomeIcon icon={faNetworkWired} className="me-2" />
+              Network Discovery
+            </span>
+            <span className="badge bg-primary border border-light border-opacity-25 text-white">
               {total} device{total !== 1 ? "s" : ""} found
             </span>
           </Card.Header>
-          <Card.Body className="p-0 overflow-auto" style={{ minHeight: 400 }}>
+          <Card.Body>
+            <div className="text-white-50 small mb-3">
+              Discover BACnet devices on the selected site network and assign them to equipment.
+            </div>
+
+            <DiscoveryStatusBanner onAssign={handleAssignFromBanner} onMore={() => {}} />
+
+            <DiscoveryToolbar
+              searchValue={searchQuery}
+              onSearchChange={setSearchQuery}
+              onScanAll={handleScanNetwork}
+              onScanBacnetIp={handleScanBacnetIp}
+              onScanMstp={handleScanMstp}
+              onAdvancedScan={() => setShowAdvancedScan(true)}
+              onRefresh={handleRefreshDiscovery}
+              onAssign={handleAssignFromBanner}
+              isScanning={isScanning}
+              canRunScan={canRunScan}
+            />
+
+            <ScanStatusArea
+              isScanning={isScanning}
+              scanPhase={scanPhase}
+              lines={isScanning ? activeScanLines : lastScanLines}
+              idleHint={
+                !isScanning && lastScanLines.length === 0
+                  ? canRunScan
+                    ? "Scan uses enabled BACnet/IP networks and MS/TP trunks from Network Configuration. Open the split menu for protocol-specific scans."
+                    : "Enable at least one network path in Network Configuration, or allow unconfigured protocols in Scan defaults."
+                  : null
+              }
+            />
+
+            <div className="legion-operator-log-table-wrap border border-light border-opacity-10 rounded overflow-hidden mt-3" style={{ minHeight: 400 }}>
             {showConfigRequired ? (
               <NetworkDiscoveryConfigRequiredState />
             ) : !hasDevices ? (
@@ -602,22 +597,24 @@ export default function NetworkDiscoveryPage() {
                 emptyMessage="No devices match your search."
               />
             )}
+            </div>
+
+            {hasDevices && hasFilteredResults && (
+              <div className="mt-3">
+                <LegionTablePagination
+                  page={page}
+                  setPage={setPage}
+                  totalPages={totalPages}
+                  total={total}
+                  startIndex={startIndex}
+                  endIndex={endIndex}
+                  pageSize={pageSize}
+                  hasPrev={hasPrev}
+                  hasNext={hasNext}
+                />
+              </div>
+            )}
           </Card.Body>
-          {hasDevices && hasFilteredResults && (
-            <Card.Footer className="bg-transparent border-light border-opacity-10">
-              <LegionTablePagination
-                page={page}
-                setPage={setPage}
-                totalPages={totalPages}
-                total={total}
-                startIndex={startIndex}
-                endIndex={endIndex}
-                pageSize={pageSize}
-                hasPrev={hasPrev}
-                hasNext={hasNext}
-              />
-            </Card.Footer>
-          )}
         </Card>
       </div>
 

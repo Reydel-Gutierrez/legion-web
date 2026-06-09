@@ -7,7 +7,7 @@ import {
 } from "../../../lib/activeReleaseUtils";
 import { operatorRepository } from "../../../lib/data";
 import { useSite } from "../../../app/providers/SiteProvider";
-import { Container, Row, Col, Card, Button, Form, Modal } from "@themesberg/react-bootstrap";
+import { Container, Row, Col, Card, Button, Form, Modal, Table } from "@themesberg/react-bootstrap";
 import LegionHeroHeader from "../../../components/legion/LegionHeroHeader";
 import StatusDotLabel from "../../../components/legion/StatusDotLabel";
 import OperatorCommFreshnessLabel from "../../../components/legion/OperatorCommFreshnessLabel";
@@ -380,9 +380,11 @@ export default function EquipmentDetailPage() {
           <LegionHeroHeader />
           <hr className="border-light border-opacity-25 my-3" />
         </div>
-        <div className="px-3 px-md-4 pb-4">
-          <h5 className="text-white fw-bold mb-3">Equipment Detail</h5>
-          <Card className="bg-primary border border-light border-opacity-10 shadow-sm">
+        <div className="px-3 px-md-4 pb-4 legion-equipment-detail-page">
+          <Card className="legion-operator-log-card bg-primary border border-light border-opacity-10 shadow-sm">
+            <Card.Header className="legion-operator-log-card-header">
+              <span className="text-white fw-bold text-uppercase">Equipment Detail</span>
+            </Card.Header>
             <Card.Body className="text-center text-white-50 py-5">
               <p className="mb-2">Equipment not found.</p>
               <p className="small mb-0">It may not be in the active release for this site or the reference may be invalid.</p>
@@ -423,269 +425,245 @@ export default function EquipmentDetailPage() {
         <hr className="border-light border-opacity-25 my-3" />
       </div>
 
-      <div className="px-3 px-md-4 pb-4 mt-3">
-        <h5 className="text-white fw-bold mb-3">Equipment Detail</h5>
+      <div className="px-3 px-md-4 pb-4 mt-3 legion-equipment-detail-page">
         <Row className="g-3 text-white">
           <Col xs={12}>
-            <Card className="bg-primary border border-light border-opacity-10 shadow-sm">
+            <Card className="legion-operator-log-card bg-primary border border-light border-opacity-10 shadow-sm">
+              <Card.Header className="legion-operator-log-card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
+                <span className="text-white fw-bold text-uppercase">Equipment Graphic</span>
+                <span className="text-white-50 small">
+                  {displayName} · Instance {instanceDisplay}
+                </span>
+              </Card.Header>
               <Card.Body>
-                <Card className="bg-primary border border-light border-opacity-10 shadow-sm">
-                  <Card.Body>
-                    <div className="text-white fw-bold">{displayName}</div>
-                    <span className="text-white">Instance: {instanceDisplay}</span>
-                    <div className="my-3">
-                      <div className="text-white-50 small mb-2">Equipment graphic</div>
+                <div
+                  className="d-flex justify-content-center"
+                  style={{ overflowX: "auto", overflowY: "visible", width: "100%" }}
+                >
+                  <div style={{ width: 700, flexShrink: 0 }}>
+                    {graphic?.objects?.length > 0 ? (
+                      <DeployedGraphicPreview
+                        graphic={graphic}
+                        points={pointsForGraphic}
+                        onLinkClick={handleGraphicLinkClick}
+                        maxWidth={700}
+                        maxHeight={360}
+                        zoomFactor={1.75}
+                      />
+                    ) : (
                       <div
-                        className="d-flex justify-content-center"
-                        style={{ overflowX: "auto", overflowY: "visible", width: "100%" }}
+                        className="d-flex align-items-center justify-content-center bg-transparent"
+                        style={{ width: 700, height: 360 }}
                       >
-                        <div style={{ width: 700, flexShrink: 0 }}>
-                          {graphic?.objects?.length > 0 ? (
-                            <DeployedGraphicPreview
-                              graphic={graphic}
-                              points={pointsForGraphic}
-                              onLinkClick={handleGraphicLinkClick}
-                              maxWidth={700}
-                              maxHeight={360}
-                              zoomFactor={1.75}
-                            />
-                          ) : (
-                            <div
-                              className="d-flex align-items-center justify-content-center bg-transparent"
-                              style={{ width: 700, height: 360 }}
-                            >
-                              <img src={VavGraphicImg} alt={displayName} className="w-40 mb-0" />
-                            </div>
-                          )}
+                        <img src={VavGraphicImg} alt={displayName} className="w-40 mb-0" />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </Card.Body>
+            </Card>
+          </Col>
+
+          <Col xs={12} lg={8}>
+            <Card className="legion-operator-log-card bg-primary border border-light border-opacity-10 shadow-sm">
+              <Card.Header className="legion-operator-log-card-header">
+                <span className="text-white fw-bold text-uppercase">Live Points</span>
+              </Card.Header>
+              <Card.Body>
+                {USE_HIERARCHY_API && (runtimeForEquipment || persistedDbController) ? (
+                  <div className="legion-operator-log-table-wrap border border-light border-opacity-10 rounded px-3 py-2 mb-3">
+                    <div className="d-flex flex-wrap align-items-center gap-2 mb-1">
+                      <span className="text-white fw-semibold small text-uppercase">
+                        Controller runtime
+                      </span>
+                      {detailCommHeadline ? (
+                        <span
+                          className={`legion-comm-badge legion-comm-badge--${detailCommHeadline.toLowerCase()}`}
+                        >
+                          {detailCommHeadline}
+                        </span>
+                      ) : null}
+                    </div>
+                    {persistedDbController ? (
+                      <div className="text-white small mb-2">
+                        Assigned field controller:{" "}
+                        <span className="fw-semibold">{persistedDbController.controllerCode}</span>
+                        {persistedDbController.displayName
+                          ? ` (${persistedDbController.displayName})`
+                          : ""}{" "}
+                        · {persistedDbController.protocol || "—"}
+                        {persistedDbController.isEnabled === false ? (
+                          <span className="text-white-50 ms-2">(disabled)</span>
+                        ) : null}
+                      </div>
+                    ) : null}
+                    {runtimeForEquipment ? (
+                      <div className="text-white-50 small d-flex flex-wrap gap-3">
+                        <span>Protocol: {runtimeForEquipment.protocol || "—"}</span>
+                        <span>Last seen: {formatLastSeenSecondsAgo(detailLastSeen, nowTick)}</span>
+                        <span>
+                          Poll rate: {Math.round((runtimeForEquipment.pollRateMs || 5000) / 1000)}s
+                        </span>
+                        <span>Polls: {runtimeForEquipment.stats?.pollCount ?? 0}</span>
+                      </div>
+                    ) : (
+                      <div className="text-white-50 small">
+                        <div>Last seen: {formatLastSeenSecondsAgo(detailLastSeen, nowTick)}</div>
+                        <div className="mt-1">
+                          In-memory runtime stats appear when the simulator exposes this equipment.
                         </div>
                       </div>
-                    </div>
-                  </Card.Body>
-                </Card>
-                <Card className="bg-primary border border-light border-opacity-10 shadow-sm">
-                  <Card.Body>
-                    <Row className="g-3">
-                      <Col xs={12} lg={8}>
-                        <Card className="shadow-sm">
-                          <Card.Body>
-                            {USE_HIERARCHY_API && (runtimeForEquipment || persistedDbController) ? (
-                              <div className="border border-light border-opacity-10 rounded px-3 py-2 mb-3 bg-dark bg-opacity-25">
-                                <div className="d-flex flex-wrap align-items-center gap-2 mb-1">
-                                  <span className="text-white fw-semibold small text-uppercase">
-                                    Controller runtime
-                                  </span>
-                                  {detailCommHeadline ? (
-                                    <span
-                                      className={`legion-comm-badge legion-comm-badge--${detailCommHeadline.toLowerCase()}`}
-                                    >
-                                      {detailCommHeadline}
-                                    </span>
-                                  ) : null}
-                                </div>
-                                {persistedDbController ? (
-                                  <div className="text-white small mb-2">
-                                    Assigned field controller:{" "}
-                                    <span className="fw-semibold">{persistedDbController.controllerCode}</span>
-                                    {persistedDbController.displayName
-                                      ? ` (${persistedDbController.displayName})`
-                                      : ""}{" "}
-                                    · {persistedDbController.protocol || "—"}
-                                    {persistedDbController.isEnabled === false ? (
-                                      <span className="text-warning ms-2">(disabled)</span>
-                                    ) : null}
-                                  </div>
-                                ) : null}
-                                {runtimeForEquipment ? (
-                                  <div className="text-white-50 small d-flex flex-wrap gap-3">
-                                    <span>Protocol: {runtimeForEquipment.protocol || "—"}</span>
-                                    <span>Last seen: {formatLastSeenSecondsAgo(detailLastSeen, nowTick)}</span>
-                                    <span>
-                                      Poll rate: {Math.round((runtimeForEquipment.pollRateMs || 5000) / 1000)}s
-                                    </span>
-                                    <span>Polls: {runtimeForEquipment.stats?.pollCount ?? 0}</span>
-                                  </div>
+                    )}
+                  </div>
+                ) : null}
+                <p className="text-white-50 small mb-3 mb-lg-2">
+                  Click a row to open the command dialog (same controls as the operator workspace).
+                </p>
+                <div className="legion-operator-log-table-wrap border border-light border-opacity-10 rounded overflow-hidden legion-equipment-detail-points-wrap">
+                  <Table responsive hover className="legion-workspace-table mb-0 h-100">
+                    <thead>
+                      <tr>
+                        <th className="legion-workspace-th legion-workspace-th--narrow text-white" scope="col">
+                          #
+                        </th>
+                        <th className="legion-workspace-th text-white" scope="col">
+                          Point
+                        </th>
+                        <th className="legion-workspace-th text-white" scope="col">
+                          Point description
+                        </th>
+                        <th className="legion-workspace-th legion-workspace-th--narrow text-white" scope="col">
+                          Status
+                        </th>
+                        <th className="legion-workspace-th text-white" scope="col">
+                          Value
+                        </th>
+                        <th className="legion-workspace-th legion-workspace-th--mapped text-white" scope="col">
+                          Mapped to
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {displayPoints.length === 0 ? (
+                        <tr>
+                          <td colSpan={6} className="text-white-50 text-center py-4">
+                            No points defined. Add a template in Engineering and deploy a version.
+                          </td>
+                        </tr>
+                      ) : (
+                        displayPoints.map((p, index) => {
+                          const displayVal = detailPointTableValue(p, pointUiState);
+                          const isOosText = displayVal === DETAIL_OOS_LABEL;
+                          return (
+                            <tr
+                              key={p.id || index}
+                              className="legion-workspace-row legion-equipment-detail-point-row"
+                              role="button"
+                              tabIndex={0}
+                              onClick={() => openPointCommandModal(p)}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter" || e.key === " ") {
+                                  e.preventDefault();
+                                  openPointCommandModal(p);
+                                }
+                              }}
+                            >
+                              <td className="legion-workspace-td text-white-50">
+                                {String(index + 1).padStart(2, "0")}
+                              </td>
+                              <td className="legion-workspace-td legion-workspace-point text-white font-monospace">
+                                <span className="legion-workspace-point-label">{p.pointKey || p.pointId}</span>
+                              </td>
+                              <td className="legion-workspace-td text-white">
+                                {p.pointDescription || p.pointName || "—"}
+                              </td>
+                              <td className="legion-workspace-td legion-workspace-td--status">
+                                {p.commFreshnessStatus ? (
+                                  <OperatorCommFreshnessLabel
+                                    status={p.commFreshnessStatus}
+                                    variant="table"
+                                  />
                                 ) : (
-                                  <div className="text-white-50 small">
-                                    <div>
-                                      Last seen: {formatLastSeenSecondsAgo(detailLastSeen, nowTick)}
-                                    </div>
-                                    <div className="mt-1">
-                                      In-memory runtime stats appear when the simulator exposes this equipment.
-                                    </div>
-                                  </div>
+                                  <StatusDotLabel
+                                    value={
+                                      p.status === "OK"
+                                        ? "online"
+                                        : p.status === "OFFLINE"
+                                          ? "offline"
+                                          : p.status === "Pending"
+                                            ? "pending"
+                                            : p.status === "Unbound"
+                                              ? "unbound"
+                                              : "offline"
+                                    }
+                                    kind="status"
+                                    dotOnly={["ok", "normal", "online"].includes(
+                                      (p.status || "").toLowerCase()
+                                    )}
+                                  />
                                 )}
-                              </div>
-                            ) : null}
-                            <div className="text-white fw-bold mb-2">Live Points</div>
-                            <p className="text-white-50 small mb-3 mb-lg-2">
-                              Click a row to open the command dialog (same controls as the operator workspace).
-                            </p>
-                            <div className="table-responsive legion-equipment-detail-points-wrap">
-                              <table className="table bas-points-table legion-workspace-table align-middle mb-0">
-                                <thead>
-                                  <tr>
-                                    <th className="legion-workspace-th legion-workspace-th--narrow" scope="col">
-                                      #
-                                    </th>
-                                    <th className="legion-workspace-th" scope="col">
-                                      Point
-                                    </th>
-                                    <th className="legion-workspace-th" scope="col">
-                                      Point description
-                                    </th>
-                                    <th className="legion-workspace-th" scope="col">
-                                      Value
-                                    </th>
-                                    <th className="legion-workspace-th legion-workspace-th--mapped" scope="col">
-                                      Mapped to
-                                    </th>
-                                    <th className="legion-workspace-th legion-workspace-th--narrow" scope="col">
-                                      Status
-                                    </th>
-                                  </tr>
-                                </thead>
-                                <tbody>
-                                  {displayPoints.length === 0 ? (
-                                    <tr>
-                                      <td colSpan={6} className="text-white-50 text-center py-4">
-                                        No points defined. Add a template in Engineering and deploy a version.
-                                      </td>
-                                    </tr>
-                                  ) : (
-                                    displayPoints.map((p, index) => {
-                                      const displayVal = detailPointTableValue(p, pointUiState);
-                                      const oos = pointUiState[p.id]?.outOfService;
-                                      const isOosText = displayVal === DETAIL_OOS_LABEL;
-                                      return (
-                                        <tr
-                                          key={p.id || index}
-                                          className="legion-workspace-row legion-equipment-detail-point-row"
-                                          role="button"
-                                          tabIndex={0}
-                                          onClick={() => openPointCommandModal(p)}
-                                          onKeyDown={(e) => {
-                                            if (e.key === "Enter" || e.key === " ") {
-                                              e.preventDefault();
-                                              openPointCommandModal(p);
-                                            }
-                                          }}
-                                        >
-                                          <td className="legion-workspace-td text-white-50">
-                                            {String(index + 1).padStart(2, "0")}
-                                          </td>
-                                          <td className="legion-workspace-td legion-workspace-point text-white font-monospace">
-                                            <span className="legion-workspace-point-label">{p.pointKey || p.pointId}</span>
-                                          </td>
-                                          <td className="legion-workspace-td text-white">
-                                            {p.pointDescription || p.pointName || "—"}
-                                          </td>
-                                          <td className="legion-workspace-td text-white">
-                                            <div className="d-flex align-items-center gap-2 flex-wrap">
-                                              <span
-                                                className={`mini-dot ${
-                                                  p.status === "OFFLINE"
-                                                    ? "offline"
-                                                    : p.status === "Unbound" || p.status === "Pending" || oos
-                                                      ? "warn"
-                                                      : ""
-                                                }`}
-                                              />
-                                              <span
-                                                className={
-                                                  isOosText ? "legion-workspace-value--oos" : undefined
-                                                }
-                                              >
-                                                {displayVal}
-                                              </span>
-                                            </div>
-                                          </td>
-                                          <td className="legion-workspace-td legion-workspace-td--mapped text-white-50 small">
-                                            <div
-                                              className="legion-workspace-mapped-scroll"
-                                              title={
-                                                p.mappedToLabel && p.mappedToLabel !== "—"
-                                                  ? p.mappedToLabel
-                                                  : undefined
-                                              }
-                                            >
-                                              {p.mappedToLabel ?? "—"}
-                                            </div>
-                                          </td>
-                                          <td className="legion-workspace-td legion-workspace-td--status">
-                                            {p.commFreshnessStatus ? (
-                                              <OperatorCommFreshnessLabel
-                                                status={p.commFreshnessStatus}
-                                                variant="table"
-                                              />
-                                            ) : (
-                                              <StatusDotLabel
-                                                value={
-                                                  p.status === "OK"
-                                                    ? "online"
-                                                    : p.status === "OFFLINE"
-                                                      ? "offline"
-                                                      : p.status === "Pending"
-                                                        ? "pending"
-                                                        : p.status === "Unbound"
-                                                          ? "unbound"
-                                                          : "offline"
-                                                }
-                                                kind="status"
-                                                dotOnly={["ok", "normal", "online"].includes(
-                                                  (p.status || "").toLowerCase()
-                                                )}
-                                              />
-                                            )}
-                                          </td>
-                                        </tr>
-                                      );
-                                    })
-                                  )}
-                                </tbody>
-                              </table>
-                            </div>
-                          </Card.Body>
-                        </Card>
-                      </Col>
-                      <Col xs={12} lg={4}>
-                        <Card className="shadow-sm">
-                          <Card.Body>
-                            <div className="text-white fw-bold mb-3">Network Details</div>
-                            <div className="table-responsive">
-                              <table className="table bas-points-table bas-details-table align-middle mb-0">
-                                <thead>
-                                  <tr>
-                                    <th className="col-key" scope="col">
-                                      Field
-                                    </th>
-                                    <th className="col-val" scope="col">
-                                      Value
-                                    </th>
-                                  </tr>
-                                </thead>
-                                <tbody>
-                                  {networkDetails.map((row, idx) => (
-                                    <tr key={idx}>
-                                      <td className="detail-key">{row.key}</td>
-                                      <td className="detail-val">{row.value}</td>
-                                    </tr>
-                                  ))}
-                                  {networkDetails.length === 0 && (
-                                    <tr>
-                                      <td colSpan={2} className="text-white-50 text-center py-3">
-                                        No network details.
-                                      </td>
-                                    </tr>
-                                  )}
-                                </tbody>
-                              </table>
-                            </div>
-                          </Card.Body>
-                        </Card>
-                      </Col>
-                    </Row>
-                  </Card.Body>
-                </Card>
+                              </td>
+                              <td className="legion-workspace-td text-white">
+                                <span className={isOosText ? "text-white-50 fw-semibold" : undefined}>
+                                  {displayVal}
+                                </span>
+                              </td>
+                              <td className="legion-workspace-td legion-workspace-td--mapped text-white-50 small">
+                                <div
+                                  className="legion-workspace-mapped-scroll"
+                                  title={
+                                    p.mappedToLabel && p.mappedToLabel !== "—"
+                                      ? p.mappedToLabel
+                                      : undefined
+                                  }
+                                >
+                                  {p.mappedToLabel ?? "—"}
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </Table>
+                </div>
+              </Card.Body>
+            </Card>
+          </Col>
+
+          <Col xs={12} lg={4}>
+            <Card className="legion-operator-log-card bg-primary border border-light border-opacity-10 shadow-sm">
+              <Card.Header className="legion-operator-log-card-header">
+                <span className="text-white fw-bold text-uppercase">Network Details</span>
+              </Card.Header>
+              <Card.Body>
+                <div className="legion-operator-log-table-wrap border border-light border-opacity-10 rounded overflow-hidden">
+                  <Table responsive className="mb-0 h-100">
+                    <thead>
+                      <tr className="text-white">
+                        <th style={{ width: "38%" }} className="text-white">
+                          Field
+                        </th>
+                        <th className="text-white">Value</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {networkDetails.map((row, idx) => (
+                        <tr key={idx}>
+                          <td className="text-white fw-semibold">{row.key}</td>
+                          <td className="text-white">{row.value}</td>
+                        </tr>
+                      ))}
+                      {networkDetails.length === 0 && (
+                        <tr>
+                          <td colSpan={2} className="text-white-50 text-center py-3">
+                            No network details.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </Table>
+                </div>
               </Card.Body>
             </Card>
           </Col>

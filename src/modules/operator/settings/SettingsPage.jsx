@@ -85,46 +85,48 @@ export default function SettingsPage() {
 
       {/* PAGE CONTENT */}
       <div className="px-3 px-md-4 pb-4 mt-3">
-        <div className="d-flex align-items-start justify-content-between flex-wrap gap-2 mb-2">
-          <div>
-            <h5 className="text-white fw-bold mb-1">Settings</h5>
-            <div className="text-white small">
-              Personal preferences, notifications, and system info. Site configuration lives in Engineering/Dev Mode.
-            </div>
-          </div>
-
-          <div className="d-flex align-items-center gap-2">
-            <span className="badge bg-primary border border-light border-opacity-25 text-white">
-              Saved: {savedAt}
-            </span>
-            <Button
-              size="sm"
-              variant="outline-light"
-              className="border-opacity-10"
-              onClick={saveMock}
-            >
-              Save
-            </Button>
-            <Button
-              size="sm"
-              variant="outline-light"
-              className="border-opacity-10"
-              onClick={resetMock}
-            >
-              Reset
-            </Button>
-          </div>
-        </div>
-
         <Row className="g-3">
+          <Col xs={12}>
+            <Card className="legion-operator-log-card bg-primary border border-light border-opacity-10 shadow-sm">
+              <Card.Header className="legion-operator-log-card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
+                <span className="text-white fw-bold text-uppercase">Settings</span>
+                <div className="d-flex align-items-center flex-wrap gap-2">
+                  <span className="badge bg-primary border border-light border-opacity-25 text-white">
+                    Saved: {savedAt}
+                  </span>
+                  <Button
+                    size="sm"
+                    variant="outline-light"
+                    className="border-opacity-10"
+                    onClick={saveMock}
+                  >
+                    Save
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline-light"
+                    className="border-opacity-10"
+                    onClick={resetMock}
+                  >
+                    Reset
+                  </Button>
+                </div>
+              </Card.Header>
+              <Card.Body>
+                <div className="text-white-50 small mb-3">
+                  Personal preferences, notifications, and system info. Site configuration lives in Engineering/Dev Mode.
+                </div>
+                <Row className="g-3">
           {/* Left column */}
           <Col xs={12} lg={6}>
             {/* My Profile */}
-            <Card className="bg-primary border border-light border-opacity-10 shadow-sm mb-3">
+            <Card className="legion-operator-log-card bg-primary border border-light border-opacity-10 shadow-sm mb-3">
+              <Card.Header className="legion-operator-log-card-header">
+                <span className="text-white fw-bold text-uppercase">My Profile</span>
+              </Card.Header>
               <Card.Body>
                 <div className="d-flex justify-content-between align-items-start">
                   <div>
-                    <div className="text-white fw-bold">My Profile</div>
                     <div className="text-white fw-semibold" style={{ fontSize: 18 }}>
                       {me.displayName}
                     </div>
@@ -145,7 +147,7 @@ export default function SettingsPage() {
                     </Form.Label>
                     <Form.Control
                       defaultValue={me.displayName}
-                      className="bg-primary text-white border border-light border-opacity-10"
+                      className="legion-operator-log-field text-white border border-light border-opacity-10"
                     />
                   </Col>
 
@@ -183,10 +185,11 @@ export default function SettingsPage() {
             </Card>
 
             {/* UI Preferences */}
-            <Card className="bg-primary border border-light border-opacity-10 shadow-sm">
+            <Card className="legion-operator-log-card bg-primary border border-light border-opacity-10 shadow-sm">
+              <Card.Header className="legion-operator-log-card-header">
+                <span className="text-white fw-bold text-uppercase">UI Preferences</span>
+              </Card.Header>
               <Card.Body>
-                <div className="text-white fw-bold mb-2">UI Preferences</div>
-
                 <Row className="g-2">
                   <Col xs={12} md={6}>
                     <Form.Label className="text-white fw-semibold small mb-1">
@@ -273,10 +276,11 @@ export default function SettingsPage() {
           {/* Right column */}
           <Col xs={12} lg={6}>
             {/* Notifications */}
-            <Card className="bg-primary border border-light border-opacity-10 shadow-sm mb-3">
+            <Card className="legion-operator-log-card bg-primary border border-light border-opacity-10 shadow-sm mb-3">
+              <Card.Header className="legion-operator-log-card-header">
+                <span className="text-white fw-bold text-uppercase">Notifications</span>
+              </Card.Header>
               <Card.Body>
-                <div className="text-white fw-bold mb-2">Notifications</div>
-
                 <Row className="g-2">
                   <Col xs={12} md={6}>
                     <div className="border border-light border-opacity-10 rounded p-3">
@@ -355,10 +359,11 @@ export default function SettingsPage() {
             </Card>
 
             {/* Access & Role */}
-            <Card className="bg-primary border border-light border-opacity-10 shadow-sm mb-3">
+            <Card className="legion-operator-log-card bg-primary border border-light border-opacity-10 shadow-sm mb-3">
+              <Card.Header className="legion-operator-log-card-header">
+                <span className="text-white fw-bold text-uppercase">Access & Role</span>
+              </Card.Header>
               <Card.Body>
-                <div className="text-white fw-bold mb-2">Access & Role</div>
-
                 <Row className="g-2">
                   <Col xs={12} md={6}>
                     <div className="border border-light border-opacity-10 rounded p-3">
@@ -388,10 +393,11 @@ export default function SettingsPage() {
             </Card>
 
             {/* System Info */}
-            <Card className="bg-primary border border-light border-opacity-10 shadow-sm">
+            <Card className="legion-operator-log-card bg-primary border border-light border-opacity-10 shadow-sm">
+              <Card.Header className="legion-operator-log-card-header">
+                <span className="text-white fw-bold text-uppercase">System Info</span>
+              </Card.Header>
               <Card.Body>
-                <div className="text-white fw-bold mb-2">System Info</div>
-
                 <Row className="g-2">
                   <Col xs={12} md={6}>
                     <div className="border border-light border-opacity-10 rounded p-3">
@@ -449,6 +455,10 @@ export default function SettingsPage() {
                     Copy Diagnostics (later)
                   </Button>
                 </div>
+              </Card.Body>
+            </Card>
+          </Col>
+                </Row>
               </Card.Body>
             </Card>
           </Col>

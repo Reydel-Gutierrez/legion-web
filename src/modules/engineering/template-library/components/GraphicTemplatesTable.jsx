@@ -28,8 +28,8 @@ export default function GraphicTemplatesTable({
   }
 
   return (
-    <div className="template-library-table-wrap">
-      <Table className="template-library-table discovery-table mb-0" responsive>
+    <div className="legion-operator-log-table-wrap template-library-table-wrap">
+      <Table className="template-library-table discovery-table mb-0" responsive hover>
         <thead>
           <tr>
             <th>Template Name</th>

@@ -42,7 +42,8 @@ export default function SiteTreeNode({
   onSortFloorEquipment,
   onDuplicateEquipment,
 }) {
-  const { id, type, name, children = [], equipmentCount = 0, equipmentPreview = [] } = node;
+  const { id, type, name, displayLabel, children = [], equipmentCount = 0, equipmentPreview = [] } = node;
+  const treeLabel = displayLabel || name;
   const hasEquipmentPreview = type === "floor" && equipmentPreview?.length > 0;
   const hasChildren = children.length > 0 || hasEquipmentPreview;
   const isExpanded = expandedIds?.has?.(id) ?? false;
@@ -98,7 +99,7 @@ export default function SiteTreeNode({
           <FontAwesomeIcon icon={Icon} className="fa-sm" />
         </span>
         <span className="site-tree-name-wrap">
-          <span className="site-tree-name">{name}</span>
+          <span className="site-tree-name">{treeLabel}</span>
           {type === "floor" && (equipmentCount > 0 || equipmentPreview?.length > 0) && (
             <span className="site-tree-equipment-badge" title={`${equipmentCount || equipmentPreview?.length} equipment`}>
               [{equipmentCount || equipmentPreview?.length}]

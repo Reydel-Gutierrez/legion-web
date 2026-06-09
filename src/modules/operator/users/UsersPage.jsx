@@ -81,35 +81,16 @@ export default function UsersPage() {
 
       {/* PAGE CONTENT */}
       <div className="px-3 px-md-4 pb-4 mt-3">
-        <div className="d-flex align-items-start justify-content-between flex-wrap gap-2 mb-2">
-          <div>
-            <h5 className="text-white fw-bold mb-1">Users</h5>
-            <div className="text-white small">
-              View user accounts and site access. User creation and role changes live in Engineering/Dev Mode.
-            </div>
-          </div>
-
-          <div className="d-flex align-items-center gap-2">
-            <span className="badge bg-primary border border-light border-opacity-25 text-white">
-              Total: {counts.total}
-            </span>
-            <span className="badge bg-primary border border-light border-opacity-25 text-white">
-              Active: {counts.active}
-            </span>
-            <span className="badge bg-primary border border-light border-opacity-25 text-white">
-              Engineers: {counts.engineers}
-            </span>
-          </div>
-        </div>
-
         <Row className="g-3">
           {/* My Account card */}
           <Col xs={12} lg={4}>
-            <Card className="bg-primary border border-light border-opacity-10 shadow-sm h-100">
+            <Card className="legion-operator-log-card bg-primary border border-light border-opacity-10 shadow-sm h-100">
+              <Card.Header className="legion-operator-log-card-header">
+                <span className="text-white fw-bold text-uppercase">My Account</span>
+              </Card.Header>
               <Card.Body>
                 <div className="d-flex justify-content-between align-items-start">
                   <div>
-                    <div className="text-white fw-bold">My Account</div>
                     <div className="text-white fw-semibold" style={{ fontSize: 18 }}>
                       {currentUser.displayName}
                     </div>
@@ -160,15 +141,22 @@ export default function UsersPage() {
 
           {/* Users table */}
           <Col xs={12} lg={8}>
-            <Card className="bg-primary border border-light border-opacity-10 shadow-sm">
-              <Card.Body>
-                <div className="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
-                  <div className="text-white fw-semibold">
-                    Search Directory — {siteLabel}
-                  </div>
-                  <div className="text-white fw-semibold">Showing {total === 0 ? "0" : `${startIndex + 1}–${endIndex}`} of {total}</div>
+            <Card className="legion-operator-log-card bg-primary border border-light border-opacity-10 shadow-sm">
+              <Card.Header className="legion-operator-log-card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
+                <span className="text-white fw-bold text-uppercase">Users</span>
+                <div className="d-flex align-items-center flex-wrap gap-2">
+                  <span className="badge bg-primary border border-light border-opacity-25 text-white">
+                    Total: {counts.total}
+                  </span>
+                  <span className="badge bg-primary border border-light border-opacity-25 text-white">
+                    Active: {counts.active}
+                  </span>
+                  <span className="badge bg-primary border border-light border-opacity-25 text-white">
+                    Engineers: {counts.engineers}
+                  </span>
                 </div>
-
+              </Card.Header>
+              <Card.Body>
                 {!canViewAllUsers ? (
                   <div className="border border-light border-opacity-10 rounded p-4 text-center">
                     <div className="text-white fw-bold mb-1">Restricted</div>
@@ -191,7 +179,7 @@ export default function UsersPage() {
                           value={search}
                           onChange={(e) => setSearch(e.target.value)}
                           placeholder="Search name, username, email, site, ID…"
-                          className="bg-primary text-white border border-light border-opacity-10"
+                          className="legion-operator-log-field text-white border border-light border-opacity-10"
                         />
                       </Col>
 
@@ -228,11 +216,13 @@ export default function UsersPage() {
                       </Col>
                     </Row>
 
+                    <div className="text-white-50 small mb-3">Directory — {siteLabel}</div>
+
                     {/* Table */}
-                    <div className="border border-light border-opacity-10 rounded overflow-hidden">
-                      <Table responsive hover className="bg-primary border border-light border-opacity-10 shadow-sm">
+                    <div className="legion-operator-log-table-wrap border border-light border-opacity-10 rounded overflow-hidden">
+                      <Table responsive hover className="mb-0">
                         <thead>
-                          <tr className="text-white fw-semibold">
+                          <tr className="text-white">
                             <th style={{ width: 220 }} className="text-white">User</th>
                             <th style={{ width: 160 }} className="text-white">Role</th>
                             <th style={{ width: 140 }} className="text-white">Status</th>
@@ -335,9 +325,11 @@ export default function UsersPage() {
 
           {/* Optional: permissions hint */}
           <Col xs={12}>
-            <Card className="bg-primary border border-light border-opacity-10 shadow-sm">
+            <Card className="legion-operator-log-card bg-primary border border-light border-opacity-10 shadow-sm">
+              <Card.Header className="legion-operator-log-card-header">
+                <span className="text-white fw-bold text-uppercase">Permissions Model</span>
+              </Card.Header>
               <Card.Body>
-                <div className="text-white fw-bold mb-1">Permissions Model (MVP)</div>
                 <div className="text-white">
                   <strong>Viewer</strong>: read-only • <strong>Operator</strong>: commands + ack •{" "}
                   <strong>Engineer</strong>: device/point tools • <strong>Admin</strong>: user/site access.

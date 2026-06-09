@@ -454,29 +454,29 @@ export default function UserManagerPage() {
       </div>
 
       <div className="px-3 px-md-4 pb-4">
-        <div className="d-flex flex-wrap align-items-start justify-content-between gap-3 mb-3">
-          <div>
-            <h5 className="text-white fw-bold mb-1">
+        <Card className="legion-operator-log-card bg-primary border border-light border-opacity-10 shadow-sm">
+          <Card.Header className="legion-operator-log-card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
+            <span className="text-white fw-bold text-uppercase">
               <FontAwesomeIcon icon={faUserCog} className="me-2" />
               User Manager
-            </h5>
-            <div className="text-white-50 small">
+            </span>
+            {activeTab === TAB_KEYS.users && canManage && (
+              <Button
+                size="sm"
+                className="legion-hero-btn legion-hero-btn--primary"
+                onClick={() => {
+                  setEditingUser(null);
+                  setShowUserModal(true);
+                }}
+              >
+                <FontAwesomeIcon icon={faPlus} className="me-1" /> Add User
+              </Button>
+            )}
+          </Card.Header>
+          <Card.Body>
+            <div className="text-white-50 small mb-3">
               Manage users, roles, and site access for engineering and operator workflows.
             </div>
-          </div>
-          {activeTab === TAB_KEYS.users && canManage && (
-            <Button
-              size="sm"
-              className="legion-hero-btn legion-hero-btn--primary"
-              onClick={() => {
-                setEditingUser(null);
-                setShowUserModal(true);
-              }}
-            >
-              <FontAwesomeIcon icon={faPlus} className="me-1" /> Add User
-            </Button>
-          )}
-        </div>
 
         <Nav variant="tabs" className="mb-3 template-library-tabs validation-tabs">
           <Nav.Item>
@@ -520,7 +520,7 @@ export default function UserManagerPage() {
                   placeholder="Search name, email..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="bg-dark border-light border-opacity-10 text-white"
+                  className="legion-operator-log-field text-white border border-light border-opacity-10"
                 />
               </InputGroup>
               <Form.Select
@@ -561,23 +561,25 @@ export default function UserManagerPage() {
               </Form.Select>
             </div>
 
-            <Card className="bg-primary border border-light border-opacity-10 shadow-sm">
-              <Card.Header className="bg-transparent border-light border-opacity-10 d-flex align-items-center justify-content-between flex-wrap gap-2">
-                <span className="text-white fw-bold">Users</span>
-                <span className="text-white-50 small">{filteredUsers.length} user{filteredUsers.length !== 1 ? "s" : ""}</span>
+            <Card className="legion-operator-log-card bg-primary border border-light border-opacity-10 shadow-sm">
+              <Card.Header className="legion-operator-log-card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
+                <span className="text-white fw-bold text-uppercase">Users</span>
+                <span className="badge bg-primary border border-light border-opacity-25 text-white">
+                  {filteredUsers.length} user{filteredUsers.length !== 1 ? "s" : ""}
+                </span>
               </Card.Header>
               <Card.Body className="p-0 overflow-visible">
-                <div className="user-manager-table-wrap discovery-table-wrap">
-                  <Table responsive className="table-dark discovery-table mb-0">
+                <div className="legion-operator-log-table-wrap user-manager-table-wrap discovery-table-wrap">
+                  <Table responsive hover className="discovery-table mb-0">
                     <thead>
-                      <tr>
-                        <th className="border-light border-opacity-10 text-white-50">Name</th>
-                        <th className="border-light border-opacity-10 text-white-50">Email</th>
-                        <th className="border-light border-opacity-10 text-white-50">Role</th>
-                        <th className="border-light border-opacity-10 text-white-50">Status</th>
-                        <th className="border-light border-opacity-10 text-white-50">Sites</th>
-                        <th className="border-light border-opacity-10 text-white-50">Last Seen</th>
-                        <th className="border-light border-opacity-10 text-white-50 text-end discovery-table-header--actions" style={{ width: 80 }}>Actions</th>
+                      <tr className="text-white">
+                        <th className="text-white">Name</th>
+                        <th className="text-white">Email</th>
+                        <th className="text-white">Role</th>
+                        <th className="text-white">Status</th>
+                        <th className="text-white">Sites</th>
+                        <th className="text-white">Last Seen</th>
+                        <th className="text-end text-white discovery-table-header--actions" style={{ width: 80 }}>Actions</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -677,22 +679,22 @@ export default function UserManagerPage() {
 
         {/* ROLES TAB */}
         {activeTab === TAB_KEYS.roles && (
-          <Card className="bg-primary border border-light border-opacity-10 shadow-sm">
-            <Card.Header className="bg-transparent border-light border-opacity-10 text-white fw-bold">
-              System roles
+          <Card className="legion-operator-log-card bg-primary border border-light border-opacity-10 shadow-sm">
+            <Card.Header className="legion-operator-log-card-header">
+              <span className="text-white fw-bold text-uppercase">System Roles</span>
             </Card.Header>
             <Card.Body>
               <p className="text-white-50 small mb-3">
                 These roles are used across the platform. System roles cannot be deleted.
               </p>
-              <div className="user-manager-table-wrap discovery-table-wrap table-responsive">
-                <Table className="table-dark discovery-table mb-0">
+              <div className="legion-operator-log-table-wrap user-manager-table-wrap discovery-table-wrap table-responsive">
+                <Table hover className="discovery-table mb-0">
                   <thead>
-                    <tr>
-                      <th className="border-light border-opacity-10 text-white-50">Name</th>
-                      <th className="border-light border-opacity-10 text-white-50">Key</th>
-                      <th className="border-light border-opacity-10 text-white-50">Description</th>
-                      <th className="border-light border-opacity-10 text-white-50">Usage</th>
+                    <tr className="text-white">
+                      <th className="text-white">Name</th>
+                      <th className="text-white">Key</th>
+                      <th className="text-white">Description</th>
+                      <th className="text-white">Usage</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -731,23 +733,25 @@ export default function UserManagerPage() {
                 </Button>
               </div>
             )}
-            <Card className="bg-primary border border-light border-opacity-10 shadow-sm">
-              <Card.Header className="bg-transparent border-light border-opacity-10 d-flex align-items-center justify-content-between flex-wrap gap-2">
-                <span className="text-white fw-bold">Site access</span>
-                <span className="text-white-50 small">{filteredMemberships.length} assignment{filteredMemberships.length !== 1 ? "s" : ""} for {currentSite}</span>
+            <Card className="legion-operator-log-card bg-primary border border-light border-opacity-10 shadow-sm">
+              <Card.Header className="legion-operator-log-card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
+                <span className="text-white fw-bold text-uppercase">Site Access</span>
+                <span className="badge bg-primary border border-light border-opacity-25 text-white">
+                  {filteredMemberships.length} assignment{filteredMemberships.length !== 1 ? "s" : ""} for {currentSite}
+                </span>
               </Card.Header>
               <Card.Body className="p-0 overflow-visible">
-                <div className="user-manager-table-wrap discovery-table-wrap">
-                  <Table responsive className="table-dark discovery-table mb-0">
+                <div className="legion-operator-log-table-wrap user-manager-table-wrap discovery-table-wrap">
+                  <Table responsive hover className="discovery-table mb-0">
                     <thead>
-                      <tr>
-                        <th className="border-light border-opacity-10 text-white-50">User</th>
-                        <th className="border-light border-opacity-10 text-white-50">Role</th>
-                        <th className="border-light border-opacity-10 text-white-50">Site</th>
-                        <th className="border-light border-opacity-10 text-white-50">Engineering</th>
-                        <th className="border-light border-opacity-10 text-white-50">Operator</th>
-                        <th className="border-light border-opacity-10 text-white-50">Status</th>
-                        <th className="border-light border-opacity-10 text-white-50 text-end" style={{ width: 80 }}>Actions</th>
+                      <tr className="text-white">
+                        <th className="text-white">User</th>
+                        <th className="text-white">Role</th>
+                        <th className="text-white">Site</th>
+                        <th className="text-white">Engineering</th>
+                        <th className="text-white">Operator</th>
+                        <th className="text-white">Status</th>
+                        <th className="text-end text-white" style={{ width: 80 }}>Actions</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -797,6 +801,9 @@ export default function UserManagerPage() {
             </Card>
           </>
         )}
+
+          </Card.Body>
+        </Card>
 
         {toast && (
           <div

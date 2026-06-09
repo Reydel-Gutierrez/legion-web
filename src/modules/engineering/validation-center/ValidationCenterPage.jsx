@@ -183,18 +183,13 @@ export default function ValidationCenterPage() {
       </div>
 
       <div className="px-3 px-md-4 pb-4">
-        <div className="d-flex flex-wrap align-items-start justify-content-between gap-3 mb-3">
-          <div>
-            <h5 className="text-white fw-bold mb-1">
+        <Card className="legion-operator-log-card bg-primary border border-light border-opacity-10 shadow-sm">
+          <Card.Header className="legion-operator-log-card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
+            <span className="text-white fw-bold text-uppercase">
               <FontAwesomeIcon icon={faCheckCircle} className="me-2" />
               Validation Center
-            </h5>
-            <div className="text-white-50 small">
-              Review configuration health, mapping completeness, graphics
-              readiness, and deployment blockers before going live.
-            </div>
-          </div>
-          <div className="d-flex align-items-center gap-2 flex-wrap">
+            </span>
+            <div className="d-flex align-items-center gap-2 flex-wrap">
             <Button
               size="sm"
               className="legion-hero-btn legion-hero-btn--secondary"
@@ -243,8 +238,12 @@ export default function ValidationCenterPage() {
                 </Dropdown.Item>
               </Dropdown.Menu>
             </Dropdown>
-          </div>
-        </div>
+            </div>
+          </Card.Header>
+          <Card.Body>
+            <div className="text-white-50 small mb-3">
+              Review configuration health, mapping completeness, graphics readiness, and deployment blockers before going live.
+            </div>
 
         {location.state?.fromDeploy && (
           <div className="alert alert-warning border border-warning mb-3">
@@ -266,7 +265,7 @@ export default function ValidationCenterPage() {
         />
 
         {!hasRun ? (
-          <Card className="bg-primary border border-light border-opacity-10 shadow-sm mt-3">
+          <Card className="legion-operator-log-card bg-primary border border-light border-opacity-10 shadow-sm mt-3">
             <Card.Body className="py-5 text-center">
               <FontAwesomeIcon
                 icon={faCheckCircle}
@@ -310,7 +309,7 @@ export default function ValidationCenterPage() {
                   placeholder="Search issues..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="bg-dark border-light border-opacity-10 text-white"
+                  className="legion-operator-log-field text-white border border-light border-opacity-10"
                 />
               </InputGroup>
               <Form.Select
@@ -344,10 +343,10 @@ export default function ValidationCenterPage() {
               />
             </div>
 
-            <Card className="bg-primary border border-light border-opacity-10 shadow-sm">
-              <Card.Header className="bg-transparent border-light border-opacity-10 d-flex align-items-center justify-content-between flex-wrap gap-2">
-                <span className="text-white fw-bold">Validation issues</span>
-                <span className="text-white-50 small">
+            <Card className="legion-operator-log-card bg-primary border border-light border-opacity-10 shadow-sm">
+              <Card.Header className="legion-operator-log-card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
+                <span className="text-white fw-bold text-uppercase">Validation Issues</span>
+                <span className="badge bg-primary border border-light border-opacity-25 text-white">
                   {filteredIssues.length} issue{filteredIssues.length !== 1 ? "s" : ""}
                 </span>
               </Card.Header>
@@ -384,6 +383,9 @@ export default function ValidationCenterPage() {
             </Card>
           </>
         )}
+
+          </Card.Body>
+        </Card>
 
         {toastMessage && (
           <div

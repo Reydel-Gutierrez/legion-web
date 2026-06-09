@@ -248,20 +248,22 @@ export default function DeploymentPage() {
       </div>
 
       <div className="px-3 px-md-4 pb-4">
-        <div className="mb-3">
-          <h5 className="text-white fw-bold mb-1">
-            <FontAwesomeIcon icon={faRocket} className="me-2" />
-            Deployment
-          </h5>
-          <div className="text-white-50 small">
-            Activate working versions and view release history.
-          </div>
-        </div>
+        <Card className="legion-operator-log-card bg-primary border border-light border-opacity-10 shadow-sm">
+          <Card.Header className="legion-operator-log-card-header">
+            <span className="text-white fw-bold text-uppercase">
+              <FontAwesomeIcon icon={faRocket} className="me-2" />
+              Deployment
+            </span>
+          </Card.Header>
+          <Card.Body>
+            <div className="text-white-50 small mb-3">
+              Activate working versions and view release history.
+            </div>
 
         {/* Section 1 — Active release (last activated) */}
-        <Card className="bg-primary border border-light border-opacity-10 shadow-sm mb-3">
-          <Card.Header className="bg-transparent border-light border-opacity-10 text-white fw-bold">
-            Active release
+        <Card className="legion-operator-log-card bg-primary border border-light border-opacity-10 shadow-sm mb-3">
+          <Card.Header className="legion-operator-log-card-header">
+            <span className="text-white fw-bold text-uppercase">Active Release</span>
           </Card.Header>
           <Card.Body>
             <Row className="g-3">
@@ -304,9 +306,9 @@ export default function DeploymentPage() {
         </Card>
 
         {/* Section 2 — Working version scope */}
-        <Card className="bg-primary border border-light border-opacity-10 shadow-sm mb-3">
-          <Card.Header className="bg-transparent border-light border-opacity-10 text-white fw-bold">
-            Working version contents
+        <Card className="legion-operator-log-card bg-primary border border-light border-opacity-10 shadow-sm mb-3">
+          <Card.Header className="legion-operator-log-card-header">
+            <span className="text-white fw-bold text-uppercase">Working Version Contents</span>
           </Card.Header>
           <Card.Body>
             {hasPending ? (
@@ -343,9 +345,9 @@ export default function DeploymentPage() {
         </Card>
 
         {/* Section 3 — Deployment Readiness */}
-        <Card className="bg-primary border border-light border-opacity-10 shadow-sm mb-3">
-          <Card.Header className="bg-transparent border-light border-opacity-10 d-flex align-items-center justify-content-between flex-wrap gap-2">
-            <span className="text-white fw-bold">Deployment Readiness</span>
+        <Card className="legion-operator-log-card bg-primary border border-light border-opacity-10 shadow-sm mb-3">
+          <Card.Header className="legion-operator-log-card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
+            <span className="text-white fw-bold text-uppercase">Deployment Readiness</span>
             {readiness === engineeringRepository.READINESS_STATUS.BLOCKED && (
               <Badge bg="danger">Deployment Blocked</Badge>
             )}
@@ -368,9 +370,9 @@ export default function DeploymentPage() {
         </Card>
 
         {/* Section 4 — Deployment Actions */}
-        <Card className="bg-primary border border-light border-opacity-10 shadow-sm mb-3">
-          <Card.Header className="bg-transparent border-light border-opacity-10 text-white fw-bold">
-            Deployment Actions
+        <Card className="legion-operator-log-card bg-primary border border-light border-opacity-10 shadow-sm mb-3">
+          <Card.Header className="legion-operator-log-card-header">
+            <span className="text-white fw-bold text-uppercase">Deployment Actions</span>
           </Card.Header>
           <Card.Body>
             <div className="d-flex flex-wrap gap-2">
@@ -395,20 +397,21 @@ export default function DeploymentPage() {
         </Card>
 
         {/* Section 5 — Deployment History */}
-        <Card className="bg-primary border border-light border-opacity-10 shadow-sm">
-          <Card.Header className="bg-transparent border-light border-opacity-10 text-white fw-bold">
-            Deployment History
+        <Card className="legion-operator-log-card bg-primary border border-light border-opacity-10 shadow-sm">
+          <Card.Header className="legion-operator-log-card-header">
+            <span className="text-white fw-bold text-uppercase">Deployment History</span>
           </Card.Header>
           <Card.Body className="p-0">
-            <Table responsive className="table-dark mb-0">
-              <thead className="thead-dark">
-                <tr>
-                  <th className="border-light border-opacity-10 text-white-50">Version</th>
-                  <th className="border-light border-opacity-10 text-white-50">Date</th>
-                  <th className="border-light border-opacity-10 text-white-50">User</th>
-                  <th className="border-light border-opacity-10 text-white-50">Result</th>
-                  <th className="border-light border-opacity-10 text-white-50">Notes</th>
-                  <th className="border-light border-opacity-10 text-white-50">Rollback</th>
+            <div className="legion-operator-log-table-wrap">
+            <Table responsive hover className="mb-0">
+              <thead>
+                <tr className="text-white">
+                  <th className="text-white">Version</th>
+                  <th className="text-white">Date</th>
+                  <th className="text-white">User</th>
+                  <th className="text-white">Result</th>
+                  <th className="text-white">Notes</th>
+                  <th className="text-white">Rollback</th>
                 </tr>
               </thead>
               <tbody>
@@ -426,9 +429,12 @@ export default function DeploymentPage() {
                 ))}
               </tbody>
             </Table>
+            </div>
           </Card.Body>
         </Card>
 
+          </Card.Body>
+        </Card>
       </div>
 
       <DeployAnywayModal

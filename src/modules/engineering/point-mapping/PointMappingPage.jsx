@@ -281,16 +281,20 @@ export default function PointMappingPage() {
           <hr className="border-light border-opacity-25 my-3" />
         </div>
         <div className="px-3 px-md-4 pb-4">
-          <div className="mb-3">
-            <h5 className="text-white fw-bold mb-1">
-              <FontAwesomeIcon icon={faMapMarkerAlt} className="me-2" />
-              Point Mapping
-            </h5>
-            <div className="text-white-50 small">
-              Map template-defined equipment points to discovered BACnet objects from the assigned controller.
-            </div>
-          </div>
-          <Card className="bg-primary border border-light border-opacity-10 shadow-sm">
+          <Card className="legion-operator-log-card bg-primary border border-light border-opacity-10 shadow-sm mb-3">
+            <Card.Header className="legion-operator-log-card-header">
+              <span className="text-white fw-bold text-uppercase">
+                <FontAwesomeIcon icon={faMapMarkerAlt} className="me-2" />
+                Point Mapping
+              </span>
+            </Card.Header>
+            <Card.Body>
+              <div className="text-white-50 small">
+                Map template-defined equipment points to discovered BACnet objects from the assigned controller.
+              </div>
+            </Card.Body>
+          </Card>
+          <Card className="legion-operator-log-card bg-primary border border-light border-opacity-10 shadow-sm">
             <Card.Body className="py-5 text-center text-white-50">
               Select a site to get started.
             </Card.Body>
@@ -308,15 +312,19 @@ export default function PointMappingPage() {
           <hr className="border-light border-opacity-25 my-3" />
         </div>
         <div className="px-3 px-md-4 pb-4">
-          <div className="mb-3">
-            <h5 className="text-white fw-bold mb-1">
-              <FontAwesomeIcon icon={faMapMarkerAlt} className="me-2" />
-              Point Mapping
-            </h5>
-            <div className="text-white-50 small">
-              Map template-defined equipment points to discovered BACnet objects from the assigned controller.
-            </div>
-          </div>
+          <Card className="legion-operator-log-card bg-primary border border-light border-opacity-10 shadow-sm mb-3">
+            <Card.Header className="legion-operator-log-card-header">
+              <span className="text-white fw-bold text-uppercase">
+                <FontAwesomeIcon icon={faMapMarkerAlt} className="me-2" />
+                Point Mapping
+              </span>
+            </Card.Header>
+            <Card.Body>
+              <div className="text-white-50 small">
+                Map template-defined equipment points to discovered BACnet objects from the assigned controller.
+              </div>
+            </Card.Body>
+          </Card>
           <MappingContextCard
             equipment={equipment}
             equipmentList={equipmentList}
@@ -338,15 +346,19 @@ export default function PointMappingPage() {
           <hr className="border-light border-opacity-25 my-3" />
         </div>
         <div className="px-3 px-md-4 pb-4">
-          <div className="mb-3">
-            <h5 className="text-white fw-bold mb-1">
-              <FontAwesomeIcon icon={faMapMarkerAlt} className="me-2" />
-              Point Mapping
-            </h5>
-            <div className="text-white-50 small">
-              Map template-defined equipment points to discovered BACnet objects from the assigned controller.
-            </div>
-          </div>
+          <Card className="legion-operator-log-card bg-primary border border-light border-opacity-10 shadow-sm mb-3">
+            <Card.Header className="legion-operator-log-card-header">
+              <span className="text-white fw-bold text-uppercase">
+                <FontAwesomeIcon icon={faMapMarkerAlt} className="me-2" />
+                Point Mapping
+              </span>
+            </Card.Header>
+            <Card.Body>
+              <div className="text-white-50 small">
+                Map template-defined equipment points to discovered BACnet objects from the assigned controller.
+              </div>
+            </Card.Body>
+          </Card>
           <MappingContextCard
             equipment={equipment}
             equipmentList={equipmentList}
@@ -368,15 +380,19 @@ export default function PointMappingPage() {
           <hr className="border-light border-opacity-25 my-3" />
         </div>
         <div className="px-3 px-md-4 pb-4">
-          <div className="mb-3">
-            <h5 className="text-white fw-bold mb-1">
-              <FontAwesomeIcon icon={faMapMarkerAlt} className="me-2" />
-              Point Mapping
-            </h5>
-            <div className="text-white-50 small">
-              Map template-defined equipment points to discovered BACnet objects from the assigned controller.
-            </div>
-          </div>
+          <Card className="legion-operator-log-card bg-primary border border-light border-opacity-10 shadow-sm mb-3">
+            <Card.Header className="legion-operator-log-card-header">
+              <span className="text-white fw-bold text-uppercase">
+                <FontAwesomeIcon icon={faMapMarkerAlt} className="me-2" />
+                Point Mapping
+              </span>
+            </Card.Header>
+            <Card.Body>
+              <div className="text-white-50 small">
+                Map template-defined equipment points to discovered BACnet objects from the assigned controller.
+              </div>
+            </Card.Body>
+          </Card>
           <MappingContextCard
             equipment={equipment}
             equipmentList={equipmentList}
@@ -398,15 +414,17 @@ export default function PointMappingPage() {
       </div>
 
       <div className="px-3 px-md-4 pb-4">
-        <div className="mb-3">
-          <h5 className="text-white fw-bold mb-1">
-            <FontAwesomeIcon icon={faMapMarkerAlt} className="me-2" />
-            Point Mapping
-          </h5>
-          <div className="text-white-50 small">
-            Map template-defined equipment points to discovered BACnet objects from the assigned controller.
-          </div>
-        </div>
+        <Card className="legion-operator-log-card bg-primary border border-light border-opacity-10 shadow-sm">
+          <Card.Header className="legion-operator-log-card-header">
+            <span className="text-white fw-bold text-uppercase">
+              <FontAwesomeIcon icon={faMapMarkerAlt} className="me-2" />
+              Point Mapping
+            </span>
+          </Card.Header>
+          <Card.Body>
+            <div className="text-white-50 small mb-3">
+              Map template-defined equipment points to discovered BACnet objects from the assigned controller.
+            </div>
 
         <MappingContextCard
             equipment={equipment}
@@ -438,9 +456,9 @@ export default function PointMappingPage() {
 
         <Row className="g-3 align-items-start">
           <Col xs={12} lg={8} xl={9}>
-            <Card className="bg-primary border border-light border-opacity-10 shadow-sm h-100">
-              <Card.Header className="bg-transparent border-light border-opacity-10">
-                <span className="text-white fw-bold">Point Mapping</span>
+            <Card className="legion-operator-log-card bg-primary border border-light border-opacity-10 shadow-sm h-100">
+              <Card.Header className="legion-operator-log-card-header">
+                <span className="text-white fw-bold text-uppercase">Mapping Table</span>
               </Card.Header>
               <Card.Body className="p-0 overflow-auto" style={{ minHeight: 400 }}>
                 <PointMappingTable
@@ -478,6 +496,8 @@ export default function PointMappingPage() {
             />
           </Col>
         </Row>
+          </Card.Body>
+        </Card>
       </div>
     </Container>
   );

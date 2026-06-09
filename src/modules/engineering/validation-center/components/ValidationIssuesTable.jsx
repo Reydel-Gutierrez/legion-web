@@ -28,8 +28,8 @@ export default function ValidationIssuesTable({
   }
 
   return (
-    <div className="validation-table-wrap">
-      <table className="table validation-table discovery-table">
+    <div className="legion-operator-log-table-wrap validation-table-wrap">
+      <table className="table validation-table discovery-table mb-0">
         <thead>
           <tr>
             <th className="discovery-table-header">Severity</th>

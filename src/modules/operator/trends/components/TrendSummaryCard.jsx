@@ -58,9 +58,11 @@ export default function TrendSummaryCard({ series, showPoints, referenceBands, e
   }, [sessionActive, collecting, series, showPoints, referenceBands, events]);
 
   return (
-    <Card className="bg-primary border border-light border-opacity-10 shadow-sm">
+    <Card className="legion-operator-log-card bg-primary border border-light border-opacity-10 shadow-sm">
+      <Card.Header className="legion-operator-log-card-header">
+        <span className="text-white fw-bold text-uppercase">Insight</span>
+      </Card.Header>
       <Card.Body className="py-2 px-3">
-        <div className="text-white fw-semibold small mb-2">Insight</div>
         <ul className="text-white small mb-0 ps-3 opacity-90">
           {lines.map((t, i) => (
             <li key={i} className="mb-1">

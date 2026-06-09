@@ -4,7 +4,7 @@
  */
 
 // Shared panel tokens (match cards and rest of Legion)
-$legion-panel-bg: #0F1520;
+$legion-panel-bg: #111417;
 $legion-panel-border: rgba(255, 255, 255, 0.08);
 $legion-panel-radius: 4px;
 $legion-sidebar-width: 280px;
@@ -13,13 +13,14 @@ $legion-sidebar-nav-radius: 8px;
 $legion-sidebar-nav-height: 44px;
 $legion-sidebar-parent-height: 48px;
 $legion-sidebar-icon-size: 20px;
-$legion-accent: rgba(13, 202, 240, 0.95);
-$legion-accent-engineering: #D38001; /* gold - matches LCC logo */
+$legion-accent: #d38001;
+$legion-accent-engineering: #bdbdbdd8; /* gold - matches LCC logo */
 $legion-text: rgba(255, 255, 255, 0.92);
 $legion-text-muted: rgba(255, 255, 255, 0.55);
 $legion-hover-bg: rgba(255, 255, 255, 0.06);
 $legion-active-bg: rgba(255, 255, 255, 0.08);
-$legion-active-bg-strong: rgba($blue, 0.38);
+$legion-active-bg-strong: #15191e;
+$legion-sidebar-active-bg: #363636d8;
 $legion-parent-card-bg: rgba(255, 255, 255, 0.03);
 $legion-parent-card-border: rgba(255, 255, 255, 0.07);
 $legion-accent-bar: 4px;
@@ -27,7 +28,7 @@ $legion-tree-line: rgba(255, 255, 255, 0.18);
 
 @mixin legion-sidebar-active-row($accent-color) {
   color: $white !important;
-  background: $legion-active-bg-strong !important;
+  background: $legion-sidebar-active-bg !important;
   font-weight: 600;
   box-shadow: none !important;
 
@@ -116,7 +117,8 @@ $legion-tree-line: rgba(255, 255, 255, 0.18);
 
   .sidebar-inner,
   .legion-sidebar-inner {
-    padding: calc(var(--legion-topbar-h, 44px) + 0.85rem) 1.25rem calc(var(--legion-footer-h, 40px) + 0.85rem);
+    padding: calc(var(--legion-topbar-h, 44px) + 0.85rem) 1.25rem
+      calc(var(--legion-footer-h, 40px) + 0.85rem);
     display: flex;
     flex-direction: column;
     min-height: 100%;
@@ -176,7 +178,10 @@ $legion-tree-line: rgba(255, 255, 255, 0.18);
     background: transparent;
     border: none;
     border-radius: $legion-sidebar-nav-radius;
-    transition: color 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+    transition:
+      color 0.15s ease,
+      background 0.15s ease,
+      border-color 0.15s ease;
 
     svg {
       font-size: 0.75rem;
@@ -265,7 +270,9 @@ $legion-tree-line: rgba(255, 255, 255, 0.18);
     display: flex;
     align-items: center;
     justify-content: space-between;
-    transition: background 0.15s ease, color 0.15s ease;
+    transition:
+      background 0.15s ease,
+      color 0.15s ease;
 
     &:hover {
       color: $legion-text;
@@ -373,7 +380,6 @@ $legion-tree-line: rgba(255, 255, 255, 0.18);
     margin: 0.85rem 0 0.25rem;
   }
 
-
   .legion-sidebar-dev-link {
     margin-top: auto;
     flex-shrink: 0;
@@ -417,9 +423,9 @@ $legion-tree-line: rgba(255, 255, 255, 0.18);
 }
 
 /* Legion dropdown menus (site selector, etc.) – matches topbar notification/user menus */
-  .legion-dropdown-menu.dropdown-menu {
+.legion-dropdown-menu.dropdown-menu {
   background: rgba(10, 16, 26, 0.96) !important;
-  border: 1px solid rgba(255, 255, 255, 0.10) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
   box-shadow: 0 18px 50px rgba(0, 0, 0, 0.55) !important;
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
@@ -435,7 +441,10 @@ $legion-tree-line: rgba(255, 255, 255, 0.18);
 }
 
 /* Engineering mode: gold accent on active nav item instead of cyan */
-.legion-sidebar-wrapper.legion-sidebar--engineering .legion-sidebar.sidebar .nav-item.active .nav-link {
+.legion-sidebar-wrapper.legion-sidebar--engineering
+  .legion-sidebar.sidebar
+  .nav-item.active
+  .nav-link {
   @include legion-sidebar-active-row($legion-accent-engineering);
 }
 
@@ -444,7 +453,8 @@ $legion-tree-line: rgba(255, 255, 255, 0.18);
   margin-bottom: 0.55rem;
 }
 
-.legion-sidebar-wrapper.legion-sidebar--engineering .legion-sidebar-tree__parent-shell {
+.legion-sidebar-wrapper.legion-sidebar--engineering
+  .legion-sidebar-tree__parent-shell {
   display: flex;
   align-items: stretch;
   min-height: $legion-sidebar-parent-height;
@@ -454,11 +464,13 @@ $legion-tree-line: rgba(255, 255, 255, 0.18);
   transition: color 0.15s ease;
 }
 
-.legion-sidebar-wrapper.legion-sidebar--engineering .legion-sidebar-tree__parent-shell:hover {
+.legion-sidebar-wrapper.legion-sidebar--engineering
+  .legion-sidebar-tree__parent-shell:hover {
   background: transparent;
 }
 
-.legion-sidebar-wrapper.legion-sidebar--engineering .legion-sidebar-tree__parent-link {
+.legion-sidebar-wrapper.legion-sidebar--engineering
+  .legion-sidebar-tree__parent-link {
   flex: 1 1 auto;
   display: flex;
   align-items: center;
@@ -471,7 +483,9 @@ $legion-tree-line: rgba(255, 255, 255, 0.18);
   min-width: 0;
 }
 
-.legion-sidebar-wrapper.legion-sidebar--engineering .legion-sidebar-tree__parent-link .sidebar-icon {
+.legion-sidebar-wrapper.legion-sidebar--engineering
+  .legion-sidebar-tree__parent-link
+  .sidebar-icon {
   flex-shrink: 0;
   margin-right: 0.65rem;
   color: inherit;
@@ -488,11 +502,14 @@ $legion-tree-line: rgba(255, 255, 255, 0.18);
   }
 }
 
-.legion-sidebar-wrapper.legion-sidebar--engineering .legion-sidebar-tree__parent-shell:hover .legion-sidebar-tree__parent-link {
+.legion-sidebar-wrapper.legion-sidebar--engineering
+  .legion-sidebar-tree__parent-shell:hover
+  .legion-sidebar-tree__parent-link {
   color: $legion-text;
 }
 
-.legion-sidebar-wrapper.legion-sidebar--engineering .legion-sidebar-tree__expand-toggle {
+.legion-sidebar-wrapper.legion-sidebar--engineering
+  .legion-sidebar-tree__expand-toggle {
   flex: 0 0 auto;
   display: flex;
   align-items: center;
@@ -503,37 +520,46 @@ $legion-tree-line: rgba(255, 255, 255, 0.18);
   border: none;
   background: transparent;
   color: $legion-text-muted;
-  transition: color 0.15s ease, background 0.15s ease;
+  transition:
+    color 0.15s ease,
+    background 0.15s ease;
 }
 
-.legion-sidebar-wrapper.legion-sidebar--engineering .legion-sidebar-tree__parent-shell:hover .legion-sidebar-tree__expand-toggle {
+.legion-sidebar-wrapper.legion-sidebar--engineering
+  .legion-sidebar-tree__parent-shell:hover
+  .legion-sidebar-tree__expand-toggle {
   color: $legion-text;
 }
 
-.legion-sidebar-wrapper.legion-sidebar--engineering .legion-sidebar-tree__expand-toggle:focus {
+.legion-sidebar-wrapper.legion-sidebar--engineering
+  .legion-sidebar-tree__expand-toggle:focus {
   outline: none;
   box-shadow: none;
 }
 
-.legion-sidebar-wrapper.legion-sidebar--engineering .legion-sidebar-tree__expand-icon {
+.legion-sidebar-wrapper.legion-sidebar--engineering
+  .legion-sidebar-tree__expand-icon {
   font-size: 0.7rem;
   opacity: 0.88;
 }
 
-.legion-sidebar-wrapper.legion-sidebar--engineering .legion-sidebar-tree__branch {
+.legion-sidebar-wrapper.legion-sidebar--engineering
+  .legion-sidebar-tree__branch {
   position: relative;
   padding: 0.35rem 0 0.2rem 0;
   margin-left: 1.15rem;
 }
 
-.legion-sidebar-wrapper.legion-sidebar--engineering .legion-sidebar-tree__leaves {
+.legion-sidebar-wrapper.legion-sidebar--engineering
+  .legion-sidebar-tree__leaves {
   position: relative;
   padding-left: 1.35rem;
   margin: 0;
 }
 
 /* Vertical spine */
-.legion-sidebar-wrapper.legion-sidebar--engineering .legion-sidebar-tree__leaves::before {
+.legion-sidebar-wrapper.legion-sidebar--engineering
+  .legion-sidebar-tree__leaves::before {
   content: "";
   position: absolute;
   left: 0;
@@ -550,7 +576,8 @@ $legion-tree-line: rgba(255, 255, 255, 0.18);
   margin: 0;
 }
 
-.legion-sidebar-wrapper.legion-sidebar--engineering .legion-sidebar-tree__leaf::before {
+.legion-sidebar-wrapper.legion-sidebar--engineering
+  .legion-sidebar-tree__leaf::before {
   content: "";
   position: absolute;
   left: -1.35rem;
@@ -564,7 +591,8 @@ $legion-tree-line: rgba(255, 255, 255, 0.18);
 }
 
 /* Hide spine continuation below last elbow */
-.legion-sidebar-wrapper.legion-sidebar--engineering .legion-sidebar-tree__leaf--last::after {
+.legion-sidebar-wrapper.legion-sidebar--engineering
+  .legion-sidebar-tree__leaf--last::after {
   content: "";
   position: absolute;
   left: -1.35rem;
@@ -575,12 +603,14 @@ $legion-tree-line: rgba(255, 255, 255, 0.18);
   pointer-events: none;
 }
 
-.legion-sidebar-wrapper.legion-sidebar--engineering .legion-sidebar-tree__nav-item {
+.legion-sidebar-wrapper.legion-sidebar--engineering
+  .legion-sidebar-tree__nav-item {
   margin-bottom: 0.2rem;
   border: none;
 }
 
-.legion-sidebar-wrapper.legion-sidebar--engineering .legion-sidebar-tree__leaf-link {
+.legion-sidebar-wrapper.legion-sidebar--engineering
+  .legion-sidebar-tree__leaf-link {
   position: relative;
   font-size: 0.8125rem !important;
   padding: 0.5rem 0.85rem 0.5rem 0.85rem !important;
@@ -593,7 +623,9 @@ $legion-tree-line: rgba(255, 255, 255, 0.18);
   align-items: center;
 }
 
-.legion-sidebar-wrapper.legion-sidebar--engineering .legion-sidebar-tree__leaf-link .sidebar-icon {
+.legion-sidebar-wrapper.legion-sidebar--engineering
+  .legion-sidebar-tree__leaf-link
+  .sidebar-icon {
   flex-shrink: 0;
   margin-right: 0.65rem;
   color: inherit;
@@ -610,12 +642,15 @@ $legion-tree-line: rgba(255, 255, 255, 0.18);
   }
 }
 
-.legion-sidebar-wrapper.legion-sidebar--engineering .legion-sidebar-tree__leaf-link:hover {
+.legion-sidebar-wrapper.legion-sidebar--engineering
+  .legion-sidebar-tree__leaf-link:hover {
   color: $legion-text !important;
   background: transparent !important;
 }
 
-.legion-sidebar-wrapper.legion-sidebar--engineering .legion-sidebar-tree__nav-item.active .legion-sidebar-tree__leaf-link {
+.legion-sidebar-wrapper.legion-sidebar--engineering
+  .legion-sidebar-tree__nav-item.active
+  .legion-sidebar-tree__leaf-link {
   @include legion-sidebar-active-row($legion-accent-engineering);
 }
 
@@ -654,8 +689,6 @@ main.content.legion-bg {
     .legion-sidebar-meta,
     .legion-sidebar-user__body,
     .legion-sidebar-collapse-btn__label,
-    .legion-sidebar-site .fw-semibold,
-    .legion-sidebar-site > .flex-shrink-0,
     .legion-sidebar-tree__branch,
     .legion-sidebar-tree__expand-toggle,
     .sidebar-text,
@@ -664,14 +697,41 @@ main.content.legion-bg {
       display: none !important;
     }
 
-    .legion-sidebar-site {
+    .legion-sidebar-site-block--contracted {
+      overflow: visible;
+    }
+
+    .legion-sidebar-site.legion-sidebar-site--icon-only {
       justify-content: center;
       padding-left: 0.5rem;
       padding-right: 0.5rem;
 
-      .me-2 {
-        margin-right: 0 !important;
+      .legion-sidebar-site-toggle__label-wrap {
+        flex-grow: 0;
+        flex: 0 0 auto;
+        margin: 0 !important;
+        overflow: visible;
+        min-width: 0;
       }
+
+      .legion-sidebar-site-toggle__label,
+      .legion-sidebar-site-toggle__chevron {
+        display: none !important;
+      }
+
+      .legion-sidebar-site-toggle__icon {
+        margin: 0 !important;
+      }
+    }
+
+    .legion-sidebar-site-menu--contracted.dropdown-menu {
+      z-index: 1085 !important;
+      width: 240px !important;
+      min-width: 240px !important;
+      max-width: min(
+        320px,
+        calc(100vw - #{$legion-sidebar-width-contracted} - 24px)
+      );
     }
 
     .legion-sidebar-collapse-btn {
@@ -744,7 +804,7 @@ main.content.legion-bg {
 /* ========== TOP BAR ========== */
 /* Match --legion-topbar-h (44px) for seamless sidebar junction */
 .legion-topbar {
-  background: $legion-panel-bg;
+  background: $legion-active-bg-strong;
   border-bottom: 1px solid $legion-panel-border;
   backdrop-filter: saturate(1.1) blur(8px);
   height: var(--legion-topbar-h);
@@ -826,7 +886,7 @@ main.content.legion-bg {
 
   /* Extend solid bg into sidebar column to eliminate any gap at junction */
   &::before {
-    content: '';
+    content: "";
     position: absolute;
     top: -2px;
     left: 0;
@@ -928,7 +988,10 @@ main.content.legion-bg {
     background: transparent;
     border: 1px solid transparent;
     cursor: pointer;
-    transition: color 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+    transition:
+      color 0.15s ease,
+      background 0.15s ease,
+      border-color 0.15s ease;
   }
   .legion-footer-segment:hover {
     color: $legion-text;
@@ -990,8 +1053,10 @@ $legion-hero-btn-secondary-text: rgba(255, 255, 255, 0.9);
   font-weight: 600;
   border-radius: 8px;
   cursor: pointer;
-  transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
-
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
 }
 
 .legion-hero-btn--secondary {
@@ -1012,7 +1077,9 @@ $legion-hero-btn-secondary-text: rgba(255, 255, 255, 0.9);
     inset 0 1px 0 rgba(255, 255, 255, 0.08),
     0 1px 2px rgba(0, 0, 0, 0.3);
   color: #e8c547;
-  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.5), 0 0 1px rgba(0, 0, 0, 0.3);
+  text-shadow:
+    0 1px 1px rgba(0, 0, 0, 0.5),
+    0 0 1px rgba(0, 0, 0, 0.3);
 
   &:hover {
     background: linear-gradient(180deg, #453d34 0%, #322d27 50%, #2d2822 100%);
@@ -1045,7 +1112,9 @@ $legion-hero-btn-secondary-text: rgba(255, 255, 255, 0.9);
     border: 1px solid rgba(255, 255, 255, 0.12) !important;
     border-radius: 4px;
     cursor: pointer;
-    transition: background 0.15s ease, border-color 0.15s ease;
+    transition:
+      background 0.15s ease,
+      border-color 0.15s ease;
     text-align: left;
     text-decoration: none !important;
     box-shadow: none !important;
@@ -1081,7 +1150,7 @@ $legion-hero-btn-secondary-text: rgba(255, 255, 255, 0.9);
     /* Above modal (1050) and legion drawer panel (1061); Popper fixed strategy needs this when menu escapes overflow */
     z-index: 1085 !important;
     background: rgba(10, 16, 26, 0.96) !important;
-    border: 1px solid rgba(255, 255, 255, 0.10) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
     box-shadow: 0 18px 50px rgba(0, 0, 0, 0.55) !important;
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
@@ -1112,7 +1181,7 @@ $legion-hero-btn-secondary-text: rgba(255, 255, 255, 0.9);
 .modal-content .dropdown-menu,
 .bg-primary .dropdown-menu {
   background: rgba(10, 16, 26, 0.96) !important;
-  border: 1px solid rgba(255, 255, 255, 0.10) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
   box-shadow: 0 18px 50px rgba(0, 0, 0, 0.55) !important;
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
@@ -1143,15 +1212,61 @@ body select.form-select,
   border-color: rgba(255, 255, 255, 0.12) !important;
 
   option {
-    background-color: #1A1E24;
+    background-color: #1a1e24;
     color: $legion-text;
+  }
+}
+
+/* Operator log cards — title bar + body (Alarms, Events, etc.) */
+.card.legion-operator-log-card {
+  overflow: hidden;
+
+  > .card-header.legion-operator-log-card-header {
+    padding: 0.625rem 1rem;
+    background-color: $legion-active-bg-strong !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    letter-spacing: 0.04em;
+  }
+}
+
+/* Operator log filters + tables — same inset surface as native form-select */
+.legion-operator-log-field.form-control {
+  color-scheme: dark;
+  background-color: rgba(0, 0, 0, 0.25) !important;
+  color: $legion-text !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+
+  &::placeholder {
+    color: rgba(255, 255, 255, 0.45);
+    opacity: 1;
+  }
+}
+
+.legion-operator-log-table-wrap {
+  background-color: rgba(0, 0, 0, 0.25);
+
+  .table {
+    --bs-table-bg: transparent;
+    --bs-table-hover-bg: rgba(255, 255, 255, 0.04);
+    --bs-table-color: #{$legion-text};
+    background-color: transparent !important;
+    margin-bottom: 0;
+  }
+
+  .table thead th {
+    background-color: transparent;
+    border-bottom-color: rgba(255, 255, 255, 0.12);
+  }
+
+  .table tbody td {
+    border-top-color: rgba(255, 255, 255, 0.08);
   }
 }
 
 /* ========== LEGION SEARCH BAR ========== */
 /* Matches search inputs on Alarms, Events, Equipment: pill shape, dark bg, muted placeholder */
-$legion-search-bg: #2E333D;
-$legion-search-placeholder: #7B818F;
+$legion-search-bg: #2e333d;
+$legion-search-placeholder: #7b818f;
 
 .legion-search-bar {
   border-radius: 999px;
@@ -1859,7 +1974,12 @@ $legion-search-placeholder: #7B818F;
 
 /* —— Floor zone glass overview chip (inside zone bounds) —— */
 .floor-zone-glass-chip {
-  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-family:
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    Roboto,
+    sans-serif;
   user-select: none;
 }
 
@@ -1969,7 +2089,9 @@ $legion-search-placeholder: #7B818F;
   color: rgba(255, 255, 255, 0.75);
   font-size: 11px;
   cursor: pointer;
-  transition: background 0.15s ease, color 0.15s ease;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
 
   &:hover {
     background: rgba(255, 255, 255, 0.14);
@@ -2148,7 +2270,9 @@ $legion-search-placeholder: #7B818F;
   border: 1px solid rgba(56, 189, 248, 0.45);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
-  transition: background 0.15s ease, border-color 0.15s ease;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease;
 
   &:hover {
     background: rgba(56, 189, 248, 0.18);
@@ -2344,7 +2468,9 @@ $legion-search-placeholder: #7B818F;
   justify-content: center;
   border: 2px solid transparent;
   border-radius: 4px;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
 
   &:hover {
     border-color: rgba($legion-accent-engineering, 0.5);
@@ -2455,7 +2581,9 @@ $legion-search-placeholder: #7B818F;
     border: 1px solid rgba(255, 255, 255, 0.15) !important;
     border-radius: 6px;
     cursor: pointer;
-    transition: background 0.15s ease, border-color 0.15s ease;
+    transition:
+      background 0.15s ease,
+      border-color 0.15s ease;
     text-align: left;
     text-decoration: none !important;
     box-shadow: none !important;
@@ -2640,7 +2768,9 @@ $legion-search-placeholder: #7B818F;
     border-radius: 6px;
     border: 1px solid transparent;
     cursor: pointer;
-    transition: background 0.15s ease, border-color 0.15s ease;
+    transition:
+      background 0.15s ease,
+      border-color 0.15s ease;
 
     &:hover {
       background: $legion-hover-bg;
@@ -2736,7 +2866,9 @@ $legion-search-placeholder: #7B818F;
     font-size: 0.9375rem;
     text-align: left;
     cursor: pointer;
-    transition: background 0.15s ease, border-color 0.15s ease;
+    transition:
+      background 0.15s ease,
+      border-color 0.15s ease;
 
     .site-tree-caret {
       flex-shrink: 0;
@@ -2965,7 +3097,9 @@ $legion-search-placeholder: #7B818F;
     border-radius: 6px;
     border: 1px solid transparent;
     cursor: pointer;
-    transition: background 0.15s ease, border-color 0.15s ease;
+    transition:
+      background 0.15s ease,
+      border-color 0.15s ease;
 
     &:hover {
       background: $legion-hover-bg;
@@ -3057,7 +3191,9 @@ $legion-search-placeholder: #7B818F;
   min-height: 0;
   align-self: stretch;
   background: rgba(0, 0, 0, 0.18);
-  transition: box-shadow 0.15s ease, background 0.15s ease;
+  transition:
+    box-shadow 0.15s ease,
+    background 0.15s ease;
 
   .legion-workspace-table {
     width: 100%;
@@ -3095,7 +3231,12 @@ $legion-search-placeholder: #7B818F;
   border-radius: inherit;
 
   .table-responsive {
-    min-height: 100%;
+    min-height: 0;
+  }
+
+  .legion-workspace-table {
+    height: auto;
+    table-layout: auto;
   }
 }
 
@@ -3118,7 +3259,9 @@ $legion-search-placeholder: #7B818F;
   background: transparent;
 }
 
-.legion-sidebar-wrapper .legion-sidebar-tree__parent--within .legion-sidebar-tree__parent-shell {
+.legion-sidebar-wrapper
+  .legion-sidebar-tree__parent--within
+  .legion-sidebar-tree__parent-shell {
   border: none;
   background: transparent;
 }
@@ -3153,7 +3296,9 @@ $legion-search-placeholder: #7B818F;
   }
 }
 
-.legion-sidebar-wrapper .legion-sidebar-tree__parent-shell:hover .legion-sidebar-tree__parent-link {
+.legion-sidebar-wrapper
+  .legion-sidebar-tree__parent-shell:hover
+  .legion-sidebar-tree__parent-link {
   color: $legion-text;
 }
 
@@ -3168,10 +3313,14 @@ $legion-search-placeholder: #7B818F;
   border: none;
   background: transparent;
   color: $legion-text-muted;
-  transition: color 0.15s ease, background 0.15s ease;
+  transition:
+    color 0.15s ease,
+    background 0.15s ease;
 }
 
-.legion-sidebar-wrapper .legion-sidebar-tree__parent-shell:hover .legion-sidebar-tree__expand-toggle {
+.legion-sidebar-wrapper
+  .legion-sidebar-tree__parent-shell:hover
+  .legion-sidebar-tree__expand-toggle {
   color: $legion-text;
 }
 
@@ -3186,17 +3335,25 @@ $legion-search-placeholder: #7B818F;
 }
 
 /* Operator tree parent rows: keep muted like engineering (not bright white) */
-.legion-sidebar-wrapper:not(.legion-sidebar--engineering) .legion-sidebar-tree__parent-link {
+.legion-sidebar-wrapper:not(.legion-sidebar--engineering)
+  .legion-sidebar-tree__parent-link {
   color: rgba(255, 255, 255, 0.72);
 }
 
-.legion-sidebar-wrapper:not(.legion-sidebar--engineering) .legion-sidebar-tree__parent-link .sidebar-icon,
-.legion-sidebar-wrapper:not(.legion-sidebar--engineering) .legion-sidebar-tree__expand-toggle {
+.legion-sidebar-wrapper:not(.legion-sidebar--engineering)
+  .legion-sidebar-tree__parent-link
+  .sidebar-icon,
+.legion-sidebar-wrapper:not(.legion-sidebar--engineering)
+  .legion-sidebar-tree__expand-toggle {
   color: rgba(255, 255, 255, 0.68);
 }
 
-.legion-sidebar-wrapper:not(.legion-sidebar--engineering) .legion-sidebar-tree__parent-shell:hover .legion-sidebar-tree__parent-link,
-.legion-sidebar-wrapper:not(.legion-sidebar--engineering) .legion-sidebar-tree__parent-shell:hover .legion-sidebar-tree__expand-toggle {
+.legion-sidebar-wrapper:not(.legion-sidebar--engineering)
+  .legion-sidebar-tree__parent-shell:hover
+  .legion-sidebar-tree__parent-link,
+.legion-sidebar-wrapper:not(.legion-sidebar--engineering)
+  .legion-sidebar-tree__parent-shell:hover
+  .legion-sidebar-tree__expand-toggle {
   color: rgba(255, 255, 255, 0.88);
 }
 
@@ -3307,16 +3464,22 @@ $legion-search-placeholder: #7B818F;
   background: transparent !important;
 }
 
-.legion-sidebar-wrapper .legion-sidebar-tree__nav-item:not(.active) .legion-sidebar-tree__leaf-link:hover {
+.legion-sidebar-wrapper
+  .legion-sidebar-tree__nav-item:not(.active)
+  .legion-sidebar-tree__leaf-link:hover {
   background: transparent !important;
 }
 
-.legion-sidebar-wrapper .legion-sidebar-tree__nav-item.active .legion-sidebar-tree__leaf-link {
+.legion-sidebar-wrapper
+  .legion-sidebar-tree__nav-item.active
+  .legion-sidebar-tree__leaf-link {
   @include legion-sidebar-active-row($legion-accent);
 }
 
 /* Keep engineering tree active accent gold */
-.legion-sidebar-wrapper.legion-sidebar--engineering .legion-sidebar-tree__nav-item.active .legion-sidebar-tree__leaf-link {
+.legion-sidebar-wrapper.legion-sidebar--engineering
+  .legion-sidebar-tree__nav-item.active
+  .legion-sidebar-tree__leaf-link {
   @include legion-sidebar-active-row($legion-accent-engineering);
 }
 
@@ -3365,6 +3528,7 @@ $legion-search-placeholder: #7B818F;
   tbody tr.legion-workspace-row {
     background: rgba(0, 0, 0, 0.2);
     color: rgba(255, 255, 255, 0.95);
+    height: auto;
     transition: background 0.15s ease;
 
     &:hover {
@@ -3376,7 +3540,9 @@ $legion-search-placeholder: #7B818F;
       color: rgba(255, 255, 255, 0.95) !important;
       border-bottom: 1px solid rgba(255, 255, 255, 0.06);
       vertical-align: middle;
+      height: auto;
       padding: 0.55rem 0.75rem;
+      white-space: nowrap;
     }
 
     .legion-workspace-td--check {
@@ -3416,6 +3582,31 @@ $legion-search-placeholder: #7B818F;
 
 .legion-workspace-dropzone .legion-workspace-table td {
   color: rgba(255, 255, 255, 0.95) !important;
+}
+
+/* Operator equipment detail — match Alarms log card + dark inset tables */
+.legion-equipment-detail-page {
+  .legion-operator-log-table-wrap .legion-workspace-table {
+    --bs-table-bg: transparent;
+    --bs-table-hover-bg: rgba(255, 255, 255, 0.04);
+    --bs-table-color: #{$legion-text};
+    background-color: transparent !important;
+
+    thead .legion-workspace-th {
+      background: transparent;
+      border-bottom-color: rgba(255, 255, 255, 0.12);
+      box-shadow: none;
+      backdrop-filter: none;
+    }
+
+    tbody tr.legion-workspace-row {
+      background: transparent;
+
+      &:hover {
+        background: rgba(255, 255, 255, 0.04) !important;
+      }
+    }
+  }
 }
 
 /* Operator equipment detail — live points rows open command modal */
@@ -3473,7 +3664,10 @@ button.legion-service-state-option {
   background: rgba(0, 0, 0, 0.2);
   color: #fff;
   cursor: pointer;
-  transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease,
+    box-shadow 0.15s ease;
 
   &:hover {
     border-color: rgba(255, 255, 255, 0.35);
@@ -3533,7 +3727,9 @@ button.legion-service-state-option {
     background: rgba(0, 0, 0, 0.25);
     border: 1px dashed rgba(255, 255, 255, 0.2);
     border-radius: 0.375rem;
-    transition: border-color 0.15s ease, background 0.15s ease;
+    transition:
+      border-color 0.15s ease,
+      background 0.15s ease;
 
     &.legion-scope-tray--active {
       border-color: $legion-accent;
@@ -3600,6 +3796,25 @@ button.legion-service-state-option {
 
   .legion-workspace-table tbody tr.table-active {
     background: rgba($legion-accent, 0.12) !important;
+  }
+}
+
+/* Equipment page — fit card between topbar, hero, and footer without page scroll */
+.legion-equipment-page-shell {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - var(--legion-topbar-h, 44px) - var(--legion-footer-h, 40px));
+  max-height: calc(100vh - var(--legion-topbar-h, 44px) - var(--legion-footer-h, 40px));
+  min-height: 0;
+  overflow: hidden;
+
+  @supports (height: 100dvh) {
+    height: calc(100dvh - var(--legion-topbar-h, 44px) - var(--legion-footer-h, 40px));
+    max-height: calc(100dvh - var(--legion-topbar-h, 44px) - var(--legion-footer-h, 40px));
+  }
+
+  &__hero {
+    flex-shrink: 0;
   }
 }
 
@@ -3733,7 +3948,10 @@ button.legion-service-state-option {
     background: transparent;
     color: rgba(255, 255, 255, 0.55);
     cursor: pointer;
-    transition: background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+    transition:
+      background 0.15s ease,
+      color 0.15s ease,
+      box-shadow 0.15s ease;
 
     &:hover {
       color: rgba(255, 255, 255, 0.88);
@@ -3741,23 +3959,25 @@ button.legion-service-state-option {
     }
 
     &:focus-visible {
-      outline: 2px solid rgba($legion-accent, 0.85);
+      outline: 2px solid rgba(255, 255, 255, 0.35);
       outline-offset: 2px;
     }
   }
 
   .workspace-mode-segmented__opt--active {
-    background: linear-gradient(165deg, rgba($legion-accent, 0.35) 0%, rgba($legion-accent, 0.12) 100%);
+    background: rgba(255, 255, 255, 0.1);
     color: #fff;
-    box-shadow: 0 0 0 1px rgba($legion-accent, 0.45), 0 4px 14px rgba(0, 0, 0, 0.35);
+    box-shadow:
+      0 0 0 1px rgba(255, 255, 255, 0.18),
+      0 4px 14px rgba(0, 0, 0, 0.35);
 
     .workspace-mode-segmented__hint {
       color: rgba(255, 255, 255, 0.65);
     }
 
     .workspace-mode-segmented__icon {
-      color: $legion-accent;
-      filter: drop-shadow(0 0 6px rgba($legion-accent, 0.45));
+      color: rgba(255, 255, 255, 0.85);
+      filter: none;
     }
   }
 
@@ -3841,50 +4061,52 @@ button.legion-service-state-option {
     }
   }
 
-  /* Operator equipment tree: use blue ($legion-accent), simpler layout, clear offline pill */
+  /* Operator equipment tree: neutral grey accents (no yellow/orange) */
   .legion-equipment-tree.site-builder-tree {
     .site-tree-icon {
-      color: $legion-accent;
-      background: rgba($legion-accent, 0.12);
+      color: rgba(255, 255, 255, 0.55);
+      background: rgba(255, 255, 255, 0.08);
     }
 
     .site-tree-row.site-tree-row--active {
-      background: rgba($legion-accent, 0.1);
-      border-color: rgba($legion-accent, 0.35);
-      box-shadow: inset 3px 0 0 $legion-accent;
+      background: rgba(255, 255, 255, 0.08);
+      border-color: rgba(255, 255, 255, 0.15);
+      box-shadow: inset 3px 0 0 rgba(255, 255, 255, 0.35);
 
       .site-tree-icon {
         opacity: 1;
+        color: rgba(255, 255, 255, 0.85);
+        background: rgba(255, 255, 255, 0.12);
       }
     }
 
     .site-tree-equipment-badge {
-      color: rgba($legion-accent, 0.9);
-      background: rgba($legion-accent, 0.12);
-      border: 1px solid rgba($legion-accent, 0.25);
+      color: rgba(255, 255, 255, 0.75);
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.12);
     }
 
     .hierarchy-equipment-row.site-tree-row--active {
-      background: rgba($legion-accent, 0.1);
-      border-color: rgba($legion-accent, 0.35);
-      box-shadow: inset 3px 0 0 $legion-accent;
+      background: rgba(255, 255, 255, 0.08);
+      border-color: rgba(255, 255, 255, 0.15);
+      box-shadow: inset 3px 0 0 rgba(255, 255, 255, 0.35);
     }
 
     .hierarchy-equipment-status-chip--warning {
-      background: rgba($legion-accent, 0.2);
-      color: $legion-accent;
-      border: 1px solid rgba($legion-accent, 0.4);
+      background: rgba(255, 255, 255, 0.1);
+      color: rgba(255, 255, 255, 0.75);
+      border: 1px solid rgba(255, 255, 255, 0.18);
     }
 
     .site-tree-action-btn--add {
-      border-color: rgba($legion-accent, 0.45);
-      color: rgba($legion-accent, 0.95);
-      background: rgba($legion-accent, 0.06);
+      border-color: rgba(255, 255, 255, 0.2);
+      color: rgba(255, 255, 255, 0.85);
+      background: rgba(255, 255, 255, 0.06);
 
       &:hover {
-        background: rgba($legion-accent, 0.14);
-        border-color: rgba($legion-accent, 0.65);
-        color: $legion-accent;
+        background: rgba(255, 255, 255, 0.12);
+        border-color: rgba(255, 255, 255, 0.28);
+        color: #fff;
       }
     }
   }
@@ -3931,13 +4153,750 @@ button.legion-service-state-option {
 
     .operator-equipment-status-pill[data-status="warn"],
     .operator-equipment-status-pill[data-status="warning"] {
-      background: rgba($warning, 0.2);
-      color: $warning;
-      border-color: rgba($warning, 0.4);
+      background: rgba(255, 255, 255, 0.1);
+      color: rgba(255, 255, 255, 0.75);
+      border-color: rgba(255, 255, 255, 0.18);
     }
 
     .site-tree-row--offline .site-tree-name {
       color: rgba(255, 255, 255, 0.92);
+    }
+  }
+
+  /* Workspace table — match Alarms log inset surface */
+  .legion-operator-log-table-wrap.legion-workspace-dropzone {
+    background-color: rgba(0, 0, 0, 0.25);
+
+    &.legion-workspace-dropzone--active {
+      box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.22);
+      background: rgba(0, 0, 0, 0.32);
+    }
+
+    .legion-workspace-table {
+      --bs-table-bg: transparent;
+      --bs-table-hover-bg: rgba(255, 255, 255, 0.04);
+      --bs-table-color: #{$legion-text};
+      background-color: transparent !important;
+
+      thead .legion-workspace-th {
+        background: transparent;
+        border-bottom-color: rgba(255, 255, 255, 0.12);
+        box-shadow: none;
+        backdrop-filter: none;
+      }
+
+      tbody tr.legion-workspace-row {
+        background: transparent;
+
+        &:hover {
+          background: rgba(255, 255, 255, 0.04) !important;
+        }
+      }
+
+      tbody tr.legion-workspace-row.table-active {
+        background: rgba($legion-accent, 0.1) !important;
+        border-left: 3px solid $legion-accent;
+      }
+    }
+  }
+
+  /* ── Enterprise split-pane layout ── */
+  &.legion-equipment-page--enterprise {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    padding-bottom: 0.5rem !important;
+  }
+
+  .legion-equipment-enterprise {
+    display: flex;
+    align-items: stretch;
+    flex: 1 1 auto;
+    min-height: 0;
+    max-height: 100%;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 10px;
+    overflow: hidden;
+    background: rgba(0, 0, 0, 0.22);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+  }
+
+  .legion-equipment-tree-panel {
+    display: flex;
+    flex-direction: column;
+    flex: 0 0 33.333%;
+    width: 33.333%;
+    max-width: 33.333%;
+    border-right: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(0, 0, 0, 0.18);
+    transition: width 0.2s ease, opacity 0.2s ease;
+
+    &--collapsed {
+      flex: 0 0 0;
+      width: 0;
+      max-width: 0;
+      min-width: 0;
+      border-right: none;
+      opacity: 0;
+      pointer-events: none;
+      overflow: hidden;
+    }
+  }
+
+  .legion-equipment-tree-expand {
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 2;
+    border-radius: 0 6px 6px 0;
+    padding: 0.5rem 0.35rem;
+    background: rgba(0, 0, 0, 0.55);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-left: none;
+    color: rgba(255, 255, 255, 0.7);
+
+    &:hover {
+      color: #fff;
+      background: rgba(0, 0, 0, 0.7);
+    }
+  }
+
+  .legion-equipment-enterprise-wrap {
+    position: relative;
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .legion-equipment-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(0, 0, 0, 0.2);
+    flex-shrink: 0;
+  }
+
+  .legion-equipment-panel-title {
+    font-size: 0.6875rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.55);
+    margin: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    flex-wrap: wrap;
+  }
+
+  .legion-equipment-workspace-profile-name {
+    color: rgba(255, 255, 255, 0.88);
+    text-transform: none;
+    letter-spacing: 0.02em;
+    font-size: 0.8125rem;
+    font-weight: 600;
+  }
+
+  .legion-equipment-panel-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .legion-equipment-panel-footer {
+    flex-shrink: 0;
+    padding: 0.55rem 1rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(0, 0, 0, 0.15);
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.45);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+  }
+
+  .legion-equipment-tree-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.65rem 0.85rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    flex-shrink: 0;
+  }
+
+  .legion-equipment-tree-toolbar__input {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .legion-equipment-tree-toolbar__btn {
+    flex-shrink: 0;
+    width: 30px;
+    height: 30px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    background: rgba(0, 0, 0, 0.25) !important;
+    color: rgba(255, 255, 255, 0.55) !important;
+    border-radius: 6px;
+
+    &:hover,
+    &--active {
+      color: rgba(255, 255, 255, 0.9) !important;
+      border-color: rgba($legion-accent, 0.45) !important;
+      background: rgba($legion-accent, 0.12) !important;
+    }
+  }
+
+  .legion-equipment-tree-scroll {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 0.35rem 0 0.5rem;
+  }
+
+  .legion-equipment-workspace-panel {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .legion-equipment-workspace-optional {
+    flex-shrink: 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(0, 0, 0, 0.12);
+  }
+
+  .legion-equipment-workspace-header-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.45rem;
+    flex-wrap: wrap;
+  }
+
+  .legion-equipment-load-workspace-menu {
+    min-width: 240px;
+    max-width: min(92vw, 320px);
+    max-height: min(50vh, 320px);
+    overflow-y: auto;
+  }
+
+  .legion-equipment-load-workspace-item {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.15rem;
+    white-space: normal;
+  }
+
+  .legion-equipment-load-workspace-item__name {
+    font-weight: 600;
+    color: #fff;
+  }
+
+  .legion-equipment-load-workspace-item__meta {
+    font-size: 0.6875rem;
+    color: rgba(255, 255, 255, 0.5);
+  }
+
+  .legion-equipment-workspace-optional__body {
+    padding: 0.55rem 1rem 0.65rem;
+    min-height: 0;
+  }
+
+  .legion-equipment-workspace-cards {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: center;
+  }
+
+  .legion-equipment-workspace-card {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.4rem 0.75rem;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(0, 0, 0, 0.25);
+    color: rgba(255, 255, 255, 0.72);
+    font-size: 0.8125rem;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s, color 0.15s;
+
+    &:hover {
+      border-color: rgba(255, 255, 255, 0.2);
+      color: #fff;
+    }
+
+    &--active {
+      border-color: rgba($legion-accent, 0.55);
+      background: rgba($legion-accent, 0.12);
+      color: #fff;
+      box-shadow: inset 3px 0 0 $legion-accent;
+    }
+  }
+
+  .legion-equipment-workspace-card__count {
+    font-size: 0.6875rem;
+    color: rgba(255, 255, 255, 0.45);
+  }
+
+  .legion-equipment-workspace-empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.65rem;
+    padding: 1rem;
+    color: rgba(255, 255, 255, 0.38);
+    font-size: 0.8125rem;
+  }
+
+  .legion-equipment-workspace-empty__icon {
+    font-size: 1.25rem;
+    opacity: 0.5;
+  }
+
+  .legion-equipment-workspace-active {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .legion-equipment-active-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.65rem 1rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    background: rgba(0, 0, 0, 0.1);
+    flex-wrap: wrap;
+    flex-shrink: 0;
+  }
+
+  .legion-equipment-active-toolbar__left,
+  .legion-equipment-active-toolbar__right {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    flex-wrap: wrap;
+  }
+
+  .legion-equipment-active-toolbar__select {
+    min-width: 160px;
+    max-width: 220px;
+    font-size: 0.8125rem;
+  }
+
+  .legion-equipment-active-toolbar .dropdown-menu .dropdown-item.active {
+    background: rgba($legion-accent, 0.18);
+    color: #fff;
+  }
+
+  .legion-equipment-tools-menu.dropdown-menu {
+    min-width: 210px;
+    padding: 0.4rem 0;
+    margin-top: 0.35rem;
+    border-radius: 8px;
+    background: $primary !important;
+    border: 1px solid rgba(255, 255, 255, 0.12) !important;
+    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.45) !important;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+
+    .legion-equipment-tools-menu__header {
+      font-size: 0.625rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.38) !important;
+      padding: 0.45rem 0.9rem 0.2rem;
+    }
+
+    .dropdown-divider {
+      margin: 0.35rem 0.65rem;
+      border-color: rgba(255, 255, 255, 0.08);
+      opacity: 1;
+    }
+
+    .dropdown-item {
+      display: flex;
+      align-items: center;
+      gap: 0.55rem;
+      padding: 0.5rem 0.9rem;
+      font-size: 0.8125rem;
+      color: rgba(255, 255, 255, 0.88);
+
+      .legion-equipment-tools-menu__icon {
+        flex-shrink: 0;
+        width: 0.95rem;
+        text-align: center;
+        font-size: 0.8rem;
+        color: rgba(255, 255, 255, 0.5);
+      }
+
+      &:hover:not(:disabled):not(.disabled),
+      &:focus:not(:disabled):not(.disabled) {
+        background: rgba(255, 255, 255, 0.06);
+        color: #fff;
+
+        .legion-equipment-tools-menu__icon {
+          color: rgba(255, 255, 255, 0.75);
+        }
+      }
+
+      &.active {
+        background: rgba($legion-accent, 0.14);
+        color: #fff;
+
+        .legion-equipment-tools-menu__icon {
+          color: $legion-accent;
+        }
+      }
+
+      &:disabled,
+      &.disabled {
+        opacity: 1;
+        color: rgba(255, 255, 255, 0.32) !important;
+        background: transparent !important;
+        pointer-events: none;
+        cursor: not-allowed;
+
+        .legion-equipment-tools-menu__icon {
+          color: rgba(255, 255, 255, 0.22);
+        }
+      }
+
+      &.legion-equipment-tools-menu__item--danger {
+        color: rgba(248, 113, 113, 0.92);
+
+        .legion-equipment-tools-menu__icon {
+          color: rgba(248, 113, 113, 0.75);
+        }
+
+        &:hover:not(:disabled):not(.disabled),
+        &:focus:not(:disabled):not(.disabled) {
+          background: rgba(248, 113, 113, 0.12);
+          color: #f87171;
+
+          .legion-equipment-tools-menu__icon {
+            color: #f87171;
+          }
+        }
+      }
+    }
+  }
+
+  .legion-equipment-btn {
+    font-size: 0.75rem;
+    padding: 0.3rem 0.65rem;
+    border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.12) !important;
+    background: rgba(0, 0, 0, 0.28) !important;
+    color: rgba(255, 255, 255, 0.78) !important;
+
+    &:hover:not(:disabled) {
+      color: #fff !important;
+      background: rgba(255, 255, 255, 0.08) !important;
+      border-color: rgba(255, 255, 255, 0.2) !important;
+    }
+
+    &:disabled {
+      opacity: 0.4;
+    }
+
+    &--accent {
+      background: rgba($legion-accent, 0.85) !important;
+      border-color: $legion-accent !important;
+      color: #fff !important;
+
+      &:hover:not(:disabled) {
+        background: darken($legion-accent, 4%) !important;
+      }
+    }
+
+    &--icon {
+      width: 30px;
+      height: 30px;
+      padding: 0;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+  }
+
+  .legion-equipment-filter-bar {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    flex-wrap: wrap;
+    padding: 0.55rem 1rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    background: rgba(0, 0, 0, 0.08);
+    flex-shrink: 0;
+
+    &--enterprise {
+      margin: 0;
+    }
+
+    &__label {
+      display: inline-flex;
+      align-items: center;
+      flex-shrink: 0;
+      font-size: 0.6875rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.5);
+    }
+
+    &__input {
+      flex: 1 1 200px;
+      min-width: 0;
+    }
+
+    &__meta {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      margin-left: auto;
+      flex-shrink: 0;
+    }
+  }
+
+  .legion-equipment-search-panel {
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(0, 0, 0, 0.14);
+    flex-shrink: 0;
+
+    &--enterprise {
+      border-left: 3px solid rgba($legion-accent, 0.55);
+    }
+
+    &__header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      margin-bottom: 0.35rem;
+    }
+
+    &__label {
+      display: inline-flex;
+      align-items: center;
+      font-size: 0.6875rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.55);
+    }
+
+    &__query {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+
+      .form-control {
+        flex: 1 1 220px;
+        min-width: 0;
+      }
+    }
+  }
+
+  .legion-equipment-table-area {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    padding: 0 1rem;
+  }
+
+  .legion-equipment-table-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.55rem 1rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(0, 0, 0, 0.12);
+    flex-shrink: 0;
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.5);
+  }
+
+  .legion-equipment-auto-refresh {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+
+    .form-check-input {
+      cursor: pointer;
+      background-color: rgba(0, 0, 0, 0.35);
+      border-color: rgba(255, 255, 255, 0.25);
+
+      &:checked {
+        background-color: $legion-accent;
+        border-color: $legion-accent;
+      }
+    }
+
+    .form-check-label {
+      font-size: 0.75rem;
+      color: rgba(255, 255, 255, 0.55);
+      cursor: pointer;
+      margin: 0;
+    }
+  }
+
+  .legion-equipment-row-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+  }
+
+  .legion-equipment-row-action {
+    width: 26px;
+    height: 26px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border: none;
+    border-radius: 5px;
+    background: transparent;
+    color: rgba(255, 255, 255, 0.45);
+    cursor: pointer;
+    transition: color 0.15s, background 0.15s;
+
+    &:hover {
+      color: rgba(255, 255, 255, 0.9);
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    &--danger:hover {
+      color: $danger;
+      background: rgba($danger, 0.12);
+    }
+  }
+
+  .workspace-panel--enterprise {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+
+    .legion-workspace-dropzone {
+      flex: 1 1 auto;
+      min-height: 0;
+      border: none !important;
+      border-radius: 0 !important;
+      background: transparent !important;
+
+      &.legion-workspace-dropzone--empty {
+        flex: 1 1 auto;
+        min-height: 0;
+
+        .legion-workspace-table-scroll {
+          flex: 1 1 auto;
+          min-height: 0;
+          overflow: auto;
+        }
+      }
+
+      &.legion-workspace-dropzone--has-rows .legion-workspace-table-scroll {
+        max-height: none;
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow: auto;
+      }
+    }
+
+    .legion-workspace-th {
+      font-size: 0.6875rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.45) !important;
+      padding: 0.65rem 0.75rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+    }
+
+    .legion-workspace-td {
+      padding: 0.55rem 0.75rem;
+      font-size: 0.8125rem;
+    }
+  }
+
+  /* Orange accent for active tree row */
+  .legion-equipment-tree.site-builder-tree {
+    .site-tree-row.site-tree-row--active {
+      background: rgba($legion-accent, 0.1);
+      border-color: rgba($legion-accent, 0.25);
+      box-shadow: inset 3px 0 0 $legion-accent;
+
+      .site-tree-icon {
+        color: rgba(255, 255, 255, 0.9);
+        background: rgba($legion-accent, 0.15);
+      }
+    }
+  }
+
+  @media (max-width: 991.98px) {
+    .legion-equipment-page-shell {
+      height: auto;
+      max-height: none;
+      overflow: visible;
+    }
+
+    .legion-equipment-enterprise {
+      flex-direction: column;
+      min-height: auto;
+      max-height: none;
+    }
+
+    .legion-equipment-tree-panel {
+      width: 100%;
+      max-height: 320px;
+      border-right: none;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+
+      &--collapsed {
+        width: 100%;
+        max-height: 0;
+        opacity: 1;
+        pointer-events: auto;
+      }
+    }
+
+    .legion-equipment-active-toolbar {
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    .legion-equipment-active-toolbar__left,
+    .legion-equipment-active-toolbar__right {
+      justify-content: flex-start;
     }
   }
 }
@@ -3956,6 +4915,49 @@ button.legion-service-state-option {
 
   .site-layout-full-card-wrap {
     width: 100%;
+  }
+
+  .site-layout-location-nav {
+    min-height: 1.35rem;
+  }
+
+  .site-layout-location-nav__history {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.2rem;
+    flex-shrink: 0;
+  }
+
+  .site-layout-location-nav__history-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.35rem;
+    height: 1.35rem;
+    padding: 0;
+    border: none;
+    background: transparent;
+    color: rgba(255, 255, 255, 0.92);
+    font-size: 0.82rem;
+    line-height: 1;
+    cursor: pointer;
+    transition: color 0.12s ease;
+    &:disabled {
+      color: rgba(255, 255, 255, 0.28);
+      cursor: default;
+    }
+    &:hover:not(:disabled) {
+      color: #fff;
+    }
+    &:focus-visible {
+      outline: 2px solid rgba(59, 130, 246, 0.55);
+      outline-offset: 2px;
+      border-radius: 0.2rem;
+    }
+  }
+
+  .site-layout-location-nav__trail {
+    min-width: 0;
   }
 
   .site-layout-full-card {
@@ -4005,9 +5007,9 @@ button.legion-service-state-option {
     z-index: 1;
   }
 
-  /* Building overview: taller / multi-row summary strip — keep alarms above it */
+  /* Building overview: alarms float above the graphic (footer metrics are outside the media area) */
   .site-layout-map-area--building-overview .site-layout-red-zones-strip {
-    bottom: 13rem;
+    bottom: 0.75rem;
     max-width: min(420px, calc(100% - 1.5rem));
     z-index: 560;
   }
@@ -4138,7 +5140,11 @@ button.legion-service-state-option {
     align-items: stretch;
     border-radius: 0.65rem;
     overflow: hidden;
-    background: linear-gradient(165deg, rgba(26, 31, 43, 0.98) 0%, rgba(14, 18, 28, 0.99) 100%);
+    background: linear-gradient(
+      165deg,
+      rgba(26, 31, 43, 0.98) 0%,
+      rgba(14, 18, 28, 0.99) 100%
+    );
     border: 1px solid rgba(255, 255, 255, 0.1);
     box-shadow: 0 14px 44px rgba(0, 0, 0, 0.48);
   }
@@ -4147,7 +5153,11 @@ button.legion-service-state-option {
     width: 3px;
     flex-shrink: 0;
     align-self: stretch;
-    background: linear-gradient(180deg, rgba(13, 202, 240, 0.95) 0%, rgba(13, 202, 240, 0.35) 100%);
+    background: linear-gradient(
+      180deg,
+      rgba(13, 202, 240, 0.95) 0%,
+      rgba(13, 202, 240, 0.35) 100%
+    );
   }
 
   .site-layout-map-popup__main {
@@ -4386,7 +5396,9 @@ button.legion-service-state-option {
     border-radius: 0.35rem;
     background: rgba(0, 0, 0, 0.38);
     border: 1px solid rgba(255, 255, 255, 0.08);
-    transition: border-color 0.15s ease, background 0.15s ease;
+    transition:
+      border-color 0.15s ease,
+      background 0.15s ease;
     &:focus-within {
       border-color: rgba(13, 202, 240, 0.45);
       background: rgba(0, 0, 0, 0.48);
@@ -4466,7 +5478,11 @@ button.legion-service-state-option {
     align-self: stretch;
     margin: 0.55rem 0 0.55rem 0;
     border-radius: 0 3px 3px 0;
-    background: linear-gradient(180deg, rgba(13, 202, 240, 0.95) 0%, rgba(13, 202, 240, 0.35) 100%);
+    background: linear-gradient(
+      180deg,
+      rgba(13, 202, 240, 0.95) 0%,
+      rgba(13, 202, 240, 0.35) 100%
+    );
     opacity: 0.92;
   }
 
@@ -4517,7 +5533,32 @@ button.legion-service-state-option {
     }
   }
 
-  /* Operator building main page — vignette, hero, floor nav, summary (prototype-aligned) */
+  /* Building view — full-size graphic, metrics footer adds height below (does not shrink image) */
+  .site-building-view {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .site-layout-full-card--building {
+    min-height: 0;
+  }
+
+  .site-building-view__media {
+    flex: 0 0 auto;
+    min-height: var(--legion-site-layout-graphic-min-px);
+    height: var(--legion-site-layout-graphic-h);
+    height: var(--legion-site-layout-graphic-h-dv);
+    max-height: var(--legion-site-layout-graphic-h);
+    max-height: var(--legion-site-layout-graphic-h-dv);
+  }
+
+  .site-building-view__footer {
+    flex: 0 0 auto;
+    background: $legion-active-bg-strong;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  /* Operator building main page — vignette, hero, floor nav overlay */
   .site-building-overview {
     position: absolute;
     inset: 0;
@@ -4529,94 +5570,44 @@ button.legion-service-state-option {
     position: absolute;
     inset: 0;
     pointer-events: none;
-    /* Top ~25%: darker crown, smooth fade — rest of graphic unchanged */
     background: linear-gradient(
       to bottom,
-      rgba(0, 2, 10, 0.97) 0%,
-      rgba(0, 2, 10, 0.88) 6%,
-      rgba(0, 2, 10, 0.62) 12%,
-      rgba(0, 2, 10, 0.32) 18%,
-      rgba(0, 2, 10, 0.08) 23%,
-      transparent 25%
+      rgba(0, 0, 0, 0.72) 0%,
+      rgba(0, 0, 0, 0.42) 10%,
+      rgba(0, 0, 0, 0.12) 18%,
+      transparent 24%
     );
   }
 
-  /*
-   * Operator building hero — font stack matches Volt: Nunito Sans via Bootstrap token.
-   * Sizes below are the source of truth (JSDoc on SiteBuildingHero.jsx summarizes for devs).
-   */
   .site-building-hero {
     position: absolute;
-    top: 1.75rem;
-    left: 1.75rem;
+    top: 1.25rem;
+    left: 1.25rem;
     right: auto;
-    /* Room for long one-line names (e.g. SUNSET STRIP PLAZA); clears quick nav on md+ */
     max-width: min(640px, calc(100% - 2rem));
     z-index: 2;
     pointer-events: none;
-    font-family: var(--bs-font-sans-serif, "Nunito Sans", system-ui, sans-serif);
     @media (min-width: 576px) {
-      top: 2.25rem;
-      left: 2.25rem;
+      top: 1.5rem;
+      left: 1.5rem;
       max-width: min(720px, calc(100% - 3rem));
     }
     @media (min-width: 992px) {
-      top: 2.75rem;
-      left: 2.75rem;
+      top: 1.75rem;
+      left: 1.75rem;
       max-width: min(780px, calc(100% - 22rem));
     }
   }
 
   .site-building-hero__title {
     margin: 0;
-    /* ~34px–56px: large name, reads as one horizontal band */
-    font-size: clamp(2.125rem, 1.25rem + 3.8vw, 3.5rem);
-    font-weight: 800;
-    line-height: 1.08;
-    letter-spacing: 0.055em;
-    text-transform: uppercase;
-    color: #fff;
-    text-shadow: 0 2px 28px rgba(0, 0, 0, 0.5);
-    writing-mode: horizontal-tb;
-    word-break: normal;
-    overflow-wrap: normal;
-    hyphens: manual;
-    white-space: normal;
-  }
-
-  .site-building-hero__kicker {
-    margin: 0.65rem 0 0;
-    /* Building type — larger than before, still subordinate to title */
-    font-size: clamp(0.9375rem, 0.82rem + 0.45vw, 1.125rem);
+    font-size: clamp(1.5rem, 1rem + 2vw, 2.25rem);
     font-weight: 700;
-    letter-spacing: 0.1em;
+    line-height: 1.15;
+    letter-spacing: 0.04em;
     text-transform: uppercase;
-    color: #5dade2;
-    text-shadow: 0 1px 14px rgba(0, 0, 0, 0.4);
-    writing-mode: horizontal-tb;
-    word-break: normal;
-    white-space: normal;
-  }
-
-  .site-building-hero__rule {
-    margin: 0.85rem 0 0.65rem;
-    max-width: min(18rem, 100%);
-    border: none;
-    border-top: 1px solid rgba(255, 255, 255, 0.22);
-    opacity: 1;
-  }
-
-  .site-building-hero__tagline {
-    margin: 0;
-    font-size: clamp(0.875rem, 0.8rem + 0.25vw, 1rem);
-    line-height: 1.5;
-    font-weight: 400;
-    color: rgba(255, 255, 255, 0.62);
-    max-width: 32rem;
-    text-shadow: 0 1px 14px rgba(0, 0, 0, 0.45);
-    writing-mode: horizontal-tb;
-    word-break: normal;
-    white-space: normal;
+    color: rgba(255, 255, 255, 0.96);
+    text-shadow: 0 1px 12px rgba(0, 0, 0, 0.45);
   }
 
   /* Collapsible shell — compact trigger; expanded panel uses .site-quick-nav--popout */
@@ -4624,7 +5615,12 @@ button.legion-service-state-option {
     position: absolute;
     z-index: 620;
     pointer-events: auto;
-    font-family: var(--bs-font-sans-serif, "Nunito Sans", system-ui, sans-serif);
+    font-family: var(
+      --bs-font-sans-serif,
+      "Nunito Sans",
+      system-ui,
+      sans-serif
+    );
     max-width: min(300px, calc(100% - 2rem));
     @media (min-width: 576px) {
       max-width: min(320px, calc(100% - 3rem));
@@ -4665,37 +5661,33 @@ button.legion-service-state-option {
     align-items: center;
     gap: 0.45rem;
     padding: 0.48rem 0.75rem 0.48rem 0.65rem;
-    border-radius: 0.58rem;
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    background: linear-gradient(165deg, rgba(26, 31, 43, 0.96) 0%, rgba(14, 18, 28, 0.98) 100%);
-    box-shadow: 0 10px 36px rgba(0, 0, 0, 0.42);
-    backdrop-filter: blur(12px);
-    color: rgba(255, 255, 255, 0.95);
+    border-radius: 0.5rem;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: var(--bs-primary);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.28);
+    color: rgba(255, 255, 255, 0.92);
     font-size: 0.72rem;
     font-weight: 700;
-    letter-spacing: 0.09em;
+    letter-spacing: 0.06em;
     text-transform: uppercase;
     cursor: pointer;
     transition:
-      filter 0.15s ease,
+      background 0.15s ease,
       border-color 0.15s ease,
       box-shadow 0.15s ease;
     &:hover {
-      filter: brightness(1.06);
-      border-color: rgba(59, 130, 246, 0.45);
-      box-shadow:
-        0 12px 40px rgba(0, 0, 0, 0.48),
-        0 0 0 1px rgba(59, 130, 246, 0.2);
+      border-color: rgba(255, 255, 255, 0.18);
+      box-shadow: 0 8px 22px rgba(0, 0, 0, 0.32);
     }
     &:focus-visible {
-      outline: 2px solid rgba(59, 130, 246, 0.55);
+      outline: 2px solid rgba(255, 255, 255, 0.35);
       outline-offset: 2px;
     }
   }
 
   .site-quick-nav-collapsible__trigger-icon {
-    color: #5dade2;
-    font-size: 0.95rem;
+    color: rgba(255, 255, 255, 0.55);
+    font-size: 0.9rem;
   }
 
   .site-quick-nav-collapsible__trigger-chevron {
@@ -4718,7 +5710,12 @@ button.legion-service-state-option {
     width: calc(100% - 2rem);
     max-width: min(300px, 100% - 2rem);
     pointer-events: auto;
-    font-family: var(--bs-font-sans-serif, "Nunito Sans", system-ui, sans-serif);
+    font-family: var(
+      --bs-font-sans-serif,
+      "Nunito Sans",
+      system-ui,
+      sans-serif
+    );
   }
 
   .site-quick-nav--tr {
@@ -4760,46 +5757,29 @@ button.legion-service-state-option {
       max-width: min(440px, calc(100% - 5.5rem));
     }
 
-    .site-quick-nav__card {
+    .site-quick-nav__body {
       display: flex;
       flex-direction: column;
       max-height: min(82vh, calc(100dvh - 96px));
       overflow: hidden;
-      padding-left: 0.85rem;
-      padding-right: 0.85rem;
     }
 
     .site-quick-nav__head-row {
       flex-shrink: 0;
     }
 
-    .site-quick-nav__rule {
+    .site-quick-nav__map-toolbar,
+    .site-quick-nav__search,
+    .site-quick-nav__context {
       flex-shrink: 0;
     }
 
-    .site-quick-nav__map-toolbar {
-      flex-shrink: 0;
-    }
-
-    .site-layout-buildings-search-wrap.site-quick-nav__search-clip {
-      flex-shrink: 0;
-      margin-left: -0.05rem;
-      margin-right: -0.05rem;
-    }
-
-    .site-quick-nav__map-buildings-scroll {
-      flex: 1 1 auto;
-      min-height: 72px;
+    .site-quick-nav__list-scroll {
+      flex: 0 1 auto;
+      min-height: 0;
       max-height: min(280px, 36vh);
       overflow-y: auto;
-      margin-bottom: 0.15rem;
-      border-radius: 0.45rem;
-      background: rgba(0, 0, 0, 0.2);
-      border: 1px solid rgba(255, 255, 255, 0.06);
-    }
-
-    .site-quick-nav__row {
-      flex-shrink: 0;
+      margin-bottom: 0;
     }
 
     .site-quick-nav__cta {
@@ -4808,18 +5788,115 @@ button.legion-service-state-option {
     }
   }
 
-  .site-quick-nav__rule--after-list {
-    margin: 0.45rem 0 0.55rem;
-    background: linear-gradient(
-      90deg,
-      rgba(96, 165, 250, 0.45) 0%,
-      rgba(255, 255, 255, 0.06) 55%,
-      transparent 100%
-    );
-    opacity: 0.9;
+  /* Building view — compact scrollable floor list */
+  .site-quick-nav--building {
+    max-width: min(320px, calc(100% - 2rem));
+    @media (min-width: 576px) {
+      max-width: min(340px, calc(100% - 3rem));
+    }
+
+    .site-quick-nav__body {
+      display: flex;
+      flex-direction: column;
+      max-height: min(82vh, calc(100dvh - 96px));
+      overflow: hidden;
+    }
+
+    .site-quick-nav__head-row,
+    .site-quick-nav__map-toolbar,
+    .site-quick-nav__search {
+      flex-shrink: 0;
+    }
+  }
+
+  .site-quick-nav--building .site-quick-nav__floor-list {
+    flex: 0 1 auto;
+    min-height: 0;
+    max-height: min(280px, 36vh);
+    overflow-y: auto;
+  }
+
+  .site-quick-nav__floor-row {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    border: none;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    background: transparent;
+    color: rgba(255, 255, 255, 0.92);
+    text-align: left;
+    cursor: pointer;
+    transition: background 0.12s ease;
+    &:last-child {
+      border-bottom: none;
+    }
+    &:hover {
+      background: rgba(255, 255, 255, 0.04);
+      .site-quick-nav__floor-row__action {
+        color: rgba(255, 255, 255, 0.85);
+      }
+    }
+    &:focus-visible {
+      outline: 2px solid rgba(255, 255, 255, 0.35);
+      outline-offset: -2px;
+    }
+  }
+
+  .site-quick-nav__floor-row__text {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    align-items: baseline;
+    gap: 0.3rem;
+    overflow: hidden;
+  }
+
+  .site-quick-nav__floor-row__name {
+    flex-shrink: 0;
+    max-width: 58%;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    line-height: 1.25;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .site-quick-nav__floor-row__sep {
+    flex-shrink: 0;
+    font-size: 0.72rem;
+    color: rgba(255, 255, 255, 0.28);
+    user-select: none;
+  }
+
+  .site-quick-nav__floor-row__sub {
+    flex: 1 1 auto;
+    min-width: 0;
+    font-size: 0.72rem;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.45);
+    line-height: 1.25;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .site-quick-nav__floor-row__action {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.2rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.5);
+    transition: color 0.12s ease;
   }
 
   .site-quick-nav--floor .site-quick-nav__floor-eq-list {
+    flex: 0 1 auto;
+    min-height: 0;
     max-height: min(260px, 38vh);
   }
 
@@ -4841,10 +5918,10 @@ button.legion-service-state-option {
       border-bottom: none;
     }
     &:hover {
-      background: rgba(13, 202, 240, 0.08);
+      background: rgba(255, 255, 255, 0.04);
     }
     &:focus-visible {
-      outline: 2px solid rgba(13, 202, 240, 0.55);
+      outline: 2px solid rgba(255, 255, 255, 0.35);
       outline-offset: -2px;
     }
   }
@@ -4892,7 +5969,7 @@ button.legion-service-state-option {
     text-align: left;
     max-width: 100%;
     &:hover {
-      color: #7dc4f0;
+      color: rgba(255, 255, 255, 0.92);
     }
     &--inline {
       padding-left: 0.15rem;
@@ -4905,31 +5982,21 @@ button.legion-service-state-option {
   }
 
   .site-quick-nav__card {
-    padding: 0.95rem 1rem 0.9rem;
-    border-radius: 0.65rem;
-    background: linear-gradient(165deg, rgba(26, 31, 43, 0.96) 0%, rgba(14, 18, 28, 0.98) 100%);
-    border: 1px solid rgba(255, 255, 255, 0.09);
-    box-shadow: 0 14px 44px rgba(0, 0, 0, 0.48);
-    backdrop-filter: blur(14px) saturate(1.05);
-    -webkit-backdrop-filter: blur(14px) saturate(1.05);
+    padding: 0;
+    border-radius: 0.5rem;
+    overflow: hidden;
   }
 
-  .site-quick-nav__head-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.5rem;
-    flex-shrink: 0;
+  .site-quick-nav__body {
+    padding: 0.85rem 1rem 0.9rem;
   }
 
-  .site-quick-nav__head {
-    flex: 1 1 auto;
-    min-width: 0;
-    font-size: 0.68rem;
-    font-weight: 700;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    color: rgba(255, 255, 255, 0.92);
+  .site-quick-nav__card.legion-operator-log-card > .site-quick-nav__head-row.legion-operator-log-card-header {
+    padding: 0.625rem 1rem;
+    background-color: $legion-active-bg-strong !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    letter-spacing: 0.04em;
+    margin: 0;
   }
 
   .site-quick-nav__close {
@@ -4940,20 +6007,22 @@ button.legion-service-state-option {
     width: 1.65rem;
     height: 1.65rem;
     padding: 0;
-    border: none;
+    border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 0.35rem;
-    background: rgba(255, 255, 255, 0.07);
-    color: rgba(255, 255, 255, 0.65);
+    background: transparent;
+    color: rgba(255, 255, 255, 0.55);
     cursor: pointer;
     transition:
       background 0.15s ease,
-      color 0.15s ease;
+      color 0.15s ease,
+      border-color 0.15s ease;
     &:hover {
-      background: rgba(220, 53, 69, 0.28);
-      color: #fecaca;
+      background: rgba(255, 255, 255, 0.06);
+      border-color: rgba(255, 255, 255, 0.16);
+      color: rgba(255, 255, 255, 0.9);
     }
     &:focus-visible {
-      outline: 2px solid rgba(59, 130, 246, 0.55);
+      outline: 2px solid rgba(255, 255, 255, 0.35);
       outline-offset: 2px;
     }
   }
@@ -4962,17 +6031,159 @@ button.legion-service-state-option {
     font-size: 0.8rem;
   }
 
-  .site-quick-nav__rule {
-    height: 1px;
-    margin: 0.5rem 0 0.75rem;
+  .site-quick-nav__search-field {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .site-quick-nav__search-input {
+    flex: 1 1 auto;
+    min-width: 0;
+    border: 1px solid rgba(255, 255, 255, 0.12) !important;
+    border-radius: 0.35rem;
+    padding: 0.4rem 0.65rem;
+    font-size: 0.8125rem;
+    outline: none;
+    &::placeholder {
+      color: rgba(255, 255, 255, 0.45);
+    }
+  }
+
+  .site-quick-nav__context {
+    padding: 0.55rem 0.65rem;
+    border-radius: 0.35rem;
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .site-quick-nav__context-title {
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.92);
+    line-height: 1.25;
+  }
+
+  .site-quick-nav__context-sub {
+    margin-top: 0.2rem;
+    font-size: 0.78rem;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.55);
+    line-height: 1.35;
+  }
+
+  .site-quick-nav__context-meta {
+    margin-top: 0.25rem;
+    font-size: 0.72rem;
+    color: rgba(255, 255, 255, 0.45);
+    line-height: 1.4;
+  }
+
+  .site-quick-nav__list-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.22) transparent;
+    &::-webkit-scrollbar {
+      width: 8px;
+    }
+    &::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.18);
+      border-radius: 4px;
+    }
+  }
+
+  .site-quick-nav__list-row {
+    display: flex;
+    align-items: stretch;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    &:last-child {
+      border-bottom: none;
+    }
+    &--active {
+      background: rgba(255, 255, 255, 0.04);
+    }
+  }
+
+  .site-quick-nav__list-row__body {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.55rem 0.65rem;
     border: none;
-    background: linear-gradient(
-      90deg,
-      rgba(96, 165, 250, 0.88) 0%,
-      rgba(96, 165, 250, 0.22) 26%,
-      rgba(255, 255, 255, 0.07) 52%,
-      transparent 100%
-    );
+    background: transparent;
+    color: inherit;
+    text-align: left;
+    cursor: pointer;
+    transition: background 0.12s ease;
+    &:hover {
+      background: rgba(255, 255, 255, 0.04);
+    }
+    &:focus-visible {
+      outline: 2px solid rgba(255, 255, 255, 0.35);
+      outline-offset: -2px;
+    }
+  }
+
+  .site-quick-nav__list-row__main {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+  }
+
+  .site-quick-nav__list-row__name {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    line-height: 1.25;
+    color: rgba(255, 255, 255, 0.94);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .site-quick-nav__list-row__sub {
+    font-size: 0.72rem;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.45);
+    line-height: 1.25;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .site-quick-nav__list-row__status {
+    flex-shrink: 0;
+    font-size: 0.68rem;
+  }
+
+  .site-quick-nav__list-row__action {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.2rem;
+    padding: 0.55rem 0.65rem;
+    border: none;
+    border-left: 1px solid rgba(255, 255, 255, 0.08);
+    background: transparent;
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition:
+      background 0.12s ease,
+      color 0.12s ease;
+    &:hover {
+      background: rgba(255, 255, 255, 0.04);
+      color: rgba(255, 255, 255, 0.85);
+    }
+    &:focus-visible {
+      outline: 2px solid rgba(255, 255, 255, 0.35);
+      outline-offset: -2px;
+    }
   }
 
   .site-quick-nav__row-wrap {
@@ -5011,7 +6222,7 @@ button.legion-service-state-option {
 
   .site-quick-nav__row-icon {
     flex-shrink: 0;
-    color: #5dade2;
+    color: rgba(255, 255, 255, 0.45);
     font-size: 1.35rem;
     line-height: 1;
     margin-top: 0.08rem;
@@ -5051,7 +6262,7 @@ button.legion-service-state-option {
 
   .site-quick-nav__row-chevron {
     flex-shrink: 0;
-    color: rgba(125, 196, 240, 0.9);
+    color: rgba(255, 255, 255, 0.45);
     font-size: 0.75rem;
     margin-top: 0.2rem;
     .svg-inline--fa {
@@ -5088,7 +6299,7 @@ button.legion-service-state-option {
     text-align: left;
     transition: background 0.12s ease;
     &:hover {
-      background: rgba(13, 202, 240, 0.1);
+      background: rgba(255, 255, 255, 0.04);
       color: #fff;
     }
   }
@@ -5100,28 +6311,26 @@ button.legion-service-state-option {
     gap: 0.5rem;
     width: 100%;
     margin-top: 0.85rem;
-    padding: 0.62rem 0.85rem;
-    border: none;
-    border-radius: 0.5rem;
-    background: linear-gradient(90deg, #60a5fa 0%, #3b82f6 100%);
-    color: #fff;
+    padding: 0.55rem 0.85rem;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 0.35rem;
+    background: rgba(0, 0, 0, 0.2);
+    color: rgba(255, 255, 255, 0.92);
     font-size: 0.68rem;
     font-weight: 700;
-    letter-spacing: 0.1em;
+    letter-spacing: 0.06em;
     text-transform: uppercase;
-    box-shadow: 0 6px 20px rgba(59, 130, 246, 0.35);
     transition:
-      filter 0.15s ease,
-      box-shadow 0.15s ease,
+      background 0.15s ease,
+      border-color 0.15s ease,
       opacity 0.15s ease;
     &:hover:not(:disabled) {
-      filter: brightness(1.06);
-      box-shadow: 0 8px 26px rgba(59, 130, 246, 0.42);
+      background: rgba(255, 255, 255, 0.06);
+      border-color: rgba(255, 255, 255, 0.18);
     }
     &:disabled {
       opacity: 0.42;
       cursor: not-allowed;
-      box-shadow: none;
     }
   }
 
@@ -5146,295 +6355,169 @@ button.legion-service-state-option {
     pointer-events: none;
   }
 
-  /* Three expandable insight cards (occupancy, network, users) — replaces legacy 6-tile strip */
-  .site-building-insight-bar {
-    position: absolute;
-    left: 0.75rem;
-    right: 0.75rem;
-    bottom: 0.75rem;
-    z-index: 550;
-    display: flex;
-    flex-direction: row;
-    flex-wrap: wrap;
-    justify-content: center;
-    align-items: flex-end;
-    gap: 1rem;
-    pointer-events: none;
-  }
+  /* Building metrics footer — fixed strip attached to card bottom */
+  .site-building-metrics {
+    --metric-accent: rgba(13, 202, 240, 0.92);
+    --metric-caution: #b8a078;
+    --metric-track: rgba(255, 255, 255, 0.1);
+    --metric-fill: rgba(13, 202, 240, 0.85);
+    --metric-empty: rgba(255, 255, 255, 0.14);
 
-  @keyframes site-building-insight-meter-in {
-    from {
-      transform: scaleX(0.15);
-      opacity: 0.65;
-    }
-    to {
-      transform: scaleX(1);
-      opacity: 1;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    @media (max-width: 767.98px) {
+      grid-template-columns: 1fr;
     }
   }
 
-  .site-building-insight-card {
-    pointer-events: auto;
-    flex: 1 1 clamp(17rem, 28vw, 28rem);
-    min-width: min(100%, 16.5rem);
-    max-width: 34rem;
-    border-radius: 0.65rem;
-    background: linear-gradient(145deg, rgba(18, 26, 38, 0.76) 0%, rgba(8, 12, 20, 0.88) 100%);
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    backdrop-filter: blur(14px) saturate(1.08);
-    -webkit-backdrop-filter: blur(14px) saturate(1.08);
-    box-shadow:
-      0 4px 24px rgba(0, 0, 0, 0.38),
-      inset 0 1px 0 rgba(255, 255, 255, 0.05);
-    padding: 0.8rem 0.9rem 0.85rem;
-    min-height: 5.9rem;
-    box-sizing: border-box;
-    overflow: hidden;
-    transition:
-      min-height 0.3s ease,
-      box-shadow 0.25s ease,
-      border-color 0.2s ease;
-    outline: none;
-
-    &:hover,
-    &:focus-within {
-      min-height: 15rem;
-      box-shadow:
-        0 14px 42px rgba(0, 0, 0, 0.48),
-        0 0 0 1px rgba(59, 130, 246, 0.28),
-        inset 0 1px 0 rgba(255, 255, 255, 0.06);
-      border-color: rgba(59, 130, 246, 0.38);
-      z-index: 2;
-    }
-
-    &:focus-visible {
-      outline: 2px solid rgba(59, 130, 246, 0.55);
-      outline-offset: 2px;
-    }
-  }
-
-  .site-building-insight-card__main {
-    display: flex;
-    align-items: flex-start;
-    gap: 0.75rem;
-  }
-
-  .site-building-insight-card__icon {
-    flex: 0 0 auto;
-    padding-top: 0.1rem;
-    color: #5dade2;
-    filter: drop-shadow(0 0 10px rgba(59, 130, 246, 0.2));
-  }
-
-  .site-building-insight-card__fa {
-    font-size: 1.35rem;
-    width: 1.35rem !important;
-    height: 1.35rem !important;
-  }
-
-  .site-building-insight-card__body {
-    flex: 1 1 auto;
-    min-width: 0;
-  }
-
-  .site-building-insight-card__kicker {
-    font-size: 0.625rem;
-    font-weight: 600;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: rgba(255, 255, 255, 0.52);
-    margin-bottom: 0.2rem;
-  }
-
-  .site-building-insight-card__metric {
-    font-size: 1.05rem;
-    font-weight: 700;
-    color: rgba(255, 255, 255, 0.96);
-    line-height: 1.25;
-    letter-spacing: 0.02em;
-  }
-
-  .site-building-insight-card__metric--split {
-    font-size: 0.98rem;
-  }
-
-  .site-building-insight-card__metric-strong {
-    font-weight: 800;
-    color: #fff;
-  }
-
-  .site-building-insight-card__metric-sep {
-    font-weight: 600;
-    color: rgba(255, 255, 255, 0.35);
-  }
-
-  .site-building-insight-card__metric-suffix {
-    font-weight: 600;
-    font-size: 0.88rem;
-    color: rgba(255, 255, 255, 0.72);
-  }
-
-  .site-building-insight-card__metric--ok {
-    color: #7dd4a0 !important;
-  }
-
-  .site-building-insight-card__metric--bad {
-    color: #f5a4ad !important;
-  }
-
-  .site-building-insight-card__hint {
-    font-size: 0.76rem;
-    line-height: 1.35;
-    margin-top: 0.25rem;
-  }
-
-  .site-building-insight-card__meter {
-    margin-top: 0.45rem;
-    height: 0.42rem;
-    border-radius: 999px;
-    background: rgba(255, 255, 255, 0.1);
-    overflow: hidden;
-  }
-
-  .site-building-insight-card__meter-fill {
-    height: 100%;
-    border-radius: 999px;
-    background: linear-gradient(90deg, #60a5fa 0%, #3b82f6 55%, #2563eb 100%);
-    box-shadow: 0 0 14px rgba(59, 130, 246, 0.45);
-    transform-origin: left center;
-    animation: site-building-insight-meter-in 0.75s ease-out;
-    transition: width 0.45s ease;
-  }
-
-  .site-building-insight-card__dual-meter {
-    display: flex;
-    margin-top: 0.45rem;
-    height: 0.42rem;
-    border-radius: 999px;
-    overflow: hidden;
-    background: rgba(255, 255, 255, 0.08);
-  }
-
-  .site-building-insight-card__dual-meter-seg--ok {
-    background: linear-gradient(90deg, #34d399 0%, #22c55e 100%);
-    min-width: 0;
-    transition: flex 0.45s ease;
-  }
-
-  .site-building-insight-card__dual-meter-seg--bad {
-    background: linear-gradient(90deg, #f87171 0%, #dc2626 100%);
-    min-width: 0;
-    transition: flex 0.45s ease;
-  }
-
-  .site-building-insight-card__dual-meter-seg--full {
-    flex: 1 1 auto;
-    width: 100%;
-    animation: site-building-insight-meter-in 0.65s ease-out;
-  }
-
-  .site-building-insight-card__expand {
-    max-height: 0;
-    opacity: 0;
-    overflow: hidden;
-    transition:
-      max-height 0.38s ease,
-      opacity 0.28s ease,
-      margin 0.28s ease;
-    margin-top: 0;
-  }
-
-  .site-building-insight-card:hover .site-building-insight-card__expand,
-  .site-building-insight-card:focus-within .site-building-insight-card__expand {
-    max-height: 300px;
-    opacity: 1;
-    margin-top: 0.65rem;
-    overflow-y: auto;
-    overflow-x: hidden;
-  }
-
-  .site-building-insight-card__subhead {
-    font-size: 0.68rem;
-    font-weight: 600;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-  }
-
-  .site-building-insight-card__list {
-    list-style: none;
-    margin: 0;
-    padding: 0;
+  .site-building-metric {
     display: flex;
     flex-direction: column;
     gap: 0.35rem;
+    padding: 0.75rem 1rem;
+    min-height: 5.25rem;
+    background: rgba(0, 0, 0, 0.2);
+    border-right: 1px solid rgba(255, 255, 255, 0.08);
+
+    &:last-child {
+      border-right: none;
+    }
+
+    @media (max-width: 767.98px) {
+      border-right: none;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      &:last-child {
+        border-bottom: none;
+      }
+    }
   }
 
-  .site-building-insight-card__list--compact {
-    gap: 0.2rem;
-  }
-
-  .site-building-insight-card__row {
+  .site-building-metric__head {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    gap: 0.5rem;
-    font-size: 0.78rem;
-    color: rgba(255, 255, 255, 0.9);
+    gap: 0.45rem;
+    min-height: 1.1rem;
   }
 
-  .site-building-insight-card__row--compact {
-    font-size: 0.74rem;
+  .site-building-metric__icon {
+    font-size: 0.8rem;
+    width: 0.8rem !important;
+    color: var(--metric-accent);
+    opacity: 0.9;
   }
 
-  .site-building-insight-card__row-label {
-    min-width: 0;
-    flex: 1 1 auto;
-  }
-
-  .site-building-insight-card__pill {
-    flex-shrink: 0;
-    font-size: 0.62rem;
-    font-weight: 700;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-    padding: 0.12rem 0.42rem;
-    border-radius: 4px;
-    border: 1px solid rgba(255, 255, 255, 0.12);
-  }
-
-  .site-building-insight-card__pill--on {
-    background: rgba(34, 197, 94, 0.18);
-    color: #7dd4a0;
-    border-color: rgba(34, 197, 94, 0.35);
-  }
-
-  .site-building-insight-card__pill--off {
-    background: rgba(255, 255, 255, 0.06);
-    color: rgba(255, 255, 255, 0.55);
-  }
-
-  .site-building-insight-card__pill--danger {
-    background: rgba(220, 53, 69, 0.2);
-    color: #f5a4ad;
-    border-color: rgba(220, 53, 69, 0.4);
-  }
-
-  .site-building-insight-card__more {
-    margin-top: 0.15rem;
-  }
-
-  .site-building-insight-card__cta.btn {
-    font-size: 0.72rem;
+  .site-building-metric__label {
+    font-size: 0.6875rem;
     font-weight: 700;
     letter-spacing: 0.06em;
     text-transform: uppercase;
-    border-radius: 0.45rem;
-    box-shadow: 0 4px 16px rgba(59, 130, 246, 0.28);
+    color: rgba(255, 255, 255, 0.55);
   }
 
-  .site-building-insight-card__cta--outline.btn-outline-light:hover {
-    background: rgba(255, 255, 255, 0.08);
+  .site-building-metric__body {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .site-building-metric__value {
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.95);
+    line-height: 1.3;
+  }
+
+  .site-building-metric__value--split {
+    font-size: 0.875rem;
+  }
+
+  .site-building-metric__value-strong {
+    font-weight: 700;
     color: #fff;
+  }
+
+  .site-building-metric__value-sep {
+    color: rgba(255, 255, 255, 0.35);
+  }
+
+  .site-building-metric__value-suffix {
+    font-weight: 500;
+    font-size: 0.8125rem;
+    color: rgba(255, 255, 255, 0.72);
+  }
+
+  .site-building-metric__value--ok {
+    color: var(--metric-accent) !important;
+  }
+
+  .site-building-metric__value--bad {
+    color: var(--metric-caution) !important;
+  }
+
+  .site-building-metric__hint {
+    font-size: 0.75rem;
+    line-height: 1.35;
+    color: rgba(255, 255, 255, 0.5);
+  }
+
+  .site-building-metric__footer {
+    margin-top: auto;
+  }
+
+  .site-building-metric__action {
+    margin-top: 0.15rem;
+  }
+
+  .site-building-metric__link.btn-link {
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    color: var(--metric-accent) !important;
+    text-decoration: none;
+    &:hover {
+      color: #7dc4f0 !important;
+      text-decoration: none;
+    }
+  }
+
+  .site-building-metric__meter {
+    margin-top: 0.35rem;
+    height: 3px;
+    border-radius: 2px;
+    background: var(--metric-track);
+    overflow: hidden;
+  }
+
+  .site-building-metric__meter-fill {
+    height: 100%;
+    border-radius: 2px;
+    background: var(--metric-fill);
+    transition: width 0.45s ease;
+  }
+
+  .site-building-metric__dual-meter {
+    display: flex;
+    margin-top: 0.35rem;
+    height: 3px;
+    border-radius: 2px;
+    overflow: hidden;
+    background: var(--metric-track);
+  }
+
+  .site-building-metric__dual-meter-seg--ok {
+    background: var(--metric-fill);
+    min-width: 0;
+    transition: flex 0.45s ease;
+  }
+
+  .site-building-metric__dual-meter-seg--bad {
+    background: var(--metric-empty);
+    min-width: 0;
+    transition: flex 0.45s ease;
+  }
+
+  .site-building-metric__dual-meter-seg--full {
+    flex: 1 1 auto;
+    width: 100%;
   }
 
   /* Prototype-style glass cards: fixed width, taller tiles */
@@ -5449,7 +6532,11 @@ button.legion-service-state-option {
     min-height: 6.75rem;
     padding: 0.85rem 0.85rem 0.85rem 0.9rem;
     border-radius: 0.65rem;
-    background: linear-gradient(145deg, rgba(18, 26, 38, 0.58) 0%, rgba(8, 12, 20, 0.72) 100%);
+    background: linear-gradient(
+      145deg,
+      rgba(18, 26, 38, 0.58) 0%,
+      rgba(8, 12, 20, 0.72) 100%
+    );
     border: 1px solid rgba(255, 255, 255, 0.12);
     backdrop-filter: blur(14px) saturate(1.1);
     -webkit-backdrop-filter: blur(14px) saturate(1.1);
@@ -5587,13 +6674,17 @@ button.legion-service-state-option {
 }
 
 /* Selected marker — OSM (cyan on dark tiles) */
-.site-layout-leaflet-map--osm .leaflet-marker-icon.site-layout-marker--selected {
-  filter: drop-shadow(0 0 10px rgba(13, 202, 240, 0.85)) drop-shadow(0 0 4px rgba(255, 255, 255, 0.35));
+.site-layout-leaflet-map--osm
+  .leaflet-marker-icon.site-layout-marker--selected {
+  filter: drop-shadow(0 0 10px rgba(13, 202, 240, 0.85))
+    drop-shadow(0 0 4px rgba(255, 255, 255, 0.35));
 }
 
 /* Selected marker — Mapbox Streets (reads on colored tiles) */
-.site-layout-leaflet-map--mapbox .leaflet-marker-icon.site-layout-marker--selected {
-  filter: drop-shadow(0 0 10px rgba(0, 122, 255, 0.55)) drop-shadow(0 0 5px rgba(0, 0, 0, 0.32));
+.site-layout-leaflet-map--mapbox
+  .leaflet-marker-icon.site-layout-marker--selected {
+  filter: drop-shadow(0 0 10px rgba(0, 122, 255, 0.55))
+    drop-shadow(0 0 5px rgba(0, 0, 0, 0.32));
 }
 
 .legion-site-layout-status--normal {
@@ -5832,13 +6923,21 @@ $legion-drawer-z-panel: 1061;
 }
 
 @keyframes legion-drawer-fade-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 @keyframes legion-drawer-slide-in {
-  from { transform: translateX(100%); }
-  to { transform: translateX(0); }
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
 }
 
 /* Content inside drawer that has header + scrollable body */
@@ -6093,7 +7192,9 @@ $legion-drawer-z-panel: 1061;
     flex-grow: 1;
     flex-basis: 0;
     min-width: 3px;
-    transition: filter 0.18s ease, box-shadow 0.18s ease;
+    transition:
+      filter 0.18s ease,
+      box-shadow 0.18s ease;
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
 
     &:not(:last-child) {
@@ -6117,7 +7218,9 @@ $legion-drawer-z-panel: 1061;
 
   &__legend-head {
     display: grid;
-    grid-template-columns: minmax(4rem, 1.2fr) minmax(3.5rem, 0.65fr) minmax(2.5rem, 0.45fr) minmax(2rem, 0.35fr);
+    grid-template-columns:
+      minmax(4rem, 1.2fr) minmax(3.5rem, 0.65fr) minmax(2.5rem, 0.45fr)
+      minmax(2rem, 0.35fr);
     gap: 0.5rem 0.75rem;
     font-size: 0.625rem;
     font-weight: 700;
@@ -6130,7 +7233,9 @@ $legion-drawer-z-panel: 1061;
 
   &__legend-row {
     display: grid;
-    grid-template-columns: minmax(4rem, 1.2fr) minmax(3.5rem, 0.65fr) minmax(2.5rem, 0.45fr) minmax(2rem, 0.35fr);
+    grid-template-columns:
+      minmax(4rem, 1.2fr) minmax(3.5rem, 0.65fr) minmax(2.5rem, 0.45fr)
+      minmax(2rem, 0.35fr);
     gap: 0.5rem 0.75rem;
     align-items: center;
     font-size: 0.8125rem;

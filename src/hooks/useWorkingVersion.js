@@ -132,6 +132,16 @@ export function selectNetworkConfig(workingVersion) {
   return ensureNetworkConfig(workingDataFromVersion(workingVersion) || {});
 }
 
+function sortHierarchyRowsBySortOrderThenName(rows) {
+  if (!Array.isArray(rows) || rows.length < 2) return rows || [];
+  return [...rows].sort((a, b) => {
+    const ao = a.sortOrder != null ? Number(a.sortOrder) : 0;
+    const bo = b.sortOrder != null ? Number(b.sortOrder) : 0;
+    if (ao !== bo) return ao - bo;
+    return String(a.name || "").localeCompare(String(b.name || ""));
+  });
+}
+
 export function selectSiteTree(workingVersion) {
   const site = selectSite(workingVersion);
   if (!site) return null;
@@ -149,7 +159,7 @@ export function selectSiteTree(workingVersion) {
     icon: site.icon,
     status: site.nodeStatus || "Active",
     parentId: null,
-    children: (site.buildings || []).map((b) => {
+    children: sortHierarchyRowsBySortOrderThenName(site.buildings || []).map((b) => {
       const bldgNode = {
         id: b.id,
         type: "building",
@@ -164,12 +174,13 @@ export function selectSiteTree(workingVersion) {
         status: b.status,
         sortOrder: b.sortOrder ?? 0,
         parentId: siteId,
-        children: (b.floors || []).map((f) => {
+        children: sortHierarchyRowsBySortOrderThenName(b.floors || []).map((f) => {
           const floorEq = sortEquipmentForDisplay(equipment.filter((e) => e.floorId === f.id));
           return {
             id: f.id,
             type: "floor",
             name: f.name,
+            displayLabel: f.displayLabel || f.name,
             floorType: f.floorType,
             occupancyType: f.occupancyType,
             sortOrder: f.sortOrder ?? 0,
@@ -188,6 +199,17 @@ export function selectSiteTree(workingVersion) {
 
 export function siteTreeToWorkingSite(siteTree) {
   if (!siteTree || siteTree.type !== "site") return null;
+  const mapFloor = (f) => ({
+    id: f.id,
+    name: f.name,
+    displayLabel:
+      f.displayLabel != null && String(f.displayLabel).trim() !== ""
+        ? String(f.displayLabel).trim()
+        : f.name,
+    sortOrder: f.sortOrder ?? 0,
+    floorType: f.floorType,
+    occupancyType: f.occupancyType,
+  });
   return {
     id: siteTree.id,
     name: siteTree.name,
@@ -200,7 +222,7 @@ export function siteTreeToWorkingSite(siteTree) {
     description: siteTree.description,
     engineeringNotes: siteTree.engineeringNotes,
     icon: siteTree.icon,
-    buildings: (siteTree.children || []).map((b) => ({
+    buildings: sortHierarchyRowsBySortOrderThenName(siteTree.children || []).map((b) => ({
       id: b.id,
       name: b.name,
       buildingType: b.buildingType,
@@ -212,13 +234,7 @@ export function siteTreeToWorkingSite(siteTree) {
       lng: b.lng,
       status: b.status,
       sortOrder: b.sortOrder ?? 0,
-      floors: (b.children || []).map((f) => ({
-        id: f.id,
-        name: f.name,
-        sortOrder: f.sortOrder ?? 0,
-        floorType: f.floorType,
-        occupancyType: f.occupancyType,
-      })),
+      floors: sortHierarchyRowsBySortOrderThenName(b.children || []).map(mapFloor),
     })),
   };
 }

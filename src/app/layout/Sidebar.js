@@ -11,6 +11,7 @@ import {
   faTimes,
   faCalendarAlt,
   faMapPin,
+  faLayerGroup,
   faInbox,
   faChevronLeft,
   faChevronRight,
@@ -231,21 +232,37 @@ export default function Sidebar() {
                 <FontAwesomeIcon icon={faTimes} />
               </Nav.Link>
             </div>
-            <div className="mb-3">
-              <Dropdown>
+            <div className={`mb-3 legion-sidebar-site-block${contracted ? " legion-sidebar-site-block--contracted" : ""}`}>
+              <Dropdown drop={contracted ? "end" : "down"}>
                 <Dropdown.Toggle
                   variant="link"
                   size="sm"
-                  className="w-100 d-flex align-items-center justify-content-between legion-sidebar-site text-decoration-none min-w-0"
+                  className={[
+                    "w-100 d-flex align-items-center justify-content-between legion-sidebar-site text-decoration-none min-w-0",
+                    contracted ? "legion-sidebar-site--icon-only" : "",
+                  ]
+                    .filter(Boolean)
+                    .join(" ")}
+                  title={contracted ? displaySiteName : undefined}
                 >
-                  <span className="d-flex align-items-center min-w-0 flex-grow-1 overflow-hidden me-1">
-                    <FontAwesomeIcon icon={faMapPin} className="me-2 flex-shrink-0" />
-                    <span className="fw-semibold text-truncate">{displaySiteName}</span>
+                  <span className="legion-sidebar-site-toggle__label-wrap d-flex align-items-center min-w-0 flex-grow-1 overflow-hidden me-1">
+                    <FontAwesomeIcon icon={faMapPin} className="legion-sidebar-site-toggle__icon me-2 flex-shrink-0" />
+                    <span className="legion-sidebar-site-toggle__label fw-semibold text-truncate">{displaySiteName}</span>
                   </span>
-                  <span className="flex-shrink-0">▾</span>
+                  <span className="legion-sidebar-site-toggle__chevron flex-shrink-0" aria-hidden="true">
+                    ▾
+                  </span>
                 </Dropdown.Toggle>
 
-                <Dropdown.Menu className="w-100 legion-dropdown-menu legion-sidebar-site-menu">
+                <Dropdown.Menu
+                  className={[
+                    "legion-dropdown-menu legion-sidebar-site-menu",
+                    contracted ? "legion-sidebar-site-menu--contracted" : "w-100",
+                  ]
+                    .filter(Boolean)
+                    .join(" ")}
+                  popperConfig={{ strategy: "fixed" }}
+                >
                   {currentMode === "engineering" ? (
                     USE_HIERARCHY_API ? (
                       <>
@@ -341,7 +358,7 @@ export default function Sidebar() {
                       <NavItem
                         title="Site Layout"
                         link={Routes.LegionSite.path}
-                        icon={faMapPin}
+                        icon={faLayerGroup}
                         linkClassName="legion-sidebar-parent-tone-link"
                       />
                       {getOperatorSidebarGroups().map((group) => (

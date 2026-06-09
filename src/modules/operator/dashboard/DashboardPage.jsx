@@ -305,22 +305,24 @@ export default function DashboardPage() {
       </div>
 
       <div className="px-3 px-md-4 pb-4 mt-3">
-        <div className="d-flex align-items-start justify-content-between flex-wrap gap-2 mb-2">
-          <div>
-            <h5 className="text-white fw-bold mb-1">Insights</h5>
-            <div className="text-white small">
-              Energy performance, connected load, and communication health — alarms and events live in their own pages.
-            </div>
-          </div>
-          <Button
-            size="sm"
-            variant="outline-light"
-            className="border-opacity-25"
-            onClick={openKModal}
-          >
-            Energy assumptions (k-factors)
-          </Button>
-        </div>
+        <Row className="g-3">
+          <Col xs={12}>
+            <Card className="legion-operator-log-card bg-primary border border-light border-opacity-10 shadow-sm">
+              <Card.Header className="legion-operator-log-card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
+                <span className="text-white fw-bold text-uppercase">Insights</span>
+                <Button
+                  size="sm"
+                  variant="outline-light"
+                  className="border-opacity-10"
+                  onClick={openKModal}
+                >
+                  Energy assumptions (k-factors)
+                </Button>
+              </Card.Header>
+              <Card.Body>
+                <div className="text-white-50 small mb-3">
+                  Energy performance, connected load, and communication health — alarms and events live in their own pages.
+                </div>
 
         <Row className="g-3 mb-3">
           <Col xs={6} md={3}>
@@ -597,6 +599,10 @@ export default function DashboardPage() {
         </Row>
 
         <div className="mt-4 small text-white-50 px-1">{insightsFootnote}</div>
+              </Card.Body>
+            </Card>
+          </Col>
+        </Row>
       </div>
 
       <Modal

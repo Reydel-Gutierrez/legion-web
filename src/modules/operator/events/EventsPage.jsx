@@ -87,50 +87,34 @@ export default function EventsPage() {
 
       {/* PAGE CONTENT */}
       <div className="px-3 px-md-4 pb-4 mt-3">
-        <div className="d-flex align-items-start justify-content-between flex-wrap gap-2 mb-2">
-          <div>
-            <h5 className="text-white fw-bold mb-1">Events</h5>
-            <div className="text-white small">
-              Audit trail for commands, schedules, device changes, comm status, and system activity.
-            </div>
-          </div>
-
-          <div className="d-flex align-items-center gap-2">
-            <span className="badge bg-primary border border-light border-opacity-25 text-white">
-              Total: {counts.total}
-            </span>
-            <span className="badge bg-primary border border-light border-opacity-25 text-white">
-              New: {counts.newCount}
-            </span>
-            <span className="badge bg-primary border border-light border-opacity-25 text-white">
-              Comm: {counts.comm}
-            </span>
-          </div>
-        </div>
-
         <Row className="g-3">
           <Col xs={12}>
-            <Card className="bg-primary border border-light border-opacity-10 shadow-sm">
-              <Card.Body>
-                {/* Filters */}
-                <div className="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
-                  <div className="text-white fw-semibold">Event Log</div>
-                  <div className="text-white fw-semibold">
-                    Showing {total === 0 ? "0" : `${startIndex + 1}–${endIndex}`} of {total}
-                  </div>
+            <Card className="legion-operator-log-card bg-primary border border-light border-opacity-10 shadow-sm">
+              <Card.Header className="legion-operator-log-card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
+                <span className="text-white fw-bold text-uppercase">Events</span>
+                <div className="d-flex align-items-center flex-wrap gap-2">
+                  <span className="badge bg-primary border border-light border-opacity-25 text-white">
+                    Total: {counts.total}
+                  </span>
+                  <span className="badge bg-primary border border-light border-opacity-25 text-white">
+                    New: {counts.newCount}
+                  </span>
+                  <span className="badge bg-primary border border-light border-opacity-25 text-white">
+                    Comm: {counts.comm}
+                  </span>
                 </div>
-
+              </Card.Header>
+              <Card.Body>
                 <Row className="g-2 align-items-end mb-3">
                   <Col xs={12} md={6} lg={5}>
                     <Form.Label className="text-white fw-semibold small mb-1">
                       Search
                     </Form.Label>
-                    <input
-                      type="text"
+                    <Form.Control
                       value={search}
                       onChange={(e) => setSearch(e.target.value)}
                       placeholder="Search equipment, point, message, ID, user…"
-                      className="form-control bg-primary text-white border border-light border-opacity-10"
+                      className="legion-operator-log-field text-white border border-light border-opacity-10"
                       aria-label="Search events"
                       autoComplete="off"
                     />
@@ -203,10 +187,10 @@ export default function EventsPage() {
                 </Row>
 
                 {/* Table */}
-                <div className="border border-light border-opacity-10 rounded overflow-hidden">
-                  <Table responsive hover className="bg-primary border border-light border-opacity-10 shadow-sm h-100">
+                <div className="legion-operator-log-table-wrap border border-light border-opacity-10 rounded overflow-hidden">
+                  <Table responsive hover className="h-100 mb-0">
                     <thead>
-                      <tr className="text-white fw-semibold">
+                      <tr className="text-white">
                         <th style={{ width: 160 }} className="text-white">Time</th>
                         <th style={{ width: 150 }} className="text-white">Type</th>
                         <th style={{ width: 220 }} className="text-white">Equipment</th>

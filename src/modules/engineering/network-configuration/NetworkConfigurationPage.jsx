@@ -161,11 +161,10 @@ export default function NetworkConfigurationPage() {
   if (hasNoSite) {
     return (
       <div className="px-3 px-md-4 pb-4">
-        <div className="mb-3">
-          <h5 className="text-white fw-bold mb-1">Network Configuration</h5>
-          <div className="text-white-50 small">Define BACnet/IP and MS/TP paths used by the discovery engine for this site.</div>
-        </div>
-        <Card className="bg-primary border border-light border-opacity-10 shadow-sm">
+        <Card className="legion-operator-log-card bg-primary border border-light border-opacity-10 shadow-sm">
+          <Card.Header className="legion-operator-log-card-header">
+            <span className="text-white fw-bold text-uppercase">Network Configuration</span>
+          </Card.Header>
           <Card.Body className="p-0">
             <NoSiteSelectedState />
           </Card.Body>
@@ -179,16 +178,17 @@ export default function NetworkConfigurationPage() {
 
   return (
     <div className="px-3 px-md-4 pb-4">
-        <div className="mb-3">
-          <h5 className="text-white fw-bold mb-1">
-            <FontAwesomeIcon icon={faEthernet} className="me-2" />
-            Network Configuration
-          </h5>
-          <div className="text-white-50 small">
-            Site-scoped paths for the Legion supervisory discovery engine. Network Discovery reads this configuration to decide what
-            to scan.
-          </div>
-        </div>
+        <Card className="legion-operator-log-card bg-primary border border-light border-opacity-10 shadow-sm">
+          <Card.Header className="legion-operator-log-card-header">
+            <span className="text-white fw-bold text-uppercase">
+              <FontAwesomeIcon icon={faEthernet} className="me-2" />
+              Network Configuration
+            </span>
+          </Card.Header>
+          <Card.Body>
+            <div className="text-white-50 small mb-3">
+              Site-scoped paths for the Legion supervisory discovery engine. Network Discovery reads this configuration to decide what to scan.
+            </div>
 
         <Row className="g-3 mb-3">
           <Col md={6} lg={4}>
@@ -230,9 +230,9 @@ export default function NetworkConfigurationPage() {
           </Col>
         </Row>
 
-        <Card className="bg-primary border border-light border-opacity-10 shadow-sm mb-3">
-          <Card.Header className="bg-transparent border-light border-opacity-10 d-flex justify-content-between align-items-center flex-wrap gap-2">
-            <span className="text-white fw-bold">BACnet/IP settings</span>
+        <Card className="legion-operator-log-card bg-primary border border-light border-opacity-10 shadow-sm mb-3">
+          <Card.Header className="legion-operator-log-card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <span className="text-white fw-bold text-uppercase">BACnet/IP Settings</span>
             <Button size="sm" variant="outline-light" className="border-light border-opacity-25" onClick={addBacnetIp}>
               <FontAwesomeIcon icon={faPlus} className="me-1" /> Add network
             </Button>
@@ -241,17 +241,17 @@ export default function NetworkConfigurationPage() {
             {networkConfig.bacnetIpNetworks.length === 0 ? (
               <p className="text-white-50 small mb-0 p-3">No BACnet/IP networks yet. Add one to scan the building LAN or VLAN.</p>
             ) : (
-              <div className="table-responsive">
-                <Table borderless hover variant="dark" className="mb-0 text-white-50 small align-middle">
-                  <thead className="text-white-50">
-                    <tr>
-                      <th>On</th>
-                      <th>Name</th>
-                      <th>Adapter</th>
-                      <th>Subnet / IP</th>
-                      <th>UDP</th>
-                      <th>BBMD / FD</th>
-                      <th>Notes</th>
+              <div className="legion-operator-log-table-wrap table-responsive">
+                <Table hover className="mb-0 text-white-50 small align-middle">
+                  <thead>
+                    <tr className="text-white">
+                      <th className="text-white">On</th>
+                      <th className="text-white">Name</th>
+                      <th className="text-white">Adapter</th>
+                      <th className="text-white">Subnet / IP</th>
+                      <th className="text-white">UDP</th>
+                      <th className="text-white">BBMD / FD</th>
+                      <th className="text-white">Notes</th>
                       <th />
                     </tr>
                   </thead>
@@ -330,9 +330,9 @@ export default function NetworkConfigurationPage() {
           </Card.Body>
         </Card>
 
-        <Card className="bg-primary border border-light border-opacity-10 shadow-sm mb-3">
-          <Card.Header className="bg-transparent border-light border-opacity-10 d-flex justify-content-between align-items-center flex-wrap gap-2">
-            <span className="text-white fw-bold">BACnet MS/TP trunks</span>
+        <Card className="legion-operator-log-card bg-primary border border-light border-opacity-10 shadow-sm mb-3">
+          <Card.Header className="legion-operator-log-card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <span className="text-white fw-bold text-uppercase">BACnet MS/TP Trunks</span>
             <Button size="sm" variant="outline-light" className="border-light border-opacity-25" onClick={addMstp}>
               <FontAwesomeIcon icon={faPlus} className="me-1" /> Add trunk
             </Button>
@@ -341,17 +341,17 @@ export default function NetworkConfigurationPage() {
             {networkConfig.mstpTrunks.length === 0 ? (
               <p className="text-white-50 small mb-0 p-3">No MSTP trunks yet. Add serial segments for field controllers behind routers.</p>
             ) : (
-              <div className="table-responsive">
-                <Table borderless hover variant="dark" className="mb-0 text-white-50 small align-middle">
-                  <thead className="text-white-50">
-                    <tr>
-                      <th>On</th>
-                      <th>Trunk</th>
-                      <th>COM</th>
-                      <th>Baud</th>
-                      <th>MAC / scan range</th>
-                      <th>Max master</th>
-                      <th>Notes</th>
+              <div className="legion-operator-log-table-wrap table-responsive">
+                <Table hover className="mb-0 text-white-50 small align-middle">
+                  <thead>
+                    <tr className="text-white">
+                      <th className="text-white">On</th>
+                      <th className="text-white">Trunk</th>
+                      <th className="text-white">COM</th>
+                      <th className="text-white">Baud</th>
+                      <th className="text-white">MAC / scan range</th>
+                      <th className="text-white">Max master</th>
+                      <th className="text-white">Notes</th>
                       <th />
                     </tr>
                   </thead>
@@ -434,9 +434,9 @@ export default function NetworkConfigurationPage() {
           </Card.Body>
         </Card>
 
-        <Card className="bg-primary border border-light border-opacity-10 shadow-sm mb-3">
-          <Card.Header className="bg-transparent border-light border-opacity-10">
-            <span className="text-white fw-bold">Scan defaults</span>
+        <Card className="legion-operator-log-card bg-primary border border-light border-opacity-10 shadow-sm mb-3">
+          <Card.Header className="legion-operator-log-card-header">
+            <span className="text-white fw-bold text-uppercase">Scan Defaults</span>
           </Card.Header>
           <Card.Body>
             <Row className="g-3">
@@ -502,23 +502,23 @@ export default function NetworkConfigurationPage() {
           </Card.Body>
         </Card>
 
-        <Card className="bg-primary border border-light border-opacity-10 shadow-sm mb-3">
-          <Card.Header className="bg-transparent border-light border-opacity-10 d-flex justify-content-between align-items-center flex-wrap gap-2">
-            <span className="text-white fw-bold">Network interfaces / ports</span>
+        <Card className="legion-operator-log-card bg-primary border border-light border-opacity-10 shadow-sm mb-3">
+          <Card.Header className="legion-operator-log-card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <span className="text-white fw-bold text-uppercase">Network Interfaces / Ports</span>
             <Button size="sm" variant="outline-light" className="border-light border-opacity-25" onClick={addInterface}>
               <FontAwesomeIcon icon={faPlus} className="me-1" /> Add interface
             </Button>
           </Card.Header>
           <Card.Body className="p-0">
-            <div className="table-responsive">
-              <Table borderless hover variant="dark" className="mb-0 text-white-50 small align-middle">
-                <thead className="text-white-50">
-                  <tr>
-                    <th>On</th>
-                    <th>Label</th>
-                    <th>Bind address</th>
-                    <th>UDP listen</th>
-                    <th>Notes</th>
+            <div className="legion-operator-log-table-wrap table-responsive">
+              <Table hover className="mb-0 text-white-50 small align-middle">
+                <thead>
+                  <tr className="text-white">
+                    <th className="text-white">On</th>
+                    <th className="text-white">Label</th>
+                    <th className="text-white">Bind address</th>
+                    <th className="text-white">UDP listen</th>
+                    <th className="text-white">Notes</th>
                     <th />
                   </tr>
                 </thead>
@@ -589,19 +589,22 @@ export default function NetworkConfigurationPage() {
           </Card.Body>
         </Card>
 
-        <Card className="bg-primary border border-light border-opacity-10 shadow-sm mb-3">
-          <Card.Header className="bg-transparent border-light border-opacity-10">
-            <span className="text-white fw-bold">Routing / notes</span>
+        <Card className="legion-operator-log-card bg-primary border border-light border-opacity-10 shadow-sm mb-3">
+          <Card.Header className="legion-operator-log-card-header">
+            <span className="text-white fw-bold text-uppercase">Routing / Notes</span>
           </Card.Header>
           <Card.Body>
             <Form.Control
               as="textarea"
               rows={3}
-              className="bg-dark border-light border-opacity-25 text-white small"
+              className="legion-operator-log-field text-white small border border-light border-opacity-10"
               placeholder="Document VLANs, routers, JACE placement, MSTP topology…"
               value={networkConfig.routingNotes}
               onChange={(e) => updateRoutingNotes(e.target.value)}
             />
+          </Card.Body>
+        </Card>
+
           </Card.Body>
         </Card>
     </div>

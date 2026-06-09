@@ -1,8 +1,8 @@
 import React, { useCallback, useMemo, useState, useEffect, useRef } from "react";
 import { useActiveDeployment } from "../../../hooks/useWorkingVersion";
 import { activeReleaseDataToEquipmentTree } from "../../../lib/activeReleaseUtils";
-import { Container, Row, Col, Card, Button, Form, Table, Modal, Toast } from "@themesberg/react-bootstrap";
-import { useHistory } from "react-router-dom";
+import { Container, Button, Form, Table, Modal, Toast, Dropdown } from "@themesberg/react-bootstrap";
+import { useHistory, Link } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faChevronDown,
@@ -13,7 +13,18 @@ import {
   faFilter,
   faSearch,
   faBuilding,
+  faPlus,
+  faTrash,
+  faPen,
+  faChartLine,
+  faToolbox,
+  faBell,
+  faSort,
+  faSave,
+  faSync,
+  faFolderOpen,
 } from "@fortawesome/free-solid-svg-icons";
+import { Routes } from "../../../routes";
 import LegionHeroHeader from "../../../components/legion/LegionHeroHeader";
 import StatusDotLabel from "../../../components/legion/StatusDotLabel";
 import OperatorCommFreshnessLabel from "../../../components/legion/OperatorCommFreshnessLabel";
@@ -163,6 +174,87 @@ function workspacePointDisplayValue(row) {
   return row.value;
 }
 
+const WORKSPACE_STORAGE_PREFIX = "legion-equipment-workspaces";
+const WORKSPACE_LIBRARY_MAX = 30;
+const DEFAULT_WORKSPACE_PROFILE_NAME = "Default";
+
+function stripWorkspaceForPersist(workspace) {
+  if (!workspace) return workspace;
+  const { selectedRowIds, ...rest } = workspace;
+  return { ...rest, selectedRowIds: [] };
+}
+
+function normalizeWorkspaceLibrary(raw) {
+  if (!raw) return { lastSession: null, saved: [] };
+  if (Array.isArray(raw.saved)) {
+    return {
+      lastSession: raw.lastSession || null,
+      saved: raw.saved.filter((s) => s && s.id),
+    };
+  }
+  if (raw.main || raw.secondary) {
+    return {
+      lastSession: {
+        main: raw.main,
+        secondary: raw.secondary,
+        showSecondary: Boolean(raw.showSecondary),
+      },
+      saved: [],
+    };
+  }
+  return { lastSession: null, saved: [] };
+}
+
+function loadWorkspaceLibrary(siteKey) {
+  if (!siteKey || typeof window === "undefined") return { lastSession: null, saved: [] };
+  try {
+    const raw = window.localStorage.getItem(`${WORKSPACE_STORAGE_PREFIX}:${siteKey}`);
+    return normalizeWorkspaceLibrary(raw ? JSON.parse(raw) : null);
+  } catch {
+    return { lastSession: null, saved: [] };
+  }
+}
+
+function persistWorkspaceLibrary(siteKey, library) {
+  if (!siteKey || typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(`${WORKSPACE_STORAGE_PREFIX}:${siteKey}`, JSON.stringify(library));
+  } catch {
+    /* ignore quota */
+  }
+}
+
+function buildWorkspaceSnapshot(name, main, secondary, showSecondary) {
+  return {
+    id: `ws-${Date.now()}`,
+    name: name || main?.name || "Workspace",
+    savedAt: new Date().toISOString(),
+    main: stripWorkspaceForPersist(main),
+    secondary: secondary ? stripWorkspaceForPersist(secondary) : null,
+    showSecondary: Boolean(showSecondary),
+  };
+}
+
+function snapshotPointCount(snapshot) {
+  const mainCount = snapshot?.main?.rows?.length || 0;
+  const secondaryCount = snapshot?.showSecondary ? snapshot?.secondary?.rows?.length || 0 : 0;
+  return mainCount + secondaryCount;
+}
+
+function formatWorkspaceSavedAt(iso) {
+  if (!iso) return "";
+  try {
+    return new Date(iso).toLocaleString(undefined, {
+      month: "short",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+    });
+  } catch {
+    return "";
+  }
+}
+
 /** Get all equipment nodes under a node (for floors: AHU + all VAVs) */
 function getEquipmentUnderNode(node) {
   if (node.type === "equip") return [node];
@@ -192,6 +284,9 @@ function WorkspacePanel({
   siteId,
   runtimeControllersList,
   nowTick,
+  enterpriseLayout = false,
+  autoRefresh = true,
+  onAutoRefreshChange,
 }) {
   const pointsOptions = useMemo(
     () => (activeReleaseData ? { activeRelease: activeReleaseData } : undefined),
@@ -211,6 +306,8 @@ function WorkspacePanel({
   const [showGlobalResults, setShowGlobalResults] = useState(false);
   const [showAlarmModal, setShowAlarmModal] = useState(false);
   const [alarmModalRows, setAlarmModalRows] = useState(null);
+  const [showFilterPanel, setShowFilterPanel] = useState(false);
+  const [showSearchPanel, setShowSearchPanel] = useState(false);
 
   const zone = workspace.id;
 
@@ -300,15 +397,18 @@ function WorkspacePanel({
 
     loadLiveBundlesRef.current = load;
     load();
-    const t = window.setInterval(() => {
-      loadLiveBundlesRef.current();
-    }, 5000);
+    let t = null;
+    if (autoRefresh) {
+      t = window.setInterval(() => {
+        loadLiveBundlesRef.current();
+      }, 5000);
+    }
     return () => {
       cancelled = true;
-      window.clearInterval(t);
+      if (t != null) window.clearInterval(t);
       loadLiveBundlesRef.current = async () => {};
     };
-  }, [siteId, activeReleaseData, equipmentIdsKey, runtimeControllersList]);
+  }, [siteId, activeReleaseData, equipmentIdsKey, runtimeControllersList, autoRefresh]);
 
   const hydratedRows = useMemo(() => {
     if (!USE_HIERARCHY_API || !isBackendSiteId(siteId) || !equipmentLiveBundles.size) {
@@ -360,9 +460,8 @@ function WorkspacePanel({
     );
   }, [hydratedRows, equipmentLiveBundles]);
 
-  // Filter mode: filter rows by equipmentName, pointName, value, status
+  // Filter workspace table rows (independent from scoped point search)
   const filteredRows = useMemo(() => {
-    if (workspace.searchMode !== "filter") return hydratedRows;
     const q = String(workspace.filterText || "").trim().toLowerCase();
     if (!q) return hydratedRows;
     return hydratedRows.filter(
@@ -378,12 +477,12 @@ function WorkspacePanel({
         String(r.status || "").toLowerCase().includes(q) ||
         String(r.commFreshnessStatus || "").toLowerCase().includes(q)
     );
-  }, [hydratedRows, workspace.searchMode, workspace.filterText]);
+  }, [hydratedRows, workspace.filterText]);
 
-  // Global search results (scoped query)
+  // Scoped search results — find points to add (independent from table filter)
   const globalSearchResultsMemo = useMemo(() => {
     const gq = String(workspace.globalQuery || "").trim();
-    if (workspace.searchMode !== "global" || !gq) return [];
+    if (!gq) return [];
     const scopeEquipIds = new Set(scopeEquipment.map((e) => e.equipmentId));
     if (scopeEquipIds.size === 0) return [];
 
@@ -413,7 +512,7 @@ function WorkspacePanel({
       if (matched.length) results.push({ equipment: node, points: matched });
     }
     return results;
-  }, [workspace.searchMode, workspace.globalQuery, scopeEquipment, treeData, pointsOptions]);
+  }, [workspace.globalQuery, scopeEquipment, treeData, pointsOptions]);
 
   useEffect(() => {
     setGlobalSearchResults(globalSearchResultsMemo);
@@ -497,6 +596,21 @@ function WorkspacePanel({
     [toggleRowSelection]
   );
 
+  const handleCheckboxToggle = useCallback(
+    (e, row) => {
+      e.stopPropagation();
+      const idx = filteredRows.findIndex((r) => r.id === row.id);
+      setWorkspace((prev) => {
+        const ids = new Set(prev.selectedRowIds);
+        if (ids.has(row.id)) ids.delete(row.id);
+        else ids.add(row.id);
+        return { ...prev, selectedRowIds: Array.from(ids) };
+      });
+      if (idx >= 0) setLastClickedIndex(idx);
+    },
+    [filteredRows, setWorkspace]
+  );
+
   const handleTableKeyDown = useCallback(
     (e) => {
       if ((e.ctrlKey || e.metaKey) && e.key === "a") {
@@ -526,12 +640,14 @@ function WorkspacePanel({
     setWorkspace((prev) => ({ ...prev, rows: [], selectedRowIds: [] }));
   }, [setWorkspace]);
 
-  const clearSearch = useCallback(() => {
-    setWorkspace((prev) => ({
-      ...prev,
-      filterText: "",
-      globalQuery: "",
-    }));
+  const clearFilter = useCallback(() => {
+    setWorkspace((prev) => ({ ...prev, filterText: "" }));
+  }, [setWorkspace]);
+
+  const clearScopedSearch = useCallback(() => {
+    setWorkspace((prev) => ({ ...prev, globalQuery: "" }));
+    setShowGlobalResults(false);
+    setGlobalSearchSelected(new Set());
   }, [setWorkspace]);
 
   const handleDragOver = useCallback(
@@ -766,328 +882,287 @@ function WorkspacePanel({
 
   const scopeTrayDropActive = dropActive[`${zone}-scope`];
 
-  return (
-    <div className="workspace-panel">
-      {/* Header row */}
-      <div className="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
-        <div className="d-flex align-items-center gap-2">
-          <span className="text-white fw-semibold">{workspace.name}</span>
-          {showRemove && onRemove && (
-            <Button size="sm" variant="outline-secondary" className="text-white-50 py-0 px-1" onClick={onRemove}>
-              Remove
-            </Button>
-          )}
+  const removeSingleRow = useCallback(
+    (rowId) => {
+      setWorkspace((prev) => ({
+        ...prev,
+        rows: (prev.rows || []).filter((r) => r.id !== rowId),
+        selectedRowIds: (prev.selectedRowIds || []).filter((id) => id !== rowId),
+      }));
+    },
+    [setWorkspace]
+  );
+
+  const openCommandForRow = useCallback(
+    (row) => {
+      setWorkspace((prev) => ({ ...prev, selectedRowIds: [row.id] }));
+      setLastClickedIndex(filteredRows.findIndex((r) => r.id === row.id));
+      setCommandConfirmStep(false);
+      const p = getCommandProfileForRows([row]);
+      setCommandValue(p.mode === "typed" ? getInitialCommandValue([row], p) : "");
+      syncServiceStateFromSelection([row]);
+      setShowCommandModal(true);
+    },
+    [setWorkspace, filteredRows, syncServiceStateFromSelection]
+  );
+
+  const selectAllRows = useCallback(() => {
+    setWorkspace((prev) => ({
+      ...prev,
+      selectedRowIds: filteredRows.map((r) => r.id),
+    }));
+  }, [filteredRows, setWorkspace]);
+
+  const handleManualRefresh = useCallback(() => {
+    const run = loadLiveBundlesRef.current;
+    if (typeof run === "function") run();
+  }, []);
+
+  const filterBar = (
+    <div className={`legion-equipment-filter-bar ${enterpriseLayout ? "legion-equipment-filter-bar--enterprise" : ""}`}>
+      <div className="legion-equipment-filter-bar__label">
+        <FontAwesomeIcon icon={faFilter} className="me-2" aria-hidden />
+        <span>Filter</span>
+      </div>
+      <Form.Control
+        size="sm"
+        className="legion-equipment-filter-bar__input legion-operator-log-field text-white border border-light border-opacity-10"
+        placeholder="Filter workspace table by equipment, point, value, status..."
+        value={workspace.filterText ?? ""}
+        onChange={(e) => setWorkspace((p) => ({ ...p, filterText: e.target.value }))}
+      />
+      {workspace.filterText ? (
+        <Button size="sm" variant="dark" className="legion-equipment-btn" onClick={clearFilter}>
+          Clear
+        </Button>
+      ) : null}
+      {!enterpriseLayout ? (
+        <div className="legion-equipment-filter-bar__meta">
+          <span className="workspace-toolbar__count">{rows.length}</span>
+          <span className="workspace-toolbar__count-label">points</span>
+        </div>
+      ) : null}
+    </div>
+  );
+
+  const scopedSearchPanel = (
+    <div className={`legion-equipment-search-panel ${enterpriseLayout ? "legion-equipment-search-panel--enterprise" : ""}`}>
+      <div className="legion-equipment-search-panel__header">
+        <div className="legion-equipment-search-panel__label">
+          <FontAwesomeIcon icon={faSearch} className="me-2" aria-hidden />
+          <span>Search</span>
         </div>
       </div>
-
-      <div className="workspace-toolbar workspace-toolbar--structured mb-3">
-        <div className="workspace-toolbar__row workspace-toolbar__row--modes">
-          <div
-            className="workspace-mode-segmented"
-            role="tablist"
-            aria-label="Workspace search mode"
-          >
-            <button
-              type="button"
-              role="tab"
-              aria-selected={workspace.searchMode === "filter"}
-              className={`workspace-mode-segmented__opt ${workspace.searchMode === "filter" ? "workspace-mode-segmented__opt--active" : ""}`}
-              onClick={() => setWorkspace((p) => ({ ...p, searchMode: "filter" }))}
-            >
-              <FontAwesomeIcon icon={faFilter} className="workspace-mode-segmented__icon" aria-hidden />
-              <span className="workspace-mode-segmented__text">
-                <span className="workspace-mode-segmented__title">Workspace filter</span>
-                <span className="workspace-mode-segmented__hint">Narrow rows in this table</span>
-              </span>
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={workspace.searchMode === "global"}
-              className={`workspace-mode-segmented__opt ${workspace.searchMode === "global" ? "workspace-mode-segmented__opt--active" : ""}`}
-              onClick={() => setWorkspace((p) => ({ ...p, searchMode: "global" }))}
-            >
-              <FontAwesomeIcon icon={faSearch} className="workspace-mode-segmented__icon" aria-hidden />
-              <span className="workspace-mode-segmented__text">
-                <span className="workspace-mode-segmented__title">Scoped search</span>
-                <span className="workspace-mode-segmented__hint">Find points across equipment in scope</span>
-              </span>
-            </button>
-          </div>
-          <div className="workspace-toolbar__meta">
-            <span className="workspace-toolbar__count">{rows.length}</span>
-            <span className="workspace-toolbar__count-label">points in workspace</span>
-          </div>
-        </div>
-        <div className="workspace-toolbar__row workspace-toolbar__row--actions">
-          <div className="workspace-toolbar__search-wrap">
-            {workspace.searchMode === "filter" ? (
-              <Form.Control
-                size="sm"
-                className="workspace-toolbar__input bg-primary border border-light border-opacity-10 text-white"
-                placeholder="Filter by equipment, point, value, status..."
-                value={workspace.filterText ?? ""}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  setWorkspace((p) => ({ ...p, filterText: value }));
-                }}
-              />
-            ) : (
-              <Form.Control
-                size="sm"
-                className="workspace-toolbar__input bg-primary border border-light border-opacity-10 text-white"
-                placeholder="Query within scope (e.g. DA-T, Flow, Damper) — press Enter or Run"
-                value={workspace.globalQuery}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  setWorkspace((p) => ({ ...p, globalQuery: value }));
-                }}
-                onKeyDown={(e) => e.key === "Enter" && runGlobalSearch()}
-                disabled={scopeEquipment.length === 0}
-              />
-            )}
-            {workspace.searchMode === "global" && (
-              <Button
-                size="sm"
-                variant="dark"
-                className="workspace-action-btn workspace-action-btn--brand workspace-toolbar__run"
-                disabled={workspace.scopeEquipment.length === 0}
-                onClick={runGlobalSearch}
-              >
-                Run
-              </Button>
-            )}
-          </div>
-          <div className="workspace-toolbar__right workspace-toolbar__right--compact">
-            <Button size="sm" variant="dark" className="workspace-table-action-btn" onClick={clearTable}>
-              Clear table
-            </Button>
-            <Button size="sm" variant="dark" className="workspace-table-action-btn" onClick={removeSelected} disabled={selectedCount === 0}>
-              Remove selected
-            </Button>
-            <Button
-              size="sm"
-              variant="dark"
-              className="workspace-table-action-btn"
-              onClick={() => {
-                const run = loadLiveBundlesRef.current;
-                if (typeof run === "function") run();
-              }}
-            >
-              Refresh
-            </Button>
-            <Button size="sm" variant="dark" className="workspace-table-action-btn" onClick={clearSearch}>
-              Clear search
-            </Button>
-          </div>
-        </div>
+      <div className="small text-white-50 mb-2">
+        Drag equipment into scope, search for points, then add them to this workspace.
       </div>
-
-      {/* Global mode: Scope tray + Query input */}
-      {workspace.searchMode === "global" && (
-        <div className="mb-3 legion-global-search">
-          <div className="small text-white mb-1">Search Scope</div>
-          <div
-            className={`legion-scope-tray mb-2 ${scopeTrayDropActive ? "legion-scope-tray--active" : ""}`}
-            onDragOver={(e) => {
-              e.preventDefault();
-              e.dataTransfer.dropEffect = "copy";
-              setDropActive((p) => ({ ...p, [`${zone}-scope`]: true }));
-            }}
-            onDragLeave={(e) => {
-              e.preventDefault();
-              if (!e.currentTarget.contains(e.relatedTarget)) setDropActive((p) => ({ ...p, [`${zone}-scope`]: false }));
-            }}
-            onDrop={handleDropOnScope}
-          >
-            {scopeEquipment.length === 0 ? (
-              <div className="text-white-50 small py-2">Drag equipment or floors here to define scope</div>
-            ) : (
-              <div className="d-flex flex-wrap gap-1 align-items-center">
-                {scopeEquipment.map((s) => (
-                  <span key={s.equipmentId} className="legion-scope-chip">
-                    {s.equipmentName}
-                    <button type="button" className="legion-scope-chip-remove" onClick={() => removeScopeChip(s.equipmentId)} aria-label="Remove">
-                      ✕
-                    </button>
-                  </span>
-                ))}
-                <Button size="sm" variant="outline-light" className="border-opacity-25 py-0" onClick={clearScope}>
-                  Clear Scope
+      <div
+        className={`legion-scope-tray mb-2 ${scopeTrayDropActive ? "legion-scope-tray--active" : ""}`}
+        onDragOver={(e) => {
+          e.preventDefault();
+          e.dataTransfer.dropEffect = "copy";
+          setDropActive((p) => ({ ...p, [`${zone}-scope`]: true }));
+        }}
+        onDragLeave={(e) => {
+          e.preventDefault();
+          if (!e.currentTarget.contains(e.relatedTarget)) setDropActive((p) => ({ ...p, [`${zone}-scope`]: false }));
+        }}
+        onDrop={handleDropOnScope}
+      >
+        {scopeEquipment.length === 0 ? (
+          <div className="text-white-50 small py-2">Drag equipment or floors here to define search scope</div>
+        ) : (
+          <div className="d-flex flex-wrap gap-1 align-items-center">
+            {scopeEquipment.map((s) => (
+              <span key={s.equipmentId} className="legion-scope-chip">
+                {s.equipmentName}
+                <button type="button" className="legion-scope-chip-remove" onClick={() => removeScopeChip(s.equipmentId)} aria-label="Remove">
+                  ✕
+                </button>
+              </span>
+            ))}
+            <Button size="sm" variant="outline-light" className="border-opacity-25 py-0" onClick={clearScope}>
+              Clear scope
+            </Button>
+          </div>
+        )}
+      </div>
+      <div className="legion-equipment-search-panel__query">
+        <Form.Control
+          size="sm"
+          className="legion-operator-log-field text-white border border-light border-opacity-10"
+          placeholder="Search points in scope (e.g. DA-T, Flow, Damper) — press Enter or Run"
+          value={workspace.globalQuery}
+          onChange={(e) => setWorkspace((p) => ({ ...p, globalQuery: e.target.value }))}
+          onKeyDown={(e) => e.key === "Enter" && runGlobalSearch()}
+          disabled={scopeEquipment.length === 0}
+        />
+        <Button
+          size="sm"
+          variant="dark"
+          className="legion-equipment-btn legion-equipment-btn--accent"
+          disabled={scopeEquipment.length === 0}
+          onClick={runGlobalSearch}
+        >
+          Run search
+        </Button>
+        {workspace.globalQuery ? (
+          <Button size="sm" variant="dark" className="legion-equipment-btn" onClick={clearScopedSearch}>
+            Clear
+          </Button>
+        ) : null}
+      </div>
+      {scopeEquipment.length === 0 && (
+        <div className="small text-white-50 mt-1">Add equipment to scope before searching</div>
+      )}
+      {showGlobalResults && (
+        <div className="legion-global-results-panel mt-2">
+          {globalSearchResults.length === 0 ? (
+            <div className="text-white-50 small">No matches for your query.</div>
+          ) : (
+            <>
+              {globalSearchResults.map(({ equipment, points }) => (
+                <div key={equipment.id} className="mb-2">
+                  <div className="text-white fw-semibold small">
+                    {equipment.label} ({points.length} matches)
+                  </div>
+                  <div className="ps-2">
+                    {points.map((p) => (
+                      <label key={p.id} className="d-flex align-items-center gap-2 legion-global-result-row">
+                        <Form.Check
+                          type="checkbox"
+                          checked={globalSearchSelected.has(p.id)}
+                          onChange={() => toggleGlobalResult(p)}
+                        />
+                        <span className="text-white">
+                          {[p.pointKey, p.pointDescription || p.pointName].filter(Boolean).join(" — ") || p.pointId}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              ))}
+              <div className="d-flex gap-2 mt-2 pt-2 border-top border-light border-opacity-10">
+                <Button size="sm" variant="success" onClick={addGlobalSelectedToWorkspace} disabled={globalSearchResults.length === 0}>
+                  Add selected
+                </Button>
+                <Button size="sm" variant="outline-success" onClick={addAllGlobalResultsToWorkspace} disabled={globalSearchResults.length === 0}>
+                  Add all results
+                </Button>
+                <Button size="sm" variant="outline-light" className="border-opacity-25" onClick={() => setShowGlobalResults(false)}>
+                  Dismiss results
                 </Button>
               </div>
-            )}
-          </div>
-          <div className="position-relative">
-            {scopeEquipment.length === 0 && (
-              <div className="small text-white-50 mt-1">Add equipment to scope to run search</div>
-            )}
-
-            {/* Global search results dropdown */}
-            {showGlobalResults && (
-              <div className="legion-global-results-panel mt-2">
-                {globalSearchResults.length === 0 ? (
-                  <div className="text-white-50 small">No matches for your query.</div>
-                ) : (
-                  <>
-                {globalSearchResults.map(({ equipment, points }) => (
-                  <div key={equipment.id} className="mb-2">
-                    <div className="text-white fw-semibold small">
-                      {equipment.label} ({points.length} matches)
-                    </div>
-                    <div className="ps-2">
-                      {points.map((p) => (
-                        <label key={p.id} className="d-flex align-items-center gap-2 legion-global-result-row">
-                          <Form.Check
-                            type="checkbox"
-                            checked={globalSearchSelected.has(p.id)}
-                            onChange={() => toggleGlobalResult(p)}
-                          />
-                          <span className="text-white">
-                            {[p.pointKey, p.pointDescription || p.pointName].filter(Boolean).join(" — ") || p.pointId}
-                          </span>
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-                <div className="d-flex gap-2 mt-2 pt-2 border-top border-light border-opacity-10">
-                  <Button size="sm" variant="success" onClick={addGlobalSelectedToWorkspace} disabled={globalSearchResults.length === 0}>
-                    Add Selected to Workspace
-                  </Button>
-                  <Button size="sm" variant="outline-success" onClick={addAllGlobalResultsToWorkspace} disabled={globalSearchResults.length === 0}>
-                    Add All Results
-                  </Button>
-                  <Button size="sm" variant="outline-light" className="border-opacity-25" onClick={() => setShowGlobalResults(false)}>
-                    Clear Results
-                  </Button>
-                </div>
-                  </>
-                )}
-              </div>
-            )}
-          </div>
+            </>
+          )}
         </div>
       )}
+    </div>
+  );
 
-      {/* Selection action bar */}
-      {selectedCount > 0 && (
-        <div className="legion-selection-bar mb-2">
-          <span className="text-white fw-semibold">{selectedCount} Selected</span>
-          <div className="d-flex flex-wrap align-items-center gap-2">
-            <Button size="sm" variant="success" onClick={openCommandModal}>
-              Command Selected
-            </Button>
-            {alarmSelectionCompatible ? (
-              <Button
-                size="sm"
-                variant="outline-light"
-                className="border-opacity-25"
-                onClick={() => {
-                  setAlarmModalRows(selectedRows);
-                  setShowAlarmModal(true);
-                }}
-              >
-                Alarm
-              </Button>
-            ) : null}
-            {selectedCount > 1 && !alarmSelectionCompatible ? (
-              <span
-                className="small text-white-50"
-                title={BULK_ALARM_INCOMPATIBLE_MESSAGE}
-                role="note"
-              >
-                {BULK_ALARM_INCOMPATIBLE_MESSAGE}
-              </span>
-            ) : null}
-            <Button size="sm" variant="outline-light" className="border-opacity-25" onClick={removeSelected}>
-              Remove Selected
-            </Button>
-            <Button size="sm" variant="outline-light" className="border-opacity-25" onClick={clearSelection}>
-              Clear Selection
-            </Button>
-          </div>
-        </div>
-      )}
+  const legacyToolbarActions = !enterpriseLayout ? (
+    <div className="workspace-toolbar__right workspace-toolbar__right--compact mb-3">
+      <Button size="sm" variant="dark" className="workspace-table-action-btn" onClick={clearTable}>
+        Clear table
+      </Button>
+      <Button size="sm" variant="dark" className="workspace-table-action-btn" onClick={removeSelected} disabled={selectedCount === 0}>
+        Remove selected
+      </Button>
+      <Button size="sm" variant="dark" className="workspace-table-action-btn" onClick={handleManualRefresh}>
+        Refresh
+      </Button>
+    </div>
+  ) : null;
 
-      {/* Table */}
-      <div
-        ref={tableRef}
-        tabIndex={0}
-        role="grid"
-        aria-label="Workspace points table"
-        className={[
-          "legion-workspace-dropzone border border-light border-opacity-10 rounded",
-          dropActive[zone] ? "legion-workspace-dropzone--active" : "",
-          rows.length === 0 ? "legion-workspace-dropzone--empty" : "legion-workspace-dropzone--has-rows",
-        ].filter(Boolean).join(" ")}
-        onDragOver={handleDragOver}
-        onDragLeave={handleDragLeave}
-        onDrop={handleDropOnTable}
-        onKeyDown={handleTableKeyDown}
-        onClick={(e) => e.currentTarget.focus()}
-        style={{ outline: "none" }}
-      >
-        <div className="legion-workspace-table-scroll">
-          <Table hover className="bg-primary border-0 legion-workspace-table mb-0">
-            <thead>
+  const tableColSpan = enterpriseLayout ? 7 : 7;
+
+  const tableBlock = (
+    <div
+      ref={tableRef}
+      tabIndex={0}
+      role="grid"
+      aria-label="Workspace points table"
+      className={[
+        "legion-workspace-dropzone legion-operator-log-table-wrap",
+        enterpriseLayout ? "" : "border border-light border-opacity-10 rounded overflow-hidden",
+        dropActive[zone] ? "legion-workspace-dropzone--active" : "",
+        rows.length === 0 ? "legion-workspace-dropzone--empty" : "legion-workspace-dropzone--has-rows",
+      ].filter(Boolean).join(" ")}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDropOnTable}
+      onKeyDown={handleTableKeyDown}
+      onClick={(e) => e.currentTarget.focus()}
+      style={{ outline: "none" }}
+    >
+      <div className="legion-workspace-table-scroll">
+        <Table hover className="legion-workspace-table mb-0">
+          <thead>
+            <tr>
+              <th className="legion-workspace-th legion-workspace-th--check text-white" scope="col" />
+              <th className="legion-workspace-th text-white" scope="col">Equipment</th>
+              <th className="legion-workspace-th text-white" scope="col">Point</th>
+              <th className="legion-workspace-th text-white" scope="col">{enterpriseLayout ? "Description" : "Point description"}</th>
+              <th className="legion-workspace-th text-white" scope="col">Value</th>
+              {!enterpriseLayout ? (
+                <th className="legion-workspace-th legion-workspace-th--mapped text-white" scope="col">Mapped to</th>
+              ) : null}
+              <th className="legion-workspace-th legion-workspace-th--narrow text-white" scope="col">Status</th>
+              {enterpriseLayout ? (
+                <th className="legion-workspace-th legion-workspace-th--narrow text-white" scope="col">Actions</th>
+              ) : null}
+            </tr>
+          </thead>
+          <tbody>
+            {filteredRows.length === 0 ? (
               <tr>
-                <th className="legion-workspace-th legion-workspace-th--check" scope="col" />
-                <th className="legion-workspace-th" scope="col">Equipment</th>
-                <th className="legion-workspace-th" scope="col">Point</th>
-                <th className="legion-workspace-th" scope="col">Point description</th>
-                <th className="legion-workspace-th" scope="col">Value</th>
-                <th className="legion-workspace-th legion-workspace-th--mapped" scope="col">Mapped to</th>
-                <th className="legion-workspace-th legion-workspace-th--narrow" scope="col">Status</th>
+                <td
+                  colSpan={tableColSpan}
+                  className={
+                    rows.length === 0
+                      ? "legion-workspace-empty legion-workspace-empty--drop-hint"
+                      : "legion-workspace-empty"
+                  }
+                >
+                  {rows.length === 0 ? (
+                    <p className="legion-workspace-empty-hint text-white-50 mb-0">
+                      Drag equipment from the tree into this table to add points. You can drop one unit or an entire floor.
+                    </p>
+                  ) : (
+                    <span className="legion-workspace-empty-filter-hint text-white-50">No matches</span>
+                  )}
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {filteredRows.length === 0 ? (
-                <tr>
+            ) : (
+              filteredRows.map((row) => (
+                <tr
+                  key={row.id}
+                  className={`legion-workspace-row ${selectedRowIds.includes(row.id) ? "table-active" : ""}`}
+                  onClick={(e) => handleRowClick(e, row)}
+                >
                   <td
-                    colSpan={7}
-                    className={
-                      rows.length === 0
-                        ? "legion-workspace-empty legion-workspace-empty--drop-hint"
-                        : "legion-workspace-empty"
-                    }
+                    className="legion-workspace-td legion-workspace-td--check"
+                    onClick={(e) => e.stopPropagation()}
                   >
-                    {rows.length === 0 ? (
-                      <p className="legion-workspace-empty-hint text-white-50 mb-0">
-                        Drag equipment from the tree into this table to add points. You can drop one unit or an entire floor.
-                      </p>
-                    ) : (
-                      <span className="legion-workspace-empty-filter-hint text-white-50">No matches</span>
-                    )}
+                    <Form.Check
+                      type="checkbox"
+                      checked={workspace.selectedRowIds.includes(row.id)}
+                      onChange={(e) => handleCheckboxToggle(e, row)}
+                    />
                   </td>
-                </tr>
-              ) : (
-                filteredRows.map((row) => (
-                  <tr
-                    key={row.id}
-                    className={`legion-workspace-row ${selectedRowIds.includes(row.id) ? "table-active" : ""}`}
-                    onClick={(e) => handleRowClick(e, row)}
-                  >
-                    <td className="legion-workspace-td legion-workspace-td--check">
-                      <Form.Check
-                        type="checkbox"
-                        checked={workspace.selectedRowIds.includes(row.id)}
-                        onChange={() => {}}
-                        onClick={(e) => e.stopPropagation()}
-                      />
-                    </td>
-                    <td className="legion-workspace-td text-white fw-semibold">{row.equipmentName}</td>
-                    <td className="legion-workspace-td legion-workspace-point text-white font-monospace">
-                      <span className="legion-workspace-point-label">{row.pointKey || row.pointId}</span>
-                    </td>
-                    <td className="legion-workspace-td text-white">
-                      {row.pointDescription || row.pointName || "—"}
-                    </td>
-                    <td className="legion-workspace-td text-white">
-                      <span className={row.operatorOutOfService ? "legion-workspace-value--oos" : undefined}>
-                        {workspacePointDisplayValue(row)}
-                      </span>
-                    </td>
+                  <td className="legion-workspace-td text-white fw-semibold">{row.equipmentName}</td>
+                  <td className="legion-workspace-td legion-workspace-point text-white font-monospace">
+                    <span className="legion-workspace-point-label">{row.pointKey || row.pointId}</span>
+                  </td>
+                  <td className="legion-workspace-td text-white" title={enterpriseLayout && row.mappedToLabel && row.mappedToLabel !== "—" ? `Mapped: ${row.mappedToLabel}` : undefined}>
+                    {row.pointDescription || row.pointName || "—"}
+                  </td>
+                  <td className="legion-workspace-td text-white">
+                    <span className={row.operatorOutOfService ? "text-white-50 fw-semibold" : undefined}>
+                      {workspacePointDisplayValue(row)}
+                    </span>
+                  </td>
+                  {!enterpriseLayout ? (
                     <td className="legion-workspace-td legion-workspace-td--mapped text-white-50 small">
                       <div
                         className="legion-workspace-mapped-scroll"
@@ -1096,24 +1171,221 @@ function WorkspacePanel({
                         {row.mappedToLabel ?? "—"}
                       </div>
                     </td>
-                    <td className="legion-workspace-td legion-workspace-td--status">
-                      {row.commFreshnessStatus ? (
-                        <OperatorCommFreshnessLabel status={row.commFreshnessStatus} variant="table" />
-                      ) : (
-                        <StatusDotLabel
-                          value={row.status || "Normal"}
-                          kind="status"
-                          dotOnly={["ok", "normal", "online"].includes((row.status || "").toLowerCase())}
-                        />
-                      )}
+                  ) : null}
+                  <td className="legion-workspace-td legion-workspace-td--status">
+                    {row.commFreshnessStatus ? (
+                      <OperatorCommFreshnessLabel status={row.commFreshnessStatus} variant="table" />
+                    ) : (
+                      <StatusDotLabel
+                        value={row.status || "Normal"}
+                        kind="status"
+                        dotOnly={["ok", "normal", "online"].includes((row.status || "").toLowerCase())}
+                      />
+                    )}
+                  </td>
+                  {enterpriseLayout ? (
+                    <td className="legion-workspace-td">
+                      <div className="legion-equipment-row-actions">
+                        <Link
+                          to={Routes.LegionTrends.path}
+                          className="legion-equipment-row-action"
+                          title="View trends"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <FontAwesomeIcon icon={faChartLine} />
+                        </Link>
+                        <button
+                          type="button"
+                          className="legion-equipment-row-action"
+                          title="Command point"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openCommandForRow(row);
+                          }}
+                        >
+                          <FontAwesomeIcon icon={faPen} />
+                        </button>
+                        <button
+                          type="button"
+                          className="legion-equipment-row-action legion-equipment-row-action--danger"
+                          title="Remove from workspace"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            removeSingleRow(row.id);
+                          }}
+                        >
+                          <FontAwesomeIcon icon={faTrash} />
+                        </button>
+                      </div>
                     </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </Table>
-        </div>
+                  ) : null}
+                </tr>
+              ))
+            )}
+          </tbody>
+        </Table>
       </div>
+    </div>
+  );
+
+  return (
+    <div className={`workspace-panel ${enterpriseLayout ? "workspace-panel--enterprise" : ""}`}>
+      {!enterpriseLayout ? (
+        <div className="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+          <div className="d-flex align-items-center gap-2">
+            <span className="text-white fw-semibold">{workspace.name}</span>
+            {showRemove && onRemove ? (
+              <Button size="sm" variant="outline-secondary" className="text-white-50 py-0 px-1" onClick={onRemove}>
+                Remove
+              </Button>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
+
+      {enterpriseLayout ? (
+        <>
+          <div className="legion-equipment-active-toolbar">
+            <div className="legion-equipment-active-toolbar__left d-flex align-items-center gap-2">
+              <Dropdown align="end">
+                <Dropdown.Toggle
+                  size="sm"
+                  variant="dark"
+                  className="legion-equipment-btn"
+                  id={`workspace-menu-${zone}`}
+                >
+                  <FontAwesomeIcon icon={faToolbox} className="me-1" />
+                  Tools
+                </Dropdown.Toggle>
+                <Dropdown.Menu className="legion-equipment-tools-menu">
+                  <Dropdown.Header className="legion-equipment-tools-menu__header">Find</Dropdown.Header>
+                  <Dropdown.Item
+                    className={showSearchPanel ? "active" : ""}
+                    onClick={() => setShowSearchPanel((v) => !v)}
+                  >
+                    <FontAwesomeIcon icon={faSearch} className="legion-equipment-tools-menu__icon" />
+                    <span>Search points</span>
+                  </Dropdown.Item>
+                  <Dropdown.Item
+                    className={showFilterPanel ? "active" : ""}
+                    onClick={() => setShowFilterPanel((v) => !v)}
+                  >
+                    <FontAwesomeIcon icon={faFilter} className="legion-equipment-tools-menu__icon" />
+                    <span>Filter table</span>
+                  </Dropdown.Item>
+                  <Dropdown.Divider />
+                  <Dropdown.Header className="legion-equipment-tools-menu__header">Actions</Dropdown.Header>
+                  <Dropdown.Item
+                    disabled={selectedCount === 0 || !alarmSelectionCompatible}
+                    title={
+                      selectedCount > 0 && !alarmSelectionCompatible
+                        ? BULK_ALARM_INCOMPATIBLE_MESSAGE
+                        : selectedCount === 0
+                          ? "Select at least one point"
+                          : "Create alarm on selected points"
+                    }
+                    onClick={() => {
+                      if (selectedCount === 0 || !alarmSelectionCompatible) return;
+                      setAlarmModalRows(selectedRows);
+                      setShowAlarmModal(true);
+                    }}
+                  >
+                    <FontAwesomeIcon icon={faBell} className="legion-equipment-tools-menu__icon" />
+                    <span>Create alarm</span>
+                  </Dropdown.Item>
+                  {showRemove && onRemove ? (
+                    <>
+                      <Dropdown.Divider />
+                      <Dropdown.Item className="legion-equipment-tools-menu__item--danger" onClick={onRemove}>
+                        <FontAwesomeIcon icon={faTrash} className="legion-equipment-tools-menu__icon" />
+                        <span>Remove workspace</span>
+                      </Dropdown.Item>
+                    </>
+                  ) : null}
+                </Dropdown.Menu>
+              </Dropdown>
+              <Button
+                size="sm"
+                variant="dark"
+                className="legion-equipment-btn"
+                onClick={openCommandModal}
+                disabled={selectedCount === 0}
+                title={selectedCount === 0 ? "Select at least one point" : "Command selected points"}
+              >
+                <FontAwesomeIcon icon={faPen} className="me-1" />
+                Command
+              </Button>
+            </div>
+            <div className="legion-equipment-active-toolbar__right">
+              <Button
+                size="sm"
+                variant="dark"
+                className="legion-equipment-btn"
+                onClick={clearTable}
+                disabled={rows.length === 0}
+              >
+                Clear table
+              </Button>
+              <Button
+                size="sm"
+                variant="dark"
+                className="legion-equipment-btn"
+                onClick={selectAllRows}
+                disabled={filteredRows.length === 0}
+              >
+                Select all
+              </Button>
+              <Button
+                size="sm"
+                variant="dark"
+                className="legion-equipment-btn legion-equipment-btn--icon"
+                onClick={removeSelected}
+                disabled={selectedCount === 0}
+                title="Remove selected"
+              >
+                <FontAwesomeIcon icon={faTrash} />
+              </Button>
+            </div>
+          </div>
+          {showFilterPanel ? filterBar : null}
+          {showSearchPanel ? scopedSearchPanel : null}
+          <div className="legion-equipment-table-area">{tableBlock}</div>
+          <div className="legion-equipment-table-footer">
+            <span>
+              {filteredRows.length} point{filteredRows.length !== 1 ? "s" : ""}
+              {workspace.filterText ? ` (filtered from ${rows.length})` : ""}
+            </span>
+            <div className="legion-equipment-auto-refresh d-flex align-items-center gap-2">
+              <Button
+                size="sm"
+                variant="dark"
+                className="legion-equipment-btn legion-equipment-btn--icon"
+                onClick={handleManualRefresh}
+                title="Refresh now"
+              >
+                <FontAwesomeIcon icon={faSync} />
+              </Button>
+              <Form.Check
+                type="switch"
+                id={`auto-refresh-${zone}`}
+                className="legion-equipment-auto-refresh"
+                label="Auto-refresh"
+                checked={autoRefresh}
+                onChange={(e) => {
+                  if (onAutoRefreshChange) onAutoRefreshChange(e.target.checked);
+                }}
+              />
+            </div>
+          </div>
+        </>
+      ) : (
+        <>
+          {filterBar}
+          {scopedSearchPanel}
+          {legacyToolbarActions}
+          {tableBlock}
+        </>
+      )}
 
       {/* Add to Workspace Confirmation Modal */}
       <Modal
@@ -1426,16 +1698,123 @@ export default function EquipmentPage() {
     id,
     name,
     rows: [],
-    searchMode: "filter",
     filterText: "",
     globalQuery: "",
     scopeEquipment: [],
     selectedRowIds: [],
   });
 
-  const [mainWorkspace, setMainWorkspace] = useState(() => initialWorkspace("main", "Main Workspace"));
-  const [secondaryWorkspace, setSecondaryWorkspace] = useState(() => initialWorkspace("secondary", "Secondary Workspace"));
-  const [showSecondaryWorkspace, setShowSecondaryWorkspace] = useState(false);
+  const storageKey = apiSiteId || siteId;
+
+  const hydrateWorkspace = useCallback(
+    (id, fallbackName, data) => ({
+      ...initialWorkspace(id, fallbackName),
+      ...(data || {}),
+      id,
+      selectedRowIds: [],
+    }),
+    []
+  );
+
+  const [workspaceProfileName, setWorkspaceProfileName] = useState(() => {
+    const session = loadWorkspaceLibrary(storageKey).lastSession;
+    return session?.profileName?.trim() || null;
+  });
+  const [showSaveWorkspaceModal, setShowSaveWorkspaceModal] = useState(false);
+  const [saveWorkspaceNameInput, setSaveWorkspaceNameInput] = useState("");
+
+  const workspaceDisplayName = workspaceProfileName?.trim() || DEFAULT_WORKSPACE_PROFILE_NAME;
+
+  const [mainWorkspace, setMainWorkspace] = useState(() => {
+    const session = loadWorkspaceLibrary(storageKey).lastSession;
+    return session?.main
+      ? { ...initialWorkspace("main", "Main Workspace"), ...session.main, id: "main", selectedRowIds: [] }
+      : initialWorkspace("main", "Main Workspace");
+  });
+  const [savedWorkspaces, setSavedWorkspaces] = useState(() => loadWorkspaceLibrary(storageKey).saved);
+  const [treeCollapsed, setTreeCollapsed] = useState(false);
+  const [treeSortAsc, setTreeSortAsc] = useState(true);
+  const [autoRefresh, setAutoRefresh] = useState(true);
+
+  const [saveNotice, setSaveNotice] = useState("");
+
+  const openSaveWorkspaceModal = useCallback(() => {
+    setSaveWorkspaceNameInput(workspaceProfileName?.trim() || "");
+    setShowSaveWorkspaceModal(true);
+  }, [workspaceProfileName]);
+
+  const saveWorkspaces = useCallback(() => {
+    const snapshotName = saveWorkspaceNameInput.trim();
+    if (!snapshotName) return;
+    const snapshot = buildWorkspaceSnapshot(snapshotName, mainWorkspace, null, false);
+    const nextSaved = [...savedWorkspaces];
+    const existingIdx = nextSaved.findIndex((s) => s.name === snapshotName);
+    if (existingIdx >= 0) nextSaved[existingIdx] = { ...snapshot, id: nextSaved[existingIdx].id };
+    else nextSaved.unshift(snapshot);
+    const trimmed = nextSaved.slice(0, WORKSPACE_LIBRARY_MAX);
+    setSavedWorkspaces(trimmed);
+    setWorkspaceProfileName(snapshotName);
+    persistWorkspaceLibrary(storageKey, {
+      lastSession: {
+        profileName: snapshotName,
+        main: stripWorkspaceForPersist(mainWorkspace),
+      },
+      saved: trimmed,
+    });
+    setShowSaveWorkspaceModal(false);
+    setSaveNotice(`Saved workspace "${snapshotName}"`);
+    window.setTimeout(() => setSaveNotice(""), 2500);
+  }, [storageKey, mainWorkspace, savedWorkspaces, saveWorkspaceNameInput]);
+
+  const loadSavedWorkspace = useCallback(
+    (snapshot) => {
+      if (!snapshot) return;
+      const profileName = snapshot.name?.trim() || null;
+      setWorkspaceProfileName(profileName);
+      setMainWorkspace(
+        hydrateWorkspace("main", snapshot.main?.name || "Main Workspace", snapshot.main)
+      );
+      persistWorkspaceLibrary(storageKey, {
+        lastSession: {
+          profileName,
+          main: stripWorkspaceForPersist(snapshot.main),
+        },
+        saved: savedWorkspaces,
+      });
+      setSaveNotice(`Loaded workspace "${snapshot.name}"`);
+      window.setTimeout(() => setSaveNotice(""), 2500);
+    },
+    [storageKey, savedWorkspaces, hydrateWorkspace]
+  );
+
+  const createNewWorkspace = useCallback(() => {
+    const fresh = initialWorkspace("main", "Main Workspace");
+    setMainWorkspace(fresh);
+    setWorkspaceProfileName(null);
+    persistWorkspaceLibrary(storageKey, {
+      lastSession: {
+        profileName: null,
+        main: stripWorkspaceForPersist(fresh),
+      },
+      saved: savedWorkspaces,
+    });
+    setSaveNotice("New workspace ready — save when you want to keep it");
+    window.setTimeout(() => setSaveNotice(""), 2500);
+  }, [storageKey, savedWorkspaces]);
+
+  const equipmentDeviceCount = useMemo(
+    () => flattenEquipmentNodes(filteredTree).length,
+    [filteredTree]
+  );
+
+  const sortedFilteredTree = useMemo(() => {
+    if (!treeSortAsc) return filteredTree;
+    const sortNodes = (nodes) =>
+      [...(nodes || [])]
+        .sort((a, b) => String(a.label || "").localeCompare(String(b.label || ""), undefined, { sensitivity: "base" }))
+        .map((n) => (n.children?.length ? { ...n, children: sortNodes(n.children) } : n));
+    return sortNodes(filteredTree);
+  }, [filteredTree, treeSortAsc]);
 
   const handleDragStart = useCallback((e, node, tree) => {
     const isMultiEquip = node.type === "floor" || node.type === "building";
@@ -1483,13 +1862,13 @@ export default function EquipmentPage() {
   };
 
   return (
-    <Container fluid className="px-0">
-      <div className="px-3 px-md-4 pt-3">
+    <Container fluid className="px-0 legion-equipment-page-shell">
+      <div className="legion-equipment-page-shell__hero px-3 px-md-4 pt-3">
         <LegionHeroHeader />
         <hr className="border-light border-opacity-25 my-3" />
       </div>
 
-      <div className="legion-equipment-page px-3 px-md-4 pb-4 mt-3">
+      <div className="legion-equipment-page legion-equipment-page--enterprise px-3 px-md-4">
         {releaseLoading && !activeReleaseData && (
           <div className="text-white-50 small mb-2">Loading equipment tree from server…</div>
         )}
@@ -1498,46 +1877,146 @@ export default function EquipmentPage() {
             {releaseError}
           </div>
         ) : null}
-        <Row className="g-3 align-items-start">
-          <Col xs={12} lg={4} xl={3}>
-            <Card className="legion-equipment-sidebar-card bg-primary border border-light border-opacity-10 shadow-sm">
-              <Card.Body className="p-0">
-                <div className="px-3 pt-2 pb-2 d-flex align-items-center justify-content-between">
-                  <div className="text-white fw-bold">Equipment</div>
-                  <Button size="sm" variant="dark" className="border border-light border-opacity-10 text-white-50 py-0" style={{ height: 24 }}>
-                    Collapse
-                  </Button>
-                </div>
-                <div className="px-3 pb-2">
+        {saveNotice ? (
+          <div className="alert alert-success py-2 small mb-2" role="status">
+            {saveNotice}
+          </div>
+        ) : null}
+
+        <div className="legion-equipment-enterprise-wrap">
+          {treeCollapsed ? (
+            <button
+              type="button"
+              className="legion-equipment-tree-expand"
+              onClick={() => setTreeCollapsed(false)}
+              aria-label="Expand equipment tree"
+            >
+              <FontAwesomeIcon icon={faChevronRight} />
+            </button>
+          ) : null}
+
+          <div className="legion-equipment-enterprise">
+            <aside className={`legion-equipment-tree-panel ${treeCollapsed ? "legion-equipment-tree-panel--collapsed" : ""}`}>
+              <div className="legion-equipment-panel-header">
+                <h2 className="legion-equipment-panel-title">Equipment Tree</h2>
+                <Button
+                  size="sm"
+                  variant="dark"
+                  className="legion-equipment-btn"
+                  onClick={() => setTreeCollapsed(true)}
+                >
+                  Collapse
+                </Button>
+              </div>
+              <div className="legion-equipment-panel-body">
+                <div className="legion-equipment-tree-toolbar">
                   <Form.Control
                     size="sm"
                     placeholder="Search equipment..."
-                    className="bg-primary border border-light border-opacity-10 text-white"
+                    className="legion-equipment-tree-toolbar__input legion-operator-log-field text-white border border-light border-opacity-10"
                     value={treeSearch}
                     onChange={(e) => setTreeSearch(e.target.value)}
                   />
+                  <Button
+                    size="sm"
+                    variant="dark"
+                    className={`legion-equipment-tree-toolbar__btn ${treeSearch ? "legion-equipment-tree-toolbar__btn--active" : ""}`}
+                    title="Filter tree"
+                  >
+                    <FontAwesomeIcon icon={faFilter} />
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="dark"
+                    className={`legion-equipment-tree-toolbar__btn ${treeSortAsc ? "legion-equipment-tree-toolbar__btn--active" : ""}`}
+                    title="Sort alphabetically"
+                    onClick={() => setTreeSortAsc((v) => !v)}
+                  >
+                    <FontAwesomeIcon icon={faSort} />
+                  </Button>
                 </div>
-                <div className="border-top border-light border-opacity-10" style={{ height: 1 }} />
-                <div className="legion-equipment-tree site-builder-tree operator-equipment-tree legion-equipment-tree--scroll pb-2">
-                  {filteredTree.map((n) => (
-                    <TreeNode key={n.id} node={n} level={0} />
-                  ))}
-                  {filteredTree.length === 0 ? <div className="px-3 py-3 text-white-50 small">No matches.</div> : null}
-                </div>
-              </Card.Body>
-            </Card>
-          </Col>
-
-          <Col xs={12} lg={8} xl={9}>
-            <Card className="legion-equipment-workspaces bg-primary text-white border border-light border-opacity-10 shadow-sm">
-              <Card.Body className="text-white">
-                <div className="mb-3">
-                  <div className="text-white fw-bold fs-5 mb-1">Workspaces</div>
-                  <div className="text-white-50 small">
-                    Drag equipment from the tree to add points to a workspace or scope. Each workspace has its own search and selection.
+                <div className="legion-equipment-tree-scroll">
+                  <div className="legion-equipment-tree site-builder-tree operator-equipment-tree">
+                    {sortedFilteredTree.map((n) => (
+                      <TreeNode key={n.id} node={n} level={0} />
+                    ))}
+                    {sortedFilteredTree.length === 0 ? (
+                      <div className="px-3 py-3 text-white-50 small">No matches.</div>
+                    ) : null}
                   </div>
                 </div>
+              </div>
+              <div className="legion-equipment-panel-footer">
+                <span>{treeSearch ? "Filtered equipment" : "Showing all equipment"}</span>
+                <span>{equipmentDeviceCount} device{equipmentDeviceCount !== 1 ? "s" : ""}</span>
+              </div>
+            </aside>
 
+            <section className="legion-equipment-workspace-panel">
+              <div className="legion-equipment-workspace-optional">
+                <div className="legion-equipment-panel-header">
+                  <h2 className="legion-equipment-panel-title">
+                    Workspace
+                    <span className="legion-equipment-workspace-profile-name">· {workspaceDisplayName}</span>
+                  </h2>
+                  <div className="legion-equipment-workspace-header-actions">
+                    <Button
+                      size="sm"
+                      variant="dark"
+                      className="legion-equipment-btn"
+                      onClick={openSaveWorkspaceModal}
+                      title="Save current workspace layout"
+                    >
+                      <FontAwesomeIcon icon={faSave} className="me-1" />
+                      Save Workspace
+                    </Button>
+                    <Dropdown align="end">
+                      <Dropdown.Toggle
+                        size="sm"
+                        variant="dark"
+                        className="legion-equipment-btn"
+                        id="load-workspace-menu"
+                      >
+                        <FontAwesomeIcon icon={faFolderOpen} className="me-1" />
+                        Load Workspace
+                      </Dropdown.Toggle>
+                      <Dropdown.Menu className="bg-primary border border-light border-opacity-10 legion-equipment-load-workspace-menu">
+                        {savedWorkspaces.length === 0 ? (
+                          <Dropdown.Item disabled className="text-white-50">
+                            No saved workspaces yet
+                          </Dropdown.Item>
+                        ) : (
+                          savedWorkspaces.map((snapshot) => (
+                            <Dropdown.Item
+                              key={snapshot.id}
+                              className="text-white legion-equipment-load-workspace-item"
+                              onClick={() => loadSavedWorkspace(snapshot)}
+                            >
+                              <span className="legion-equipment-load-workspace-item__name">{snapshot.name}</span>
+                              <span className="legion-equipment-load-workspace-item__meta">
+                                {snapshotPointCount(snapshot)} pts
+                                {snapshot.savedAt ? ` · ${formatWorkspaceSavedAt(snapshot.savedAt)}` : ""}
+                              </span>
+                            </Dropdown.Item>
+                          ))
+                        )}
+                      </Dropdown.Menu>
+                    </Dropdown>
+                    <Button
+                      size="sm"
+                      variant="dark"
+                      className="legion-equipment-btn legion-equipment-btn--accent"
+                      onClick={createNewWorkspace}
+                      title="Start a new empty workspace"
+                    >
+                      <FontAwesomeIcon icon={faPlus} className="me-1" />
+                      New Workspace
+                    </Button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="legion-equipment-workspace-active">
                 <WorkspacePanel
                   workspace={mainWorkspace}
                   setWorkspace={setMainWorkspace}
@@ -1549,42 +2028,47 @@ export default function EquipmentPage() {
                   siteId={apiSiteId || siteId}
                   runtimeControllersList={runtimeControllersList}
                   nowTick={nowTick}
+                  enterpriseLayout
+                  autoRefresh={autoRefresh}
+                  onAutoRefreshChange={setAutoRefresh}
                 />
-
-                {showSecondaryWorkspace ? (
-                  <div className="mt-4 pt-3 border-top border-light border-opacity-10">
-                    <WorkspacePanel
-                      workspace={secondaryWorkspace}
-                      setWorkspace={setSecondaryWorkspace}
-                      dropActive={dropActive}
-                      setDropActive={setDropActive}
-                      treeData={treeData}
-                      handleDragStart={handleDragStart}
-                      onRemove={() => setShowSecondaryWorkspace(false)}
-                      showRemove
-                      activeReleaseData={activeReleaseData}
-                      siteId={apiSiteId || siteId}
-                      runtimeControllersList={runtimeControllersList}
-                      nowTick={nowTick}
-                    />
-                  </div>
-                ) : (
-                  <div className="mt-4 pt-3 border-top border-light border-opacity-10">
-                    <Button
-                      size="sm"
-                      variant="outline-light"
-                      className="border border-light border-opacity-25 text-white-50"
-                      onClick={() => setShowSecondaryWorkspace(true)}
-                    >
-                      Add Secondary Workspace
-                    </Button>
-                  </div>
-                )}
-              </Card.Body>
-            </Card>
-          </Col>
-        </Row>
+              </div>
+            </section>
+          </div>
+        </div>
       </div>
+
+      <Modal
+        centered
+        show={showSaveWorkspaceModal}
+        onHide={() => setShowSaveWorkspaceModal(false)}
+        contentClassName="bg-primary border border-light border-opacity-10 text-white"
+      >
+        <Modal.Header className="border-light border-opacity-10">
+          <Modal.Title className="h6 text-white">Save Workspace</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <Form.Group>
+            <Form.Label className="text-white-50 small">Workspace name</Form.Label>
+            <Form.Control
+              className="legion-operator-log-field text-white border border-light border-opacity-10"
+              placeholder="e.g. HVAC Overview, Morning Rounds"
+              value={saveWorkspaceNameInput}
+              onChange={(e) => setSaveWorkspaceNameInput(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && saveWorkspaceNameInput.trim() && saveWorkspaces()}
+              autoFocus
+            />
+          </Form.Group>
+        </Modal.Body>
+        <Modal.Footer className="border-light border-opacity-10">
+          <Button variant="secondary" onClick={() => setShowSaveWorkspaceModal(false)}>
+            Cancel
+          </Button>
+          <Button variant="success" onClick={saveWorkspaces} disabled={!saveWorkspaceNameInput.trim()}>
+            Save
+          </Button>
+        </Modal.Footer>
+      </Modal>
     </Container>
   );
 }

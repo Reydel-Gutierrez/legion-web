@@ -597,8 +597,8 @@ export default function EquipmentTemplateEditorPanel({
                 )}
               </div>
             ) : (
-              <div className="template-library-table-wrap">
-                <Table className="discovery-table equipment-template-points-table equipment-template-points-table--wide mb-0">
+              <div className="legion-operator-log-table-wrap template-library-table-wrap">
+                <Table className="discovery-table equipment-template-points-table equipment-template-points-table--wide mb-0" hover>
                   <thead>
                     <tr>
                       {!readOnly && (

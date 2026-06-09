@@ -90,6 +90,7 @@ async function buildWorkingSiteEquipmentFromDb(siteId) {
     const floorNodes = floors.map((f) => ({
       id: f.id,
       name: f.name,
+      displayLabel: f.displayLabel || f.name,
       sortOrder: f.sortOrder ?? 0,
       floorType: f.floorType || 'Standard Floor',
       occupancyType: f.occupancyType || '',

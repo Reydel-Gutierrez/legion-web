@@ -19,13 +19,13 @@ export default function UnusedObjectsPanel({ discoveredObjects, usedObjectIds, i
   const unused = (discoveredObjects || []).filter((obj) => !(usedObjectIds && usedObjectIds.has(obj.id)));
 
   return (
-    <Card className="bg-primary border border-light border-opacity-10 shadow-sm mt-3">
+    <Card className="legion-operator-log-card bg-primary border border-light border-opacity-10 shadow-sm mt-3">
       <Card.Header
-        className="bg-transparent border-light border-opacity-10 d-flex align-items-center justify-content-between cursor-pointer"
+        className="legion-operator-log-card-header d-flex align-items-center justify-content-between cursor-pointer"
         onClick={onToggle}
         style={{ cursor: "pointer" }}
       >
-        <span className="text-white fw-bold">
+        <span className="text-white fw-bold text-uppercase">
           Unused Discovered Objects
           <span className="text-white-50 fw-normal ms-2">({unused.length})</span>
         </span>
@@ -41,7 +41,7 @@ export default function UnusedObjectsPanel({ discoveredObjects, usedObjectIds, i
               All discovered objects are mapped.
             </div>
           ) : (
-            <div className="unused-objects-table-wrap">
+            <div className="legion-operator-log-table-wrap unused-objects-table-wrap">
               <table className="table table-sm mb-0 point-mapping-table">
                 <thead>
                   <tr>

@@ -117,86 +117,6 @@ export default function TrendsPage() {
       </div>
 
       <div className="px-2 px-xl-3 pb-4 mt-2">
-        <div className="d-flex align-items-start justify-content-between flex-wrap gap-2 mb-2">
-          <div>
-            <h6 className="text-white fw-bold mb-1">Trends</h6>
-            <div className="text-white small">
-              Trends are saved definitions linked to equipment through assignments. Open an asset to see its assigned trends; configure once and they load automatically next time (mock persistence per site).
-            </div>
-            <div className="text-white small opacity-75 mt-1">
-              {isTemplateEditorMode ? (
-                <>
-                  <span className="text-white fw-semibold">Template settings (no asset)</span>
-                  {" · "}
-                  <span className="text-white">{definition.name}</span>
-                  <span className="badge bg-info bg-opacity-25 border border-info border-opacity-50 ms-2">Reusable template</span>
-                </>
-              ) : trendSessionActive && selectedEquipment ? (
-                <>
-                  <span className="text-white fw-semibold">{selectedEquipment.label}</span>
-                  {" · "}
-                  <span className="text-white">{definition.name}</span>
-                  {definition.isTemplate ? (
-                    <span className="badge bg-info bg-opacity-25 border border-info border-opacity-50 ms-2">Template definition</span>
-                  ) : null}
-                  {recordingActive ? (
-                    <span className="badge bg-success bg-opacity-25 border border-success border-opacity-50 ms-2">14-day recording active</span>
-                  ) : trendSessionActive && definition.pointIds?.length ? (
-                    <span className="badge bg-warning bg-opacity-25 border border-warning border-opacity-50 ms-2">Recording not started</span>
-                  ) : (
-                    <span className="badge bg-secondary bg-opacity-25 border border-light border-opacity-25 ms-2">No recording</span>
-                  )}
-                  {historyLoggingActive ? (
-                    <span className="badge bg-info bg-opacity-25 border border-info border-opacity-50 ms-2">History samples</span>
-                  ) : null}
-                </>
-              ) : selectedEquipmentId ? (
-                <span className="text-white">Asset selected — add a trend or apply a template.</span>
-              ) : (
-                <span className="text-white">Select an asset to begin, or use Template editor / Manage templates → Edit settings.</span>
-              )}
-            </div>
-          </div>
-          <div className="d-flex align-items-center gap-2 flex-wrap">
-            {trendSessionActive || isTemplateEditorMode ? (
-              <span className="badge bg-primary border border-light border-opacity-25 text-white">Range: {range}</span>
-            ) : null}
-            <Button
-              size="sm"
-              variant="outline-light"
-              className="border-opacity-10"
-              onClick={() => setManageTemplatesOpen(true)}
-              disabled={!templateDefinitions.length}
-              title={!templateDefinitions.length ? "Save a template first" : "Rename, delete, or open template settings"}
-            >
-              Manage templates
-            </Button>
-            <Button
-              size="sm"
-              variant="light"
-              className="text-primary fw-semibold"
-              disabled={!templateDefinitions.length}
-              title={!templateDefinitions.length ? "Save a template first" : "Edit a template without selecting an asset"}
-              onClick={() => {
-                const first = templateDefinitions[0];
-                if (first) enterTemplateEditorView(first.id);
-              }}
-            >
-              Template editor
-            </Button>
-            <Button
-              size="sm"
-              variant="outline-light"
-              className="border-opacity-10"
-              onClick={() => setManageTemplatesOpen(true)}
-              disabled={!templateDefinitions.length}
-              title={!templateDefinitions.length ? "Save a template first" : "Rename or delete saved templates"}
-            >
-              Manage templates
-            </Button>
-          </div>
-        </div>
-
         {stateBanner ? <div className="mb-2">{stateBanner}</div> : null}
 
         {showEmptyActions ? (
@@ -218,9 +138,54 @@ export default function TrendsPage() {
 
         <Row className="g-2">
           <Col xs={12}>
-            <Card className="bg-primary border border-light border-opacity-10 shadow-sm">
+            <Card className="legion-operator-log-card bg-primary border border-light border-opacity-10 shadow-sm">
+              <Card.Header className="legion-operator-log-card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
+                <span className="text-white fw-bold text-uppercase">Trends</span>
+                <div className="d-flex align-items-center gap-2 flex-wrap">
+                  {trendSessionActive || isTemplateEditorMode ? (
+                    <span className="badge bg-primary border border-light border-opacity-25 text-white">Range: {range}</span>
+                  ) : null}
+                  <Button
+                    size="sm"
+                    variant="outline-light"
+                    className="border-opacity-10"
+                    onClick={() => setManageTemplatesOpen(true)}
+                    disabled={!templateDefinitions.length}
+                    title={!templateDefinitions.length ? "Save a template first" : "Rename, delete, or open template settings"}
+                  >
+                    Manage templates
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="light"
+                    className="text-primary fw-semibold"
+                    disabled={!templateDefinitions.length}
+                    title={!templateDefinitions.length ? "Save a template first" : "Edit a template without selecting an asset"}
+                    onClick={() => {
+                      const first = templateDefinitions[0];
+                      if (first) enterTemplateEditorView(first.id);
+                    }}
+                  >
+                    Template editor
+                  </Button>
+                </div>
+              </Card.Header>
               <Card.Body className="py-3 px-3">
-                <div className="text-white fw-semibold small mb-2">Trend workspace</div>
+                <div className="text-white-50 small mb-2">
+                  {isTemplateEditorMode ? (
+                    <>
+                      Template settings (no asset) · {definition.name}
+                    </>
+                  ) : trendSessionActive && selectedEquipment ? (
+                    <>
+                      {selectedEquipment.label} · {definition.name}
+                    </>
+                  ) : selectedEquipmentId ? (
+                    "Asset selected — add a trend or apply a template."
+                  ) : (
+                    "Select an asset to begin, or use Template editor / Manage templates."
+                  )}
+                </div>
                 <TrendToolbar
                   equipSearch={equipSearch}
                   onEquipSearchChange={setEquipSearch}
@@ -258,7 +223,10 @@ export default function TrendsPage() {
           </Col>
 
           <Col xs={12} lg={8}>
-            <Card className="bg-primary border border-light border-opacity-10 shadow-sm h-100">
+            <Card className="legion-operator-log-card bg-primary border border-light border-opacity-10 shadow-sm h-100">
+              <Card.Header className="legion-operator-log-card-header">
+                <span className="text-white fw-bold text-uppercase">Configuration</span>
+              </Card.Header>
               <Card.Body className="py-3 px-3">
                 <TrendConfigPanel
                   equipmentLabel={selectedEquipment?.label || ""}
@@ -292,9 +260,11 @@ export default function TrendsPage() {
               events={events}
               sessionActive={trendSessionActive}
             />
-            <Card className="bg-primary border border-light border-opacity-10 shadow-sm mt-3">
+            <Card className="legion-operator-log-card bg-primary border border-light border-opacity-10 shadow-sm mt-3">
+              <Card.Header className="legion-operator-log-card-header">
+                <span className="text-white fw-bold text-uppercase">Templates &amp; Bulk Assignment</span>
+              </Card.Header>
               <Card.Body className="py-2 px-3">
-                <div className="text-white fw-semibold small mb-1">Templates &amp; bulk assignment</div>
                 <div className="text-white small opacity-90 mb-0">
                   Save as template, then use <strong>Assign Template</strong> to attach the same definition to many assets. Use <strong>Manage templates</strong> in the header to rename or remove saved templates. Each asset keeps its own assignment and logging context.
                 </div>

@@ -137,8 +137,8 @@ export default function PointMappingTable({
   }
 
   return (
-    <div className="point-mapping-table-wrap">
-      <table className="table point-mapping-table">
+    <div className="legion-operator-log-table-wrap point-mapping-table-wrap">
+      <table className="table point-mapping-table mb-0">
         <thead>
           <tr>
             <th className="point-mapping-table-header">Point / description</th>

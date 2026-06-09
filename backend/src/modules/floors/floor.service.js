@@ -44,6 +44,9 @@ async function createFloor(buildingId, data) {
       ...(data.occupancyType != null && String(data.occupancyType).trim()
         ? { occupancyType: String(data.occupancyType).trim() }
         : {}),
+      ...(data.displayLabel != null && String(data.displayLabel).trim()
+        ? { displayLabel: String(data.displayLabel).trim() }
+        : {}),
       sortOrder: Number.isFinite(sortOrder) ? sortOrder : 0,
     },
     include: { building: true },
@@ -76,6 +79,10 @@ async function updateFloor(id, data) {
   if (data.sortOrder !== undefined) {
     const n = Number(data.sortOrder);
     update.sortOrder = Number.isFinite(n) ? n : 0;
+  }
+  if (data.displayLabel !== undefined) {
+    const s = data.displayLabel == null ? '' : String(data.displayLabel).trim();
+    update.displayLabel = s.length ? s : null;
   }
   if (Object.keys(update).length === 0) {
     throw new HttpError(400, 'No fields to update');

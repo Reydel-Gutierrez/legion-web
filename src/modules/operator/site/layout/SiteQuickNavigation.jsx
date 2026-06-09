@@ -1,17 +1,14 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
-  faLayerGroup,
   faChevronDown,
   faChevronRight,
   faBorderAll,
-  faArrowLeft,
   faSearch,
   faBoxOpen,
   faTimes,
 } from "@fortawesome/free-solid-svg-icons";
 import {
-  formatBuildingHeroTitle,
   sortedFloorsForBuilding,
   floorQuickNavSubtitle,
   floorQuickNavMetaLine,
@@ -38,7 +35,7 @@ function useCloseOnOutside(open, close) {
 }
 
 /** Compact trigger; full panel opens on click or hover — close via X, outside click, or Escape. */
-function CollapsibleQuickNavShell({ className = "", children, defaultOpen = false }) {
+function CollapsibleQuickNavShell({ className = "", children, defaultOpen = true, navKey }) {
   const [open, setOpen] = useState(defaultOpen);
   const close = useCallback(() => setOpen(false), []);
   const rootRef = useCloseOnOutside(open, close);
@@ -47,6 +44,10 @@ function CollapsibleQuickNavShell({ className = "", children, defaultOpen = fals
     `site-quick-nav-flyout-${Math.random().toString(36).slice(2, 11)}`
   );
   const panelId = panelIdRef.current;
+
+  useEffect(() => {
+    setOpen(true);
+  }, [navKey]);
 
   return (
     <div ref={rootRef} className={`site-quick-nav-collapsible ${className}`.trim()}>
@@ -84,9 +85,9 @@ function QuickNavCard({
   return (
     <aside className={`site-quick-nav ${anchorClassName}`} aria-label="Quick navigation">
       {backSlot}
-      <div className="site-quick-nav__card">
-        <div className="site-quick-nav__head-row">
-          <div className="site-quick-nav__head">Quick navigation</div>
+      <div className="site-quick-nav__card legion-operator-log-card bg-primary border border-light border-opacity-10 shadow-sm">
+        <div className="site-quick-nav__head-row legion-operator-log-card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
+          <span className="text-white fw-bold text-uppercase">Quick Navigation</span>
           {onClose ? (
             <button
               type="button"
@@ -98,38 +99,15 @@ function QuickNavCard({
             </button>
           ) : null}
         </div>
-        <div className="site-quick-nav__rule" aria-hidden />
-        {betweenRuleAndRow ? (
-          <>
-            {betweenRuleAndRow}
-            {row || afterRow || primaryButton ? (
-              <div className="site-quick-nav__rule site-quick-nav__rule--after-list" aria-hidden />
-            ) : null}
-          </>
-        ) : null}
-        {row}
-        {afterRow ? (
-          <>
-            <div className="site-quick-nav__rule site-quick-nav__rule--after-list" aria-hidden />
-            {afterRow}
-          </>
-        ) : null}
-        {primaryButton}
+        <div className="site-quick-nav__body">
+          {betweenRuleAndRow}
+          {row}
+          {afterRow}
+          {primaryButton}
+        </div>
       </div>
     </aside>
   );
-}
-
-function mapStatusClass(status) {
-  if (status === "alert") return "legion-site-layout-status--alert";
-  if (status === "warning") return "legion-site-layout-status--warning";
-  return "legion-site-layout-status--normal";
-}
-
-function mapStatusLabel(status) {
-  if (status === "alert") return "Alert";
-  if (status === "warning") return "Warning";
-  return "Normal";
 }
 
 /**
@@ -153,6 +131,7 @@ function QuickNavMap({
   search,
   onSearchChange,
   onSelectBuilding,
+  navKey,
 }) {
   const countLabel =
     allBuildingsCount != null && buildings && allBuildingsCount !== buildings.length
@@ -162,15 +141,17 @@ function QuickNavMap({
   const betweenRuleAndRow = (
     <>
       <div className="site-quick-nav__map-toolbar d-flex align-items-center justify-content-between gap-2 mb-2">
-        <span className="site-quick-nav__map-toolbar-label text-white-50 small">Buildings</span>
-        <span className="site-quick-nav__map-toolbar-count text-white-50 small tabular-nums">{countLabel}</span>
+        <span className="site-quick-nav__map-toolbar-label text-white fw-semibold small">Buildings</span>
+        <span className="badge bg-primary border border-light border-opacity-25 text-white tabular-nums">
+          {countLabel}
+        </span>
       </div>
-      <div className="site-layout-buildings-search-wrap site-quick-nav__search-clip">
-        <label className="site-layout-buildings-search-field w-100 mb-0">
-          <FontAwesomeIcon icon={faSearch} className="site-layout-buildings-search-field__icon text-white-50 fa-sm" />
+      <div className="site-quick-nav__search mb-2">
+        <label className="site-quick-nav__search-field w-100 mb-0">
+          <FontAwesomeIcon icon={faSearch} className="site-quick-nav__search-icon text-white-50 fa-sm" />
           <input
             type="search"
-            className="site-layout-buildings-search-field__input"
+            className="site-quick-nav__search-input legion-operator-log-field"
             placeholder="Search buildings…"
             value={search}
             onChange={(e) => onSearchChange(e.target.value)}
@@ -179,55 +160,37 @@ function QuickNavMap({
           />
         </label>
       </div>
-      <div className="site-quick-nav__map-buildings-scroll site-layout-buildings-list site-layout-buildings-list--styled">
+      <div className="site-quick-nav__list-scroll legion-operator-log-table-wrap border border-light border-opacity-10 rounded overflow-hidden">
         {!buildings?.length ? (
           <div className="text-white-50 small px-3 py-3 text-center">No buildings match your search.</div>
         ) : (
           buildings.map((b) => {
             const active = selectedBuildingId === b.id;
+            const address =
+              b.addressLine || [b.address, b.city, b.state].filter(Boolean).join(", ") || "—";
             return (
               <div
                 key={b.id}
-                role="button"
-                tabIndex={0}
-                className={`site-layout-building-card ${active ? "site-layout-building-card--active" : ""}`}
-                onClick={() => onSelectBuilding(b.id)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault();
-                    onSelectBuilding(b.id);
-                  }
-                }}
+                className={`site-quick-nav__list-row ${active ? "site-quick-nav__list-row--active" : ""}`}
               >
-                <div className="site-layout-building-card__accent" aria-hidden />
-                <div className="site-layout-building-card__body">
-                  <div className="d-flex align-items-start justify-content-between gap-2">
-                    <div className="site-layout-building-card__title text-white fw-semibold small text-truncate min-w-0">
-                      {b.name}
-                    </div>
-                    <span
-                      className={`site-layout-building-card__badge badge rounded-pill flex-shrink-0 ${mapStatusClass(b.status)}`}
-                    >
-                      {mapStatusLabel(b.status)}
-                    </span>
-                  </div>
-                  <div className="site-layout-building-card__address text-white-50 small text-truncate mt-1">
-                    {b.addressLine || [b.address, b.city, b.state].filter(Boolean).join(", ") || "—"}
-                  </div>
-                  <div className="d-flex justify-content-end mt-2">
-                    <button
-                      type="button"
-                      className="site-layout-building-card__open btn btn-link p-0 text-decoration-none d-inline-flex align-items-center gap-1"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onOpenBuilding(b.id);
-                      }}
-                    >
-                      Open
-                      <FontAwesomeIcon icon={faChevronRight} className="fa-xs" />
-                    </button>
-                  </div>
-                </div>
+                <button
+                  type="button"
+                  className="site-quick-nav__list-row__body"
+                  onClick={() => onSelectBuilding(b.id)}
+                >
+                  <span className="site-quick-nav__list-row__main">
+                    <span className="site-quick-nav__list-row__name">{b.name}</span>
+                    <span className="site-quick-nav__list-row__sub">{address}</span>
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  className="site-quick-nav__list-row__action"
+                  onClick={() => onOpenBuilding(b.id)}
+                >
+                  Open
+                  <FontAwesomeIcon icon={faChevronRight} className="fa-xs" />
+                </button>
               </div>
             );
           })
@@ -237,7 +200,7 @@ function QuickNavMap({
   );
 
   return (
-    <CollapsibleQuickNavShell className="site-quick-nav--tr site-quick-nav--map" defaultOpen>
+    <CollapsibleQuickNavShell className="site-quick-nav--tr site-quick-nav--map" navKey={navKey}>
       <QuickNavCard
         anchorClassName="site-quick-nav--popout site-quick-nav--map"
         backSlot={null}
@@ -249,108 +212,62 @@ function QuickNavMap({
   );
 }
 
-function QuickNavBuilding({ releaseData, building, floors: floorsProp, onSelectFloor, onBackToMap }) {
+function QuickNavBuilding({ building, floors: floorsProp, onSelectFloor, navKey }) {
   const floors = useMemo(() => floorsProp ?? sortedFloorsForBuilding(building), [floorsProp, building]);
-  const [open, setOpen] = useState(false);
-  const [activeFloorId, setActiveFloorId] = useState(null);
-  const close = useCallback(() => setOpen(false), []);
-  const rootRef = useCloseOnOutside(open, close);
 
-  useEffect(() => {
-    const first = floors[0] ?? null;
-    setActiveFloorId((prev) => {
-      if (prev && floors.some((f) => String(f.id) === String(prev))) return prev;
-      return first?.id ?? null;
-    });
-  }, [floors]);
-
-  const activeFloor = floors.find((f) => String(f.id) === String(activeFloorId)) || floors[0] || null;
-
-  const handleRowClick = () => {
-    if (!floors.length) return;
-    if (floors.length === 1) {
-      onSelectFloor(floors[0].id);
-      return;
-    }
-    setOpen((v) => !v);
-  };
-
-  const handleViewPlan = () => {
-    const target = activeFloor || floors[0];
-    if (target) onSelectFloor(target.id);
-  };
-
-  const backSlot = onBackToMap ? (
-    <button type="button" className="site-quick-nav__back" onClick={onBackToMap}>
-      <FontAwesomeIcon icon={faArrowLeft} className="site-quick-nav__back-icon" />
-      Map view
-    </button>
-  ) : null;
-
-  const rowTitle = activeFloor ? String(activeFloor.name || "Floor").toUpperCase() : "No floors";
-  const rowSub = activeFloor ? floorQuickNavSubtitle(activeFloor) : "Add floors in Site Builder";
-  const rowMeta = activeFloor ? floorQuickNavMetaLine(releaseData, activeFloor) : "";
-
-  const row = (
-    <div className="site-quick-nav__row-wrap" ref={rootRef}>
-      <button
-        type="button"
-        className="site-quick-nav__row-btn"
-        disabled={!floors.length}
-        aria-expanded={floors.length > 1 ? open : undefined}
-        aria-haspopup={floors.length > 1 ? "listbox" : undefined}
-        onClick={handleRowClick}
-      >
-        <span className="site-quick-nav__row-icon" aria-hidden>
-          <FontAwesomeIcon icon={faLayerGroup} />
+  const betweenRuleAndRow = (
+    <>
+      <div className="site-quick-nav__map-toolbar d-flex align-items-center justify-content-between gap-2 mb-2">
+        <span className="site-quick-nav__map-toolbar-label text-white fw-semibold small">Floors</span>
+        <span className="badge bg-primary border border-light border-opacity-25 text-white tabular-nums">
+          {floors.length}
         </span>
-        <div className="site-quick-nav__row-text">
-          <div className="site-quick-nav__row-title">{rowTitle}</div>
-          <div className="site-quick-nav__row-sub">{rowSub}</div>
-          {rowMeta ? <div className="site-quick-nav__row-meta">{rowMeta}</div> : null}
-        </div>
-        <span className="site-quick-nav__row-chevron" aria-hidden>
-          {floors.length > 1 ? (
-            <FontAwesomeIcon icon={faChevronDown} className={open ? "site-quick-nav__row-chevron--open" : ""} />
-          ) : (
-            <FontAwesomeIcon icon={faChevronRight} />
-          )}
-        </span>
-      </button>
-      {open && floors.length > 1 ? (
-        <ul className="site-quick-nav__menu" role="listbox">
-          {floors.map((f) => (
-            <li key={f.id} role="none">
+      </div>
+      <div className="site-quick-nav__floor-list legion-operator-log-table-wrap border border-light border-opacity-10 rounded overflow-hidden">
+        {!floors.length ? (
+          <div className="text-white-50 small px-3 py-3 text-center">No floors yet. Add floors in Site Builder.</div>
+        ) : (
+          floors.map((f) => {
+            const rowSub = floorQuickNavSubtitle(f);
+            return (
               <button
+                key={f.id}
                 type="button"
-                role="option"
-                className="site-quick-nav__menu-item"
-                aria-selected={String(f.id) === String(activeFloorId)}
-                onClick={() => {
-                  setActiveFloorId(f.id);
-                  onSelectFloor(f.id);
-                  close();
-                }}
+                className="site-quick-nav__floor-row"
+                onClick={() => onSelectFloor(f.id)}
               >
-                {f.name || "Floor"}
+                <span className="site-quick-nav__floor-row__text">
+                  <span className="site-quick-nav__floor-row__name">{f.name || "Floor"}</span>
+                  {rowSub ? (
+                    <>
+                      <span className="site-quick-nav__floor-row__sep" aria-hidden>
+                        ·
+                      </span>
+                      <span className="site-quick-nav__floor-row__sub">{rowSub}</span>
+                    </>
+                  ) : null}
+                </span>
+                <span className="site-quick-nav__floor-row__action">
+                  View
+                  <FontAwesomeIcon icon={faChevronRight} className="fa-xs" />
+                </span>
               </button>
-            </li>
-          ))}
-        </ul>
-      ) : null}
-    </div>
-  );
-
-  const primaryButton = (
-    <button type="button" className="site-quick-nav__cta" disabled={!floors.length} onClick={handleViewPlan}>
-      <FontAwesomeIcon icon={faBorderAll} className="site-quick-nav__cta-icon" />
-      <span>View floor plan</span>
-    </button>
+            );
+          })
+        )}
+      </div>
+    </>
   );
 
   return (
-    <CollapsibleQuickNavShell className="site-quick-nav--tr" defaultOpen>
-      <QuickNavCard anchorClassName="site-quick-nav--popout" backSlot={backSlot} row={row} primaryButton={primaryButton} />
+    <CollapsibleQuickNavShell className="site-quick-nav--tr site-quick-nav--building" navKey={navKey}>
+      <QuickNavCard
+        anchorClassName="site-quick-nav--popout site-quick-nav--building"
+        backSlot={null}
+        betweenRuleAndRow={betweenRuleAndRow}
+        row={null}
+        primaryButton={null}
+      />
     </CollapsibleQuickNavShell>
   );
 }
@@ -358,11 +275,9 @@ function QuickNavBuilding({ releaseData, building, floors: floorsProp, onSelectF
 function QuickNavFloor({
   releaseData,
   floor,
-  buildingName,
-  onBackToBuilding,
-  onBackToMap,
   equipment = [],
   onOpenEquipmentDetail,
+  navKey,
 }) {
   const [equipmentSearch, setEquipmentSearch] = useState("");
 
@@ -395,52 +310,31 @@ function QuickNavFloor({
       ? `${filteredEquipment.length} / ${totalEq}`
       : String(totalEq);
 
-  const backSlot =
-    onBackToBuilding || onBackToMap ? (
-      <div className="site-quick-nav__backs">
-        {onBackToBuilding ? (
-          <button type="button" className="site-quick-nav__back" onClick={onBackToBuilding}>
-            <FontAwesomeIcon icon={faArrowLeft} className="site-quick-nav__back-icon" />
-            {buildingName ? formatBuildingHeroTitle(buildingName) : "Building"}
-          </button>
-        ) : null}
-        {onBackToBuilding && onBackToMap ? <span className="site-quick-nav__backs-sep">·</span> : null}
-        {onBackToMap ? (
-          <button type="button" className="site-quick-nav__back site-quick-nav__back--inline" onClick={onBackToMap}>
-            Map view
-          </button>
-        ) : null}
-      </div>
-    ) : null;
-
   const row = (
-    <div className="site-quick-nav__row site-quick-nav__row--static">
-      <span className="site-quick-nav__row-icon" aria-hidden>
-        <FontAwesomeIcon icon={faLayerGroup} />
-      </span>
-      <div className="site-quick-nav__row-text">
-        <div className="site-quick-nav__row-title">{rowTitle}</div>
-        <div className="site-quick-nav__row-sub">{rowSub}</div>
-        {rowMeta ? <div className="site-quick-nav__row-meta">{rowMeta}</div> : null}
-      </div>
+    <div className="site-quick-nav__context mb-2">
+      <div className="site-quick-nav__context-title">{rowTitle}</div>
+      {rowSub ? <div className="site-quick-nav__context-sub">{rowSub}</div> : null}
+      {rowMeta ? <div className="site-quick-nav__context-meta">{rowMeta}</div> : null}
     </div>
   );
 
   const afterRow = (
     <>
       <div className="site-quick-nav__map-toolbar d-flex align-items-center justify-content-between gap-2 mb-2">
-        <span className="site-quick-nav__map-toolbar-label text-white-50 small d-inline-flex align-items-center gap-2">
-          <FontAwesomeIcon icon={faBoxOpen} className="opacity-75" />
+        <span className="site-quick-nav__map-toolbar-label text-white fw-semibold small d-inline-flex align-items-center gap-2">
+          <FontAwesomeIcon icon={faBoxOpen} className="text-white-50" />
           Equipment on floor
         </span>
-        <span className="site-quick-nav__map-toolbar-count text-white-50 small tabular-nums">{countLabel}</span>
+        <span className="badge bg-primary border border-light border-opacity-25 text-white tabular-nums">
+          {countLabel}
+        </span>
       </div>
-      <div className="site-layout-buildings-search-wrap site-quick-nav__search-clip">
-        <label className="site-layout-buildings-search-field w-100 mb-0">
-          <FontAwesomeIcon icon={faSearch} className="site-layout-buildings-search-field__icon text-white-50 fa-sm" />
+      <div className="site-quick-nav__search mb-2">
+        <label className="site-quick-nav__search-field w-100 mb-0">
+          <FontAwesomeIcon icon={faSearch} className="site-quick-nav__search-icon text-white-50 fa-sm" />
           <input
             type="search"
-            className="site-layout-buildings-search-field__input"
+            className="site-quick-nav__search-input legion-operator-log-field"
             placeholder="Search equipment…"
             value={equipmentSearch}
             onChange={(e) => setEquipmentSearch(e.target.value)}
@@ -449,7 +343,7 @@ function QuickNavFloor({
           />
         </label>
       </div>
-      <div className="site-quick-nav__map-buildings-scroll site-quick-nav__floor-eq-list site-layout-buildings-list site-layout-buildings-list--styled">
+      <div className="site-quick-nav__list-scroll site-quick-nav__floor-eq-list legion-operator-log-table-wrap border border-light border-opacity-10 rounded overflow-hidden">
         {totalEq === 0 ? (
           <div className="text-white-50 small px-3 py-3 text-center">No equipment on this floor.</div>
         ) : !filteredEquipment.length ? (
@@ -478,10 +372,13 @@ function QuickNavFloor({
   );
 
   return (
-    <CollapsibleQuickNavShell className="site-quick-nav--tr site-quick-nav--map site-quick-nav--floor">
+    <CollapsibleQuickNavShell
+      className="site-quick-nav--tr site-quick-nav--map site-quick-nav--floor"
+      navKey={navKey}
+    >
       <QuickNavCard
         anchorClassName="site-quick-nav--popout site-quick-nav--map site-quick-nav--floor"
-        backSlot={backSlot}
+        backSlot={null}
         row={row}
         afterRow={afterRow}
         primaryButton={null}

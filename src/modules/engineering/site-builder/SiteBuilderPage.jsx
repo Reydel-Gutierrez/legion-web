@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback, useEffect, useMemo } from "react";
 import { Container, Row, Col, Card, Button, Dropdown, Modal, Form } from "@themesberg/react-bootstrap";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
@@ -25,6 +25,7 @@ import AddEquipmentModal from "../equipment-builder/components/AddEquipmentModal
 import { engineeringRepository } from "../../../lib/data";
 import { USE_HIERARCHY_API } from "../../../lib/data/config";
 import { isBackendSiteId } from "../../../lib/data/siteIdUtils";
+import { coerceSiteKeyToApiId } from "../../../lib/data/siteApiResolution";
 import * as hierarchyRepository from "../../../lib/data/repositories/hierarchyRepository";
 import { selectSiteTree, siteTreeToWorkingSite } from "../../../hooks/useWorkingVersion";
 import { WORKING_VERSION_ACTIONS } from "../working-version/workingVersionReducer";
@@ -194,7 +195,7 @@ function validateStructure(siteTree) {
 // SiteBuilderPage
 // ---------------------------------------------------------------------------
 export default function SiteBuilderPage() {
-  const { site, setSite } = useSite();
+  const { site, setSite, apiSites } = useSite();
   const {
     workingVersion,
     workingState,
@@ -203,6 +204,13 @@ export default function SiteBuilderPage() {
     backendWorkingVersionLoading,
     backendWorkingVersionError,
   } = useWorkingVersion();
+  /** UUID for hierarchy API — sidebar may hold a display name while working state has the real id. */
+  const siteApiId = useMemo(() => {
+    if (isBackendSiteId(workingState.site?.id)) return workingState.site.id;
+    const coerced = coerceSiteKeyToApiId(site, apiSites);
+    if (coerced) return coerced;
+    return isBackendSiteId(site) ? site : null;
+  }, [site, apiSites, workingState.site?.id]);
   const siteTree = selectSiteTree(workingVersion);
   const equipmentList = workingState.equipment ?? [];
 
@@ -279,7 +287,7 @@ export default function SiteBuilderPage() {
               setSelectedId(null);
               setShowCreateModal(false);
               setSite(created.id);
-              engineeringRepository.notifyEngineeringHierarchyChanged();
+              engineeringRepository.notifyEngineeringHierarchyChanged(created.id);
             },
           });
         } catch (e) {
@@ -318,10 +326,10 @@ export default function SiteBuilderPage() {
 
   const handleAddBuilding = useCallback(async () => {
     if (!siteTree || !workingState.site) return;
-    if (USE_HIERARCHY_API && isBackendSiteId(workingState.site.id)) {
+    if (USE_HIERARCHY_API && siteApiId) {
       setHierarchyMutationError(null);
       try {
-        await hierarchyRepository.createBuilding(workingState.site.id, {
+        await hierarchyRepository.createBuilding(siteApiId, {
           name: `Building ${(siteTree.children || []).length + 1}`,
           addressLine1: "TBD",
           city: "—",
@@ -329,11 +337,11 @@ export default function SiteBuilderPage() {
           postalCode: "00000",
           country: "US",
         });
-        const payload = await engineeringRepository.fetchWorkingVersion(workingState.site.id);
+        const payload = await engineeringRepository.fetchWorkingVersion(siteApiId);
         if (payload) {
-          resetWorkingVersionFromApiPayload(dispatch, workingState.site.id, payload);
+          resetWorkingVersionFromApiPayload(dispatch, siteApiId, payload);
         }
-        engineeringRepository.notifyEngineeringHierarchyChanged();
+        engineeringRepository.notifyEngineeringHierarchyChanged(siteApiId);
       } catch (e) {
         setHierarchyMutationError(e?.message || String(e));
       }
@@ -352,7 +360,7 @@ export default function SiteBuilderPage() {
     if (newSite) actions.setSite(newSite);
     setExpandedIds((prev) => new Set([...prev, siteTree.id, id]));
     setSelectedId(id);
-  }, [siteTree, workingState.site, actions, dispatch]);
+  }, [siteTree, siteApiId, actions, dispatch]);
 
   const handleSaveNode = useCallback(
     async (id, form) => {
@@ -365,7 +373,7 @@ export default function SiteBuilderPage() {
       const node = findNodeById(siteTree, id);
       if (
         USE_HIERARCHY_API &&
-        isBackendSiteId(site) &&
+        siteApiId &&
         node &&
         (node.type === "site" || node.type === "building" || node.type === "floor")
       ) {
@@ -380,7 +388,7 @@ export default function SiteBuilderPage() {
             errorMessage: `Failed to save ${nodeLabel.toLowerCase()}`,
             run: async () => {
               if (node.type === "site") {
-                await hierarchyRepository.updateSite(site, {
+                await hierarchyRepository.updateSite(siteApiId, {
                   name: form.name.trim(),
                   timezone: form.timezone != null && String(form.timezone).trim() ? String(form.timezone).trim() : null,
                   siteType: form.siteType != null && String(form.siteType).trim() ? String(form.siteType).trim() : null,
@@ -410,17 +418,21 @@ export default function SiteBuilderPage() {
               } else {
                 await hierarchyRepository.updateFloor(id, {
                   name: form.name.trim(),
+                  displayLabel:
+                    form.displayLabel != null && String(form.displayLabel).trim()
+                      ? String(form.displayLabel).trim()
+                      : null,
                   floorType: form.floorType != null && String(form.floorType).trim() ? String(form.floorType).trim() : null,
                   occupancyType:
                     form.occupancyType != null && String(form.occupancyType).trim() ? String(form.occupancyType).trim() : null,
                   sortOrder: Number.isFinite(Number(form.sortOrder)) ? Number(form.sortOrder) : 0,
                 });
               }
-              const payload = await engineeringRepository.fetchWorkingVersion(site);
+              const payload = await engineeringRepository.fetchWorkingVersion(siteApiId);
               if (payload) {
-                resetWorkingVersionFromApiPayload(dispatch, site, payload);
+                resetWorkingVersionFromApiPayload(dispatch, siteApiId, payload);
               }
-              engineeringRepository.notifyEngineeringHierarchyChanged();
+              engineeringRepository.notifyEngineeringHierarchyChanged(siteApiId);
             },
           });
         } catch (e) {
@@ -455,14 +467,14 @@ export default function SiteBuilderPage() {
       appNotify.success(`${nodeLabel} saved successfully`);
       appLogger.success(`${nodeLabel} saved successfully`, { area: "Site Builder", action: `Save ${nodeLabel}` });
     },
-    [siteTree, actions, site, dispatch]
+    [siteTree, actions, siteApiId, dispatch]
   );
 
   const handleDeleteNode = useCallback(
     async (id) => {
       if (!siteTree) return;
       const node = findNodeById(siteTree, id);
-      if (USE_HIERARCHY_API && isBackendSiteId(site) && node && node.type !== "site") {
+      if (USE_HIERARCHY_API && siteApiId && node && node.type !== "site") {
         setHierarchyMutationError(null);
         try {
           if (node.type === "building") {
@@ -470,11 +482,11 @@ export default function SiteBuilderPage() {
           } else if (node.type === "floor") {
             await hierarchyRepository.deleteFloor(id);
           }
-          const payload = await engineeringRepository.fetchWorkingVersion(site);
+          const payload = await engineeringRepository.fetchWorkingVersion(siteApiId);
           if (payload) {
-            resetWorkingVersionFromApiPayload(dispatch, site, payload);
+            resetWorkingVersionFromApiPayload(dispatch, siteApiId, payload);
           }
-          engineeringRepository.notifyEngineeringHierarchyChanged();
+          engineeringRepository.notifyEngineeringHierarchyChanged(siteApiId);
           if (selectedId === id) setSelectedId(null);
           setDeleteConfirmNode(null);
         } catch (e) {
@@ -493,7 +505,7 @@ export default function SiteBuilderPage() {
       if (selectedId === id) setSelectedId(null);
       setDeleteConfirmNode(null);
     },
-    [siteTree, workingState.equipment, selectedId, actions, site, dispatch]
+    [siteTree, workingState.equipment, selectedId, actions, siteApiId, dispatch]
   );
 
   const handleDeleteConfirm = useCallback((node) => {
@@ -555,7 +567,7 @@ export default function SiteBuilderPage() {
       const source = equipmentList.find((e) => e.id === equipmentId);
       if (!source) return;
 
-      if (USE_HIERARCHY_API && isBackendSiteId(site)) {
+      if (USE_HIERARCHY_API && siteApiId) {
         setHierarchyMutationError(null);
         try {
           const base = String(source.name || "Equipment").replace(/\s*\(copy\)\s*$/i, "").trim();
@@ -566,11 +578,11 @@ export default function SiteBuilderPage() {
             equipmentType: source.type || source.equipmentType || "CUSTOM",
             ...(source.templateName ? { templateName: source.templateName } : {}),
           });
-          const payload = await engineeringRepository.fetchWorkingVersion(site);
+          const payload = await engineeringRepository.fetchWorkingVersion(siteApiId);
           if (payload) {
-            resetWorkingVersionFromApiPayload(dispatch, site, payload);
+            resetWorkingVersionFromApiPayload(dispatch, siteApiId, payload);
           }
-          engineeringRepository.notifyEngineeringHierarchyChanged();
+          engineeringRepository.notifyEngineeringHierarchyChanged(siteApiId);
         } catch (e) {
           setHierarchyMutationError(e?.message || String(e));
         }
@@ -614,12 +626,12 @@ export default function SiteBuilderPage() {
 
       setSelectedEquipmentId(newId);
     },
-    [equipmentList, actions, site, siteTree, workingState.mappings, workingState.graphics, dispatch]
+    [equipmentList, actions, siteApiId, siteTree, workingState.mappings, workingState.graphics, dispatch]
   );
 
   const handleSaveEquipment = useCallback(
     async (id, form) => {
-      if (USE_HIERARCHY_API && isBackendSiteId(site)) {
+      if (USE_HIERARCHY_API && siteApiId) {
         setHierarchyMutationError(null);
         try {
           await withEngineeringAction({
@@ -651,11 +663,11 @@ export default function SiteBuilderPage() {
                 controllerRef: form.controllerRef,
                 protocol,
               });
-              const payload = await engineeringRepository.fetchWorkingVersion(site);
+              const payload = await engineeringRepository.fetchWorkingVersion(siteApiId);
               if (payload) {
-                resetWorkingVersionFromApiPayload(dispatch, site, payload);
+                resetWorkingVersionFromApiPayload(dispatch, siteApiId, payload);
               }
-              engineeringRepository.notifyEngineeringHierarchyChanged();
+              engineeringRepository.notifyEngineeringHierarchyChanged(siteApiId);
             },
           });
         } catch (e) {
@@ -697,7 +709,7 @@ export default function SiteBuilderPage() {
       appNotify.success("Equipment saved successfully");
       appLogger.success("Equipment saved successfully", { area: "Site Builder", action: "Save equipment" });
     },
-    [workingState.equipment, workingState.discoveredDevices, actions, site, siteTree, dispatch]
+    [workingState.equipment, workingState.discoveredDevices, actions, siteApiId, siteTree, dispatch]
   );
 
   const handleGraphicChange = useCallback(
@@ -739,15 +751,15 @@ export default function SiteBuilderPage() {
 
   const handleDeleteEquipment = useCallback(
     async (id) => {
-      if (USE_HIERARCHY_API && isBackendSiteId(site)) {
+      if (USE_HIERARCHY_API && siteApiId) {
         setHierarchyMutationError(null);
         try {
           await hierarchyRepository.deleteEquipment(id);
-          const payload = await engineeringRepository.fetchWorkingVersion(site);
+          const payload = await engineeringRepository.fetchWorkingVersion(siteApiId);
           if (payload) {
-            resetWorkingVersionFromApiPayload(dispatch, site, payload);
+            resetWorkingVersionFromApiPayload(dispatch, siteApiId, payload);
           }
-          engineeringRepository.notifyEngineeringHierarchyChanged();
+          engineeringRepository.notifyEngineeringHierarchyChanged(siteApiId);
           setSelectedEquipmentId(null);
         } catch (e) {
           setHierarchyMutationError(e?.message || String(e));
@@ -758,24 +770,30 @@ export default function SiteBuilderPage() {
       actions.setEquipment(next);
       setSelectedEquipmentId(null);
     },
-    [workingState.equipment, actions, site, dispatch]
+    [workingState.equipment, actions, siteApiId, dispatch]
   );
 
   const handleAddChild = useCallback(
     async (node) => {
       if (node?.type === "site") handleAddBuilding();
       else if (node?.type === "building") {
-        if (USE_HIERARCHY_API && isBackendSiteId(site)) {
+        if (USE_HIERARCHY_API && siteApiId) {
           setHierarchyMutationError(null);
           try {
+            const nextSortOrder =
+              (node.children || []).reduce(
+                (max, f) => Math.max(max, typeof f.sortOrder === "number" ? f.sortOrder : -1),
+                -1
+              ) + 1;
             await hierarchyRepository.createFloor(node.id, {
               name: `Floor ${(node.children || []).length + 1}`,
+              sortOrder: nextSortOrder,
             });
-            const payload = await engineeringRepository.fetchWorkingVersion(site);
+            const payload = await engineeringRepository.fetchWorkingVersion(siteApiId);
             if (payload) {
-              resetWorkingVersionFromApiPayload(dispatch, site, payload);
+              resetWorkingVersionFromApiPayload(dispatch, siteApiId, payload);
             }
-            engineeringRepository.notifyEngineeringHierarchyChanged();
+            engineeringRepository.notifyEngineeringHierarchyChanged(siteApiId);
           } catch (e) {
             setHierarchyMutationError(e?.message || String(e));
           }
@@ -799,7 +817,7 @@ export default function SiteBuilderPage() {
         setSelectedId(id);
       }
     },
-    [handleAddBuilding, siteTree, actions, site, dispatch]
+    [handleAddBuilding, siteTree, actions, siteApiId, dispatch]
   );
 
   const handleValidate = useCallback(() => {
@@ -812,7 +830,7 @@ export default function SiteBuilderPage() {
     async (data) => {
       if (!selectedNode || selectedNode.type !== "floor") return;
       const floorId = data.floorId || selectedNode.id;
-      if (USE_HIERARCHY_API && isBackendSiteId(site)) {
+      if (USE_HIERARCHY_API && siteApiId) {
         setHierarchyMutationError(null);
         try {
           const code =
@@ -841,11 +859,11 @@ export default function SiteBuilderPage() {
               protocol,
             });
           }
-          const payload = await engineeringRepository.fetchWorkingVersion(site);
+          const payload = await engineeringRepository.fetchWorkingVersion(siteApiId);
           if (payload) {
-            resetWorkingVersionFromApiPayload(dispatch, site, payload);
+            resetWorkingVersionFromApiPayload(dispatch, siteApiId, payload);
           }
-          engineeringRepository.notifyEngineeringHierarchyChanged();
+          engineeringRepository.notifyEngineeringHierarchyChanged(siteApiId);
         } catch (e) {
           setHierarchyMutationError(e?.message || String(e));
         }
@@ -932,7 +950,7 @@ export default function SiteBuilderPage() {
 
     const ordered = getEquipmentOrderedForSiteWide(siteTree, list);
 
-    if (USE_HIERARCHY_API && isBackendSiteId(site)) {
+    if (USE_HIERARCHY_API && siteApiId) {
       setHierarchyMutationError(null);
       setGenerateApplying(true);
       try {
@@ -961,11 +979,11 @@ export default function SiteBuilderPage() {
             );
           }
         }
-        const payload = await engineeringRepository.fetchWorkingVersion(site);
+        const payload = await engineeringRepository.fetchWorkingVersion(siteApiId);
         if (payload) {
-          resetWorkingVersionFromApiPayload(dispatch, site, payload);
+          resetWorkingVersionFromApiPayload(dispatch, siteApiId, payload);
         }
-        engineeringRepository.notifyEngineeringHierarchyChanged();
+        engineeringRepository.notifyEngineeringHierarchyChanged(siteApiId);
         closeGenerateModal();
       } catch (e) {
         setHierarchyMutationError(e?.message || String(e));
@@ -1014,7 +1032,7 @@ export default function SiteBuilderPage() {
           </div>
         </div>
 
-        {USE_HIERARCHY_API && isBackendSiteId(site) && backendWorkingVersionLoading && (
+        {USE_HIERARCHY_API && siteApiId && backendWorkingVersionLoading && (
           <div className="text-white-50 small mb-2">Loading site structure from server…</div>
         )}
         {(backendWorkingVersionError || hierarchyMutationError) && (

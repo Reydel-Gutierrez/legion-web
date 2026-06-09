@@ -8,15 +8,17 @@ import { coerceSiteKeyToApiId } from "../../../lib/data/siteApiResolution";
 import { isBackendSiteId } from "../../../lib/data/siteIdUtils";
 import { Container, Card, Button } from "@themesberg/react-bootstrap";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faChevronRight, faExclamationTriangle } from "@fortawesome/free-solid-svg-icons";
+import { faExclamationTriangle } from "@fortawesome/free-solid-svg-icons";
 import LegionHeroHeader from "../../../components/legion/LegionHeroHeader";
 import DeployedGraphicPreview, { DEPLOYED_GRAPHIC_PRESENTATION } from "../equipment/DeployedGraphicPreview";
 import SiteGlobalMapView from "./layout/SiteGlobalMapView";
 import SiteBuildingOverview from "./layout/SiteBuildingOverview";
+import SiteBuildingInsightWidgets from "./layout/SiteBuildingInsightWidgets";
 import { Routes } from "../../../routes";
 import { getSummaryFromActiveRelease } from "../../../lib/activeReleaseUtils";
-import { findBuildingInRelease } from "../../../lib/siteBuildingOverviewUtils";
+import { findBuildingInRelease, equipmentForBuilding } from "../../../lib/siteBuildingOverviewUtils";
 import SiteQuickNavigation from "./layout/SiteQuickNavigation";
+import SiteLayoutLocationNav from "./layout/SiteLayoutLocationNav";
 
 /** Path segment for breadcrumb */
 function pathSegment(id, label) {
@@ -115,8 +117,12 @@ export default function SitePage() {
   const [levelIndex, setLevelIndex] = useState(0);
   const [selectedBuildingId, setSelectedBuildingId] = useState(null);
   const [layoutHydrated, setLayoutHydrated] = useState(false);
+  const [layoutNavTick, setLayoutNavTick] = useState(0);
   const skipPersistRef = useRef(true);
   const restoredLayoutRef = useRef(false);
+  const layoutNavRef = useRef({ stack: [], index: -1 });
+
+  const bumpLayoutNav = useCallback(() => setLayoutNavTick((n) => n + 1), []);
 
   const siteStorageKey = siteLayoutStorageKey(activeReleaseData?.site?.id);
 
@@ -127,7 +133,19 @@ export default function SitePage() {
       setLevelIndex(idx);
       const lev = layoutLevels[idx];
       if (lev?.type === "building") setSelectedBuildingId(lev.id);
+      else if (lev?.type === "site") setSelectedBuildingId(null);
       return true;
+    },
+    [layoutLevels]
+  );
+
+  const applyLevelIndex = useCallback(
+    (idx) => {
+      if (idx < 0 || idx >= layoutLevels.length) return;
+      setLevelIndex(idx);
+      const lev = layoutLevels[idx];
+      if (lev?.type === "building") setSelectedBuildingId(lev.id);
+      else if (lev?.type === "site") setSelectedBuildingId(null);
     },
     [layoutLevels]
   );
@@ -136,7 +154,9 @@ export default function SitePage() {
     skipPersistRef.current = true;
     restoredLayoutRef.current = false;
     setLayoutHydrated(false);
-  }, [siteStorageKey]);
+    layoutNavRef.current = { stack: [], index: -1 };
+    bumpLayoutNav();
+  }, [siteStorageKey, bumpLayoutNav]);
 
   useEffect(() => {
     if (layoutLevels.length === 0) return;
@@ -162,6 +182,13 @@ export default function SitePage() {
     history,
     applyLayoutLevelId,
   ]);
+
+  useEffect(() => {
+    if (!layoutHydrated || layoutLevels.length === 0) return;
+    if (layoutNavRef.current.index >= 0) return;
+    layoutNavRef.current = { stack: [levelIndex], index: 0 };
+    bumpLayoutNav();
+  }, [layoutHydrated, layoutLevels.length, levelIndex, bumpLayoutNav]);
 
   useEffect(() => {
     if (skipPersistRef.current || !siteStorageKey || layoutLevels.length === 0) return;
@@ -202,14 +229,66 @@ export default function SitePage() {
   const goToLevelByPathId = useCallback(
     (pathId) => {
       const idx = layoutLevels.findIndex((lev) => lev.id === pathId);
-      if (idx >= 0) {
-        setLevelIndex(idx);
-        const lev = layoutLevels[idx];
-        if (lev?.type === "building") setSelectedBuildingId(lev.id);
-      }
+      if (idx < 0) return;
+
+      const nav = layoutNavRef.current;
+      if (nav.index >= 0 && nav.stack[nav.index] === idx) return;
+
+      nav.stack = nav.stack.slice(0, nav.index + 1);
+      nav.stack.push(idx);
+      nav.index = nav.stack.length - 1;
+      applyLevelIndex(idx);
+      bumpLayoutNav();
     },
-    [layoutLevels]
+    [layoutLevels, applyLevelIndex, bumpLayoutNav]
   );
+
+  const goLayoutNavBack = useCallback(() => {
+    const nav = layoutNavRef.current;
+    if (nav.index > 0) {
+      nav.index -= 1;
+      applyLevelIndex(nav.stack[nav.index]);
+      bumpLayoutNav();
+      return;
+    }
+
+    const current = layoutLevels[levelIndex];
+    const bc = current?.breadcrumb;
+    if (!bc || bc.length <= 1) return;
+
+    const parentId = bc[bc.length - 2].id;
+    const parentIdx = layoutLevels.findIndex((lev) => lev.id === parentId);
+    if (parentIdx < 0) return;
+
+    nav.stack = [parentIdx, nav.stack[nav.index]];
+    nav.index = 0;
+    applyLevelIndex(parentIdx);
+    bumpLayoutNav();
+  }, [levelIndex, layoutLevels, applyLevelIndex, bumpLayoutNav]);
+
+  const goLayoutNavForward = useCallback(() => {
+    const nav = layoutNavRef.current;
+    if (nav.index >= nav.stack.length - 1) return;
+    nav.index += 1;
+    applyLevelIndex(nav.stack[nav.index]);
+    bumpLayoutNav();
+  }, [applyLevelIndex, bumpLayoutNav]);
+
+  const layoutNav = useMemo(() => {
+    void layoutNavTick;
+    const nav = layoutNavRef.current;
+    const current = layoutLevels[levelIndex];
+    const canGoBack = nav.index > 0 || (current?.breadcrumb?.length ?? 0) > 1;
+    const canGoForward = nav.index < nav.stack.length - 1;
+
+    return {
+      canGoBack,
+      canGoForward,
+      onBack: goLayoutNavBack,
+      onForward: goLayoutNavForward,
+      levelKey: current?.id ?? "site",
+    };
+  }, [layoutNavTick, levelIndex, layoutLevels, goLayoutNavBack, goLayoutNavForward]);
 
   const openBuildingLayout = useCallback(
     (buildingId) => {
@@ -218,12 +297,6 @@ export default function SitePage() {
     },
     [goToLevelByPathId]
   );
-
-  const backToSiteMap = useCallback(() => {
-    const siteLev = layoutLevels.find((l) => l.type === "site");
-    if (siteLev) goToLevelByPathId(siteLev.id);
-    setSelectedBuildingId(null);
-  }, [layoutLevels, goToLevelByPathId]);
 
   const floorQuickNavContext = useMemo(() => {
     if (selectedLevel?.type !== "floor") return null;
@@ -242,6 +315,11 @@ export default function SitePage() {
 
   const isGlobalSiteView = Boolean(hasLevels && selectedLevel?.type === "site" && levelIndex === 0);
   const isBuildingLayoutView = Boolean(hasLevels && selectedLevel?.type === "building");
+
+  const buildingEquipment = useMemo(() => {
+    if (!isBuildingLayoutView || !selectedNodeId) return [];
+    return equipmentForBuilding(activeReleaseData, selectedNodeId);
+  }, [isBuildingLayoutView, selectedNodeId, activeReleaseData]);
 
   const goToEquipmentDetail = (equipmentId) => {
     const path = Routes.LegionEquipmentDetail.path.replace(":equipmentId", encodeURIComponent(equipmentId));
@@ -281,27 +359,12 @@ export default function SitePage() {
             {releaseError}
           </div>
         )}
-        {/* Breadcrumb — hidden on building main page (hero + floor nav replace it) */}
-        {layoutHydrated && !isBuildingLayoutView ? (
-          <nav aria-label="Site location" className="d-flex align-items-center flex-wrap gap-1 text-white-50 small mb-3">
-            <span className="text-white-50">Site Layout</span>
-            {breadcrumb.length > 0 && breadcrumb.map((seg, i) => (
-              <span key={seg.id} className="d-flex align-items-center gap-1">
-                <FontAwesomeIcon icon={faChevronRight} className="fa-xs opacity-50" />
-                {i < breadcrumb.length - 1 ? (
-                  <button
-                    type="button"
-                    className="btn btn-link p-0 text-white-50 small text-decoration-none"
-                    onClick={() => goToLevelByPathId(seg.id)}
-                  >
-                    {seg.label}
-                  </button>
-                ) : (
-                  <span className="text-white">{seg.label}</span>
-                )}
-              </span>
-            ))}
-          </nav>
+        {layoutHydrated && hasLevels ? (
+          <SiteLayoutLocationNav
+            layoutNav={layoutNav}
+            breadcrumb={breadcrumb}
+            onSelectLevel={goToLevelByPathId}
+          />
         ) : null}
 
         <div className="site-layout-full-card-wrap">
@@ -315,6 +378,7 @@ export default function SitePage() {
                 selectedBuildingId={selectedBuildingId}
                 onSelectBuilding={setSelectedBuildingId}
                 onOpenBuilding={openBuildingLayout}
+                navKey={layoutNav.levelKey}
               />
               {(summary.activeAlarms > 0 || summary.unackedAlarms > 0) && (
                 <div className="site-layout-red-zones-strip site-layout-red-zones-strip--below-map mt-2 rounded border border-light border-opacity-10 px-3 py-2">
@@ -336,12 +400,21 @@ export default function SitePage() {
               )}
             </>
           ) : (
-            <Card className="site-layout-full-card bg-primary border border-light border-opacity-10 shadow-sm overflow-hidden">
-              <Card.Body className="p-0 position-relative">
+            <Card
+              className={[
+                "site-layout-full-card bg-primary border border-light border-opacity-10 shadow-sm overflow-hidden",
+                isBuildingLayoutView ? "site-layout-full-card--building" : "",
+              ]
+                .filter(Boolean)
+                .join(" ")}
+            >
+              <Card.Body
+                className={isBuildingLayoutView ? "p-0 site-building-view" : "p-0 position-relative"}
+              >
                 <div
                   className={[
                     "legion-map-wrapper site-layout-map-area",
-                    isBuildingLayoutView ? "site-layout-map-area--building-overview" : "",
+                    isBuildingLayoutView ? "site-building-view__media site-layout-map-area--building-overview" : "",
                   ]
                     .filter(Boolean)
                     .join(" ")}
@@ -351,7 +424,7 @@ export default function SitePage() {
                       releaseData={activeReleaseData}
                       buildingId={selectedNodeId}
                       onSelectFloor={(floorId) => goToLevelByPathId(floorId)}
-                      onBackToMap={backToSiteMap}
+                      navKey={layoutNav.levelKey}
                     />
                   ) : null}
                   {selectedLevel?.type === "floor" && floorQuickNavContext ? (
@@ -359,11 +432,9 @@ export default function SitePage() {
                       variant="floor"
                       releaseData={activeReleaseData}
                       floor={floorQuickNavContext.floor}
-                      buildingName={floorQuickNavContext.buildingName}
                       equipment={equipmentOnFloor}
                       onOpenEquipmentDetail={goToEquipmentDetail}
-                      onBackToBuilding={() => goToLevelByPathId(floorQuickNavContext.buildingId)}
-                      onBackToMap={backToSiteMap}
+                      navKey={layoutNav.levelKey}
                     />
                   ) : null}
                   {hasLayoutGraphic ? (
@@ -409,6 +480,12 @@ export default function SitePage() {
                     </div>
                   )}
                 </div>
+                {isBuildingLayoutView && selectedNodeId ? (
+                  <SiteBuildingInsightWidgets
+                    buildingId={selectedNodeId}
+                    buildingEquipment={buildingEquipment}
+                  />
+                ) : null}
               </Card.Body>
             </Card>
           )}

@@ -75,6 +75,7 @@ export default function SiteGlobalMapView({
   selectedBuildingId,
   onSelectBuilding,
   onOpenBuilding,
+  navKey,
 }) {
   const releaseSiteId =
     activeReleaseData && activeReleaseData.site && activeReleaseData.site.id ? activeReleaseData.site.id : null;
@@ -307,6 +308,7 @@ export default function SiteGlobalMapView({
           search={search}
           onSearchChange={setSearch}
           onSelectBuilding={onSelectBuilding}
+          navKey={navKey}
         />
 
         <div className="site-layout-global-map-badge d-flex align-items-center gap-2">
