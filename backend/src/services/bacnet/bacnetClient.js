@@ -4,6 +4,7 @@ const bacnet = require('node-bacnet');
 const prisma = require('../../lib/prisma');
 const { HttpError } = require('../../lib/httpError');
 const {
+  bacnetEnum,
   DEFAULT_BACNET_PORT,
   DEFAULT_APDU_TIMEOUT_MS,
   OBJECT_TYPE_BY_ABBR,
@@ -96,10 +97,16 @@ function resolveObjectType(objectType) {
 
   const normalized = raw.toUpperCase();
   const resolved = OBJECT_TYPE_BY_ABBR[normalized];
-  if (resolved == null) {
-    throw new HttpError(400, `Unsupported BACnet objectType "${objectType}"`);
+  if (resolved != null) {
+    return resolved;
   }
-  return resolved;
+
+  const enumMatch = bacnetEnum.ObjectType[normalized];
+  if (enumMatch != null) {
+    return enumMatch;
+  }
+
+  throw new HttpError(400, `Unsupported BACnet objectType "${objectType}"`);
 }
 
 function resolveObjectInstance(objectInstance) {

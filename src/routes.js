@@ -26,6 +26,7 @@ export const Routes = {
   EngineeringNetwork: { path: "/legion/engineering/network" },
   EngineeringNetworkDiscovery: { path: "/legion/engineering/network/discovery" },
   EngineeringNetworkConfiguration: { path: "/legion/engineering/network/configuration" },
+  EngineeringBacnetExplorer: { path: "/legion/engineering/bacnet-explorer" },
   EngineeringPointMapping: { path: "/legion/engineering/point-mapping" },
   EngineeringGraphicsManager: { path: "/legion/engineering/graphics-manager" },
   EngineeringTemplateLibrary: { path: "/legion/engineering/templates" },

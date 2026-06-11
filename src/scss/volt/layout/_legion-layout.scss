@@ -7307,3 +7307,1003 @@ main.content.legion-bg .container-fluid.trends-page {
     margin-right: -0.5rem;
   }
 }
+
+/* Engineering — BACnet Explorer (aligned with Network Configuration card styling) */
+.bacnet-explorer-page {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - var(--legion-topbar-h, 44px) - var(--legion-footer-h, 40px));
+  max-height: calc(100vh - var(--legion-topbar-h, 44px) - var(--legion-footer-h, 40px));
+  min-height: 0;
+  overflow: hidden;
+
+  @supports (height: 100dvh) {
+    height: calc(100dvh - var(--legion-topbar-h, 44px) - var(--legion-footer-h, 40px));
+    max-height: calc(100dvh - var(--legion-topbar-h, 44px) - var(--legion-footer-h, 40px));
+  }
+
+  .bacnet-explorer-page__shell {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+    height: 100%;
+  }
+
+  .bacnet-explorer-page__hero {
+    flex-shrink: 0;
+  }
+
+  .bacnet-explorer-page__workspace {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .bacnet-explorer-card {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+    height: 100%;
+    overflow: hidden;
+  }
+
+  .bacnet-explorer-card__body {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    padding: 0.75rem;
+    overflow: hidden;
+    color: $legion-text;
+  }
+
+  .bacnet-explorer-layout {
+    display: grid;
+    grid-template-columns: minmax(220px, 280px) minmax(320px, 1fr) minmax(300px, 360px);
+    gap: 0.75rem;
+    flex: 1 1 auto;
+    min-height: 0;
+    height: 100%;
+    align-items: stretch;
+  }
+
+  .bacnet-explorer-panel {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    max-height: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.18);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 0.375rem;
+    overflow: hidden;
+    color: $legion-text;
+  }
+
+  .bacnet-explorer-panel--details .bacnet-explorer-panel__main {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .bacnet-explorer-panel--details .bacnet-explorer-panel__body--details {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: auto;
+  }
+
+  .bacnet-explorer-panel--details .bacnet-explorer-panel__footer {
+    flex-shrink: 0;
+  }
+
+  .bacnet-explorer-panel__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0.625rem 0.75rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .bacnet-explorer-panel__header .bacnet-explorer-panel__title {
+    min-width: 0;
+    flex: 1 1 auto;
+  }
+
+  .bacnet-explorer-panel__header--stacked {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .bacnet-explorer-panel__refresh {
+    flex-shrink: 0;
+  }
+
+  .bacnet-explorer-panel__title {
+    color: $legion-text;
+    font-size: 0.8125rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .bacnet-explorer-panel__subtitle {
+    margin-top: 0.125rem;
+    font-size: 0.75rem;
+    color: $legion-text-muted;
+  }
+
+  .bacnet-explorer-panel__toolbar {
+    padding: 0.625rem 0.75rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(0, 0, 0, 0.12);
+  }
+
+  .bacnet-explorer-panel__body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: auto;
+    padding: 0.5rem 0.75rem 0.75rem;
+    background: rgba(0, 0, 0, 0.12);
+  }
+
+  .bacnet-explorer-panel--devices {
+    .bacnet-explorer-panel__body--device-list {
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      overflow: hidden;
+      padding: 0;
+    }
+
+    .bacnet-explorer-device-list {
+      flex: 1 1 auto;
+      min-height: 0;
+      overflow-y: auto;
+      overflow-x: hidden;
+      padding: 0.375rem 0.5rem;
+    }
+
+    .bacnet-explorer-panel__device-hint {
+      flex-shrink: 0;
+      padding: 0.375rem 0.75rem;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(0, 0, 0, 0.15);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .bacnet-explorer-empty,
+    .bacnet-explorer-error {
+      padding: 0.5rem 0.75rem;
+    }
+  }
+
+  .bacnet-explorer-panel__footer {
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    padding: 0.75rem;
+    background: rgba(0, 0, 0, 0.15);
+    flex-shrink: 0;
+    max-height: 42%;
+    overflow: auto;
+  }
+
+  .bacnet-explorer-live-loading {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.8125rem;
+    color: $legion-text-muted;
+    margin-bottom: 0.5rem;
+  }
+
+  .bacnet-explorer-muted {
+    color: $legion-text-muted !important;
+  }
+
+  .bacnet-explorer-btn {
+    border-color: rgba(255, 255, 255, 0.18) !important;
+    color: $legion-text !important;
+
+    &:hover:not(:disabled) {
+      background: rgba(255, 255, 255, 0.06) !important;
+      border-color: rgba(255, 255, 255, 0.28) !important;
+    }
+  }
+
+  .bacnet-explorer-device-card {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    width: 100%;
+    text-align: left;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 0.25rem;
+    background: rgba(0, 0, 0, 0.12);
+    color: $legion-text;
+    padding: 0.375rem 0.5rem;
+    margin-bottom: 0.25rem;
+    transition: border-color 0.15s ease, background-color 0.15s ease;
+
+    &:hover {
+      border-color: rgba(255, 255, 255, 0.14);
+      background: rgba(255, 255, 255, 0.03);
+    }
+
+    &.is-selected {
+      border-color: rgba($legion-accent-engineering, 0.65);
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .bacnet-explorer-status-dot {
+      margin-top: 0.2rem;
+    }
+  }
+
+  .bacnet-explorer-device-card__content {
+    min-width: 0;
+    flex: 1 1 auto;
+    line-height: 1.25;
+  }
+
+  .bacnet-explorer-device-card__title {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: $legion-text;
+  }
+
+  .bacnet-explorer-device-card__address {
+    font-size: 0.6875rem;
+    color: rgba(255, 255, 255, 0.88);
+    margin-top: 0.0625rem;
+  }
+
+  .bacnet-explorer-device-card__model {
+    font-size: 0.6875rem;
+    color: rgba(255, 255, 255, 0.65);
+    margin-top: 0.0625rem;
+  }
+
+  .bacnet-explorer-device-card__meta {
+    font-size: 0.625rem;
+    color: $legion-text-muted;
+    margin-top: 0.125rem;
+  }
+
+  .bacnet-explorer-status-dot {
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 50%;
+    flex: 0 0 auto;
+  }
+
+  .bacnet-explorer-status--online {
+    background: #3ddc84;
+    box-shadow: 0 0 0 2px rgba(61, 220, 132, 0.2);
+  }
+
+  .bacnet-explorer-status--stale {
+    background: #f0ad4e;
+  }
+
+  .bacnet-explorer-status--offline,
+  .bacnet-explorer-status--unknown {
+    background: rgba(255, 255, 255, 0.28);
+  }
+
+  .bacnet-explorer-status--offline-confirmed {
+    background: #e57373;
+    box-shadow: 0 0 0 2px rgba(229, 115, 115, 0.2);
+  }
+
+  .bacnet-explorer-tree-filters {
+    display: grid;
+    gap: 0.375rem;
+
+    .form-check-label {
+      color: $legion-text-muted;
+    }
+  }
+
+  .bacnet-explorer-tree-group__header {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(0, 0, 0, 0.15);
+    color: $legion-text;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    padding: 0.45rem 0.5rem;
+    margin-top: 0.375rem;
+    border-radius: 0.35rem;
+  }
+
+  .bacnet-explorer-tree-group__count {
+    margin-left: auto;
+    color: $legion-text-muted;
+    font-weight: 500;
+  }
+
+  .bacnet-explorer-tree-group__body {
+    margin-top: 0.125rem;
+  }
+
+  .bacnet-explorer-tree-row {
+    display: grid;
+    grid-template-columns: 4.5rem minmax(80px, 1fr) 4.5rem 5rem 5.5rem;
+    gap: 0.375rem;
+    width: 100%;
+    border: 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    background: transparent;
+    color: $legion-text;
+    font-size: 0.75rem;
+    text-align: left;
+    padding: 0.35rem 0.25rem;
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.04);
+    }
+
+    &.is-selected {
+      background: rgba(255, 255, 255, 0.07);
+      box-shadow: inset 2px 0 0 rgba($legion-accent-engineering, 0.85);
+    }
+  }
+
+  .bacnet-explorer-tree-row__ref {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    color: rgba(255, 255, 255, 0.82);
+  }
+
+  .bacnet-explorer-tree-row__name {
+    color: $legion-text;
+  }
+
+  .bacnet-explorer-tree-row__value {
+    color: rgba(255, 255, 255, 0.82);
+  }
+
+  .bacnet-explorer-tree-row__units,
+  .bacnet-explorer-tree-row__rel {
+    color: $legion-text-muted;
+  }
+
+  .bacnet-explorer-tabs.nav-tabs {
+    flex-shrink: 0;
+    margin-bottom: 0;
+    padding: 0 0.5rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(0, 0, 0, 0.12);
+
+    .nav-item {
+      margin-bottom: 0;
+    }
+
+    .nav-link {
+      color: $legion-text-muted;
+      border: 0;
+      border-bottom: 2px solid transparent;
+      border-radius: 0;
+      margin-bottom: -1px;
+      font-size: 0.8125rem;
+      padding: 0.5rem 0.75rem;
+
+      &:hover {
+        color: $legion-text;
+        border-color: transparent;
+        border-bottom-color: rgba(255, 255, 255, 0.2);
+      }
+
+      &.active {
+        color: $legion-text;
+        background: transparent;
+        border-color: transparent;
+        border-bottom-color: rgba($legion-accent-engineering, 0.85);
+      }
+    }
+  }
+
+  .bacnet-explorer-details-empty {
+    padding: 1rem 0.25rem;
+    font-size: 0.8125rem;
+    color: $legion-text-muted;
+    text-align: center;
+  }
+
+  .bacnet-explorer-detail-section {
+    margin-bottom: 1rem;
+  }
+
+  .bacnet-explorer-detail-section__title {
+    font-size: 0.8125rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.82);
+    margin-bottom: 0.5rem;
+  }
+
+  .bacnet-explorer-detail-row {
+    display: grid;
+    grid-template-columns: 8.5rem 1fr;
+    gap: 0.5rem;
+    padding: 0.25rem 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    font-size: 0.8125rem;
+  }
+
+  .bacnet-explorer-detail-row__label {
+    color: $legion-text-muted;
+  }
+
+  .bacnet-explorer-detail-row__value {
+    color: $legion-text;
+    word-break: break-word;
+  }
+
+  .bacnet-explorer-code-block {
+    margin: 0;
+    padding: 0.5rem 0.625rem;
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 0.35rem;
+    color: $legion-text;
+    font-size: 0.75rem;
+    white-space: pre-wrap;
+    word-break: break-word;
+    max-height: 180px;
+    overflow: auto;
+  }
+
+  .bacnet-explorer-errors {
+    border: 1px solid rgba(220, 53, 69, 0.35);
+    border-radius: 0.35rem;
+    background: rgba(220, 53, 69, 0.08);
+    padding: 0.625rem;
+  }
+
+  .bacnet-explorer-errors__title {
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-bottom: 0.375rem;
+    color: #ffb4bc;
+  }
+
+  .bacnet-explorer-errors__item {
+    display: grid;
+    grid-template-columns: 7rem 1fr;
+    gap: 0.5rem;
+    font-size: 0.75rem;
+    padding: 0.2rem 0;
+  }
+
+  .bacnet-explorer-errors__key {
+    color: rgba(255, 255, 255, 0.82);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  }
+
+  .bacnet-explorer-errors__msg {
+    color: #ffb4bc;
+    word-break: break-word;
+  }
+
+  .bacnet-explorer-manual-read__title {
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.82);
+    margin-bottom: 0.5rem;
+  }
+
+  .bacnet-explorer-manual-read__toggle {
+    display: inline-flex;
+    align-items: center;
+    border: 0;
+    background: transparent;
+    color: rgba(255, 255, 255, 0.82);
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    padding: 0;
+
+    &:hover {
+      color: $legion-text;
+    }
+  }
+
+  .bacnet-explorer-manual-read__body {
+    margin-top: 0.75rem;
+  }
+
+  .bacnet-explorer-details-tab {
+    min-height: 0;
+  }
+
+  .bacnet-explorer-manual-read__grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.375rem;
+  }
+
+  .bacnet-explorer-empty {
+    padding: 1.25rem 1rem;
+    border: 1px dashed rgba(255, 255, 255, 0.12);
+    border-radius: 0.35rem;
+    font-size: 0.8125rem;
+    color: $legion-text-muted;
+  }
+
+  .bacnet-explorer-error {
+    padding: 1rem 0.75rem;
+    font-size: 0.8125rem;
+    color: #ffb4bc;
+    background: rgba(220, 53, 69, 0.08);
+    border: 1px solid rgba(220, 53, 69, 0.25);
+    border-radius: 0.35rem;
+  }
+
+  @media (max-width: 1199px) {
+    height: auto;
+    max-height: none;
+    overflow: visible;
+
+    .bacnet-explorer-page__workspace {
+      overflow: visible;
+    }
+
+    .bacnet-explorer-card {
+      height: auto;
+    }
+
+    .bacnet-explorer-layout {
+      grid-template-columns: 1fr;
+      height: auto;
+    }
+
+    .bacnet-explorer-panel {
+      height: auto;
+      max-height: none;
+      min-height: 320px;
+    }
+
+    .bacnet-explorer-panel--tree {
+      min-height: 420px;
+    }
+  }
+
+  @media (max-width: 767px) {
+    .bacnet-explorer-tree-row {
+      grid-template-columns: 4rem 1fr 4rem;
+    }
+
+    .bacnet-explorer-tree-row__units,
+    .bacnet-explorer-tree-row__rel {
+      display: none;
+    }
+
+    .bacnet-explorer-detail-row {
+      grid-template-columns: 1fr;
+      gap: 0.125rem;
+    }
+  }
+}
+
+/* BACnet discover modal — portaled outside .bacnet-explorer-page; styles must be top-level */
+.bacnet-discover-modal {
+  .modal-content {
+    background: $primary;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: $legion-text;
+    overflow: hidden;
+  }
+
+  .modal-header.bacnet-discover-modal__header {
+    background: $legion-active-bg-strong !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 0.625rem 1rem;
+  }
+
+  .modal-body.bacnet-discover-modal__body {
+    background: rgba(0, 0, 0, 0.18);
+    padding: 1rem;
+  }
+
+  .bacnet-discover-modal__toolbar {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+  }
+
+  .bacnet-discover-modal__status-label {
+    display: block;
+    font-size: 0.6875rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.82);
+    margin-bottom: 0.125rem;
+  }
+
+  .bacnet-discover-modal__status-detail {
+    display: block;
+    font-size: 0.8125rem;
+    color: $legion-text-muted;
+    line-height: 1.4;
+  }
+
+  .bacnet-discover-modal__error {
+    margin-bottom: 0.75rem;
+    padding: 0.75rem;
+    font-size: 0.8125rem;
+    color: #ffb4bc;
+    background: rgba(220, 53, 69, 0.08);
+    border: 1px solid rgba(220, 53, 69, 0.25);
+    border-radius: 0.35rem;
+  }
+
+  .bacnet-discover-modal__message {
+    padding: 1.25rem 1rem;
+    border: 1px dashed rgba(255, 255, 255, 0.12);
+    border-radius: 0.35rem;
+    font-size: 0.8125rem;
+    color: $legion-text-muted;
+    text-align: center;
+  }
+
+  .bacnet-discover-modal__results-title {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: $legion-text-muted;
+    margin-bottom: 0.5rem;
+  }
+
+  .bacnet-discover-modal__device-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    max-height: min(50vh, 360px);
+    overflow-y: auto;
+    padding-right: 0.125rem;
+  }
+
+  .bacnet-discover-device-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.75rem;
+    background: rgba(0, 0, 0, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 0.35rem;
+  }
+
+  .bacnet-discover-device-card__info {
+    min-width: 0;
+    flex: 1 1 auto;
+  }
+
+  .bacnet-discover-device-card__address {
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: $legion-text;
+    margin-bottom: 0.25rem;
+  }
+
+  .bacnet-discover-device-card__meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1rem;
+    font-size: 0.75rem;
+    color: $legion-text-muted;
+  }
+
+  .bacnet-discover-device-card__import {
+    flex-shrink: 0;
+  }
+
+  .bacnet-explorer-btn {
+    border-color: rgba(255, 255, 255, 0.18) !important;
+    color: $legion-text !important;
+
+    &:hover:not(:disabled) {
+      background: rgba(255, 255, 255, 0.06) !important;
+      border-color: rgba(255, 255, 255, 0.28) !important;
+    }
+  }
+}
+
+/* Engineering — Network Configuration (section picker + form cards) */
+.network-config-page {
+  .network-config-readiness {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    border-radius: 0.375rem;
+    margin-bottom: 1rem;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+
+    &.is-ready {
+      background: rgba(61, 220, 132, 0.08);
+      border-color: rgba(61, 220, 132, 0.25);
+    }
+
+    &.is-pending {
+      background: rgba(240, 173, 78, 0.08);
+      border-color: rgba(240, 173, 78, 0.25);
+    }
+  }
+
+  .network-config-readiness__icon {
+    margin-top: 0.125rem;
+    opacity: 0.9;
+  }
+
+  .network-config-readiness__title {
+    color: $legion-text;
+    font-weight: 600;
+    font-size: 0.875rem;
+  }
+
+  .network-config-readiness__detail {
+    color: $legion-text-muted;
+    font-size: 0.8125rem;
+    margin-top: 0.125rem;
+  }
+
+  .network-config-summary__tile {
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 0.35rem;
+    padding: 0.625rem 0.75rem;
+    height: 100%;
+  }
+
+  .network-config-summary__label {
+    display: block;
+    font-size: 0.6875rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: $legion-text-muted;
+    margin-bottom: 0.25rem;
+  }
+
+  .network-config-summary__value {
+    display: block;
+    color: $legion-text;
+    font-size: 0.8125rem;
+    font-weight: 600;
+  }
+
+  .network-config-workspace {
+    display: grid;
+    grid-template-columns: minmax(200px, 240px) minmax(0, 1fr);
+    gap: 0.75rem;
+    align-items: start;
+  }
+
+  .network-config-workspace__panel {
+    background: rgba(0, 0, 0, 0.18);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 0.375rem;
+    padding: 1rem;
+    min-height: 320px;
+  }
+
+  .network-config-section-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+  }
+
+  .network-config-section-nav__item {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    grid-template-rows: auto auto;
+    gap: 0.125rem 0.625rem;
+    align-items: start;
+    text-align: left;
+    width: 100%;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 0.35rem;
+    background: rgba(0, 0, 0, 0.18);
+    color: $legion-text;
+    padding: 0.625rem 0.75rem;
+    transition: border-color 0.15s ease, background-color 0.15s ease;
+
+    &:hover {
+      border-color: rgba(255, 255, 255, 0.16);
+      background: rgba(255, 255, 255, 0.03);
+    }
+
+    &.is-active {
+      border-color: rgba($legion-accent-engineering, 0.65);
+      background: rgba(255, 255, 255, 0.05);
+    }
+  }
+
+  .network-config-section-nav__icon {
+    grid-row: 1 / span 2;
+    margin-top: 0.125rem;
+    opacity: 0.75;
+  }
+
+  .network-config-section-nav__title {
+    font-size: 0.8125rem;
+    font-weight: 600;
+  }
+
+  .network-config-section-nav__desc {
+    grid-column: 2;
+    font-size: 0.75rem;
+    color: $legion-text-muted;
+    line-height: 1.3;
+  }
+
+  .network-config-section-nav__badge {
+    grid-row: 1;
+    grid-column: 3;
+    font-size: 0.6875rem;
+    font-weight: 700;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 999px;
+    padding: 0.125rem 0.45rem;
+    color: $legion-text;
+  }
+
+  .network-config-section__head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+  }
+
+  .network-config-section__title {
+    color: $legion-text;
+    font-size: 0.9375rem;
+    font-weight: 700;
+    margin-bottom: 0.375rem;
+  }
+
+  .network-config-section__lead {
+    color: $legion-text-muted;
+    font-size: 0.8125rem;
+    max-width: 52rem;
+  }
+
+  .network-config-btn {
+    border-color: rgba(255, 255, 255, 0.18) !important;
+    color: $legion-text !important;
+    flex-shrink: 0;
+
+    &:hover:not(:disabled) {
+      background: rgba(255, 255, 255, 0.06) !important;
+    }
+  }
+
+  .network-config-item-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .network-config-item-card {
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 0.35rem;
+    background: rgba(0, 0, 0, 0.15);
+    padding: 0.75rem;
+  }
+
+  .network-config-item-card__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  }
+
+  .network-config-item-card__switch {
+    color: $legion-text;
+    font-size: 0.8125rem;
+  }
+
+  .network-config-item-card__delete {
+    padding: 0;
+    text-decoration: none !important;
+  }
+
+  .network-config-item-card__grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem;
+  }
+
+  .network-config-item-card__wide {
+    grid-column: 1 / -1;
+  }
+
+  .network-config-field__label {
+    color: rgba(255, 255, 255, 0.82);
+    font-size: 0.75rem;
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+  }
+
+  .network-config-field__hint {
+    color: $legion-text-muted;
+    font-size: 0.75rem;
+    margin-top: 0.25rem;
+    line-height: 1.35;
+  }
+
+  .network-config-empty {
+    padding: 1.25rem 1rem;
+    border: 1px dashed rgba(255, 255, 255, 0.12);
+    border-radius: 0.35rem;
+    color: $legion-text-muted;
+    font-size: 0.8125rem;
+  }
+
+  .network-config-advanced-toggle {
+    display: inline-flex;
+    align-items: center;
+    border: 0;
+    background: transparent;
+    color: $legion-text-muted;
+    font-size: 0.8125rem;
+    padding: 0.75rem 0 0.25rem;
+    margin-top: 0.5rem;
+
+    &:hover {
+      color: $legion-text;
+    }
+  }
+
+  .network-config-advanced-panel {
+    margin-top: 0.5rem;
+    padding: 0.75rem;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 0.35rem;
+    background: rgba(0, 0, 0, 0.12);
+  }
+
+  @media (max-width: 991px) {
+    .network-config-workspace {
+      grid-template-columns: 1fr;
+    }
+
+    .network-config-section-nav {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .network-config-item-card__grid {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  @media (max-width: 575px) {
+    .network-config-section-nav {
+      grid-template-columns: 1fr;
+    }
+  }
+}

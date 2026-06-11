@@ -1,0 +1,71 @@
+Invoke-RestMethod `
+  -Method Post `
+  -Uri "http://localhost:4000/api/runtime/bacnet/discover" `
+  -ContentType "application/json" `
+  -Body '{"timeoutMs":5000}'
+
+If it works, you should see devices respond.
+
+Important Windows settings
+
+Because BACnet/IP uses UDP 47808, check these:
+
+Windows Firewall allows Node.js.
+Your laptop/server is on the same subnet as the controller.
+You are connected to the correct Ethernet adapter.
+No VPN is stealing broadcast traffic.
+Backend binds to the right NIC.
+
+Set this in .env if needed:
+
+BACNET_PORT=47808
+BACNET_INTERFACE=192.168.1.100
+BACNET_BROADCAST_ADDRESS=192.168.1.255
+BACNET_APDU_TIMEOUT_MS=6000
+
+Replace 192.168.1.100 with your computer’s Ethernet IP.
+
+Test reading one point
+
+After discovery, pick a device address and try:
+
+Invoke-RestMethod `
+  -Method Post `
+  -Uri "http://localhost:4000/api/runtime/bacnet/read" `
+  -ContentType "application/json" `
+  -Body '{
+    "address": "192.168.1.43",
+    "deviceInstance": 43002,
+    "objectType": "AV",
+    "objectInstance": 1
+  }'
+Test writing carefully
+
+Only write to a safe AV/BV test point, not a real fan/start/valve command yet.
+
+Invoke-RestMethod `
+  -Method Post `
+  -Uri "http://localhost:4000/api/runtime/bacnet/write" `
+  -ContentType "application/json" `
+  -Body '{
+    "address": "192.168.1.43",
+    "objectType": "AV",
+    "objectInstance": 1,
+    "value": 74,
+    "priority": 8
+  }'
+My next recommendation
+
+Do not connect this to the frontend yet.
+
+First make a backend test page or backend-only route that confirms:
+
+Discovery works
+Read works
+Write works
+Polling works
+Offline detection works
+
+Then we connect it to your existing equipment tree and point mappings.
+
+Right now Legion has taken the first real step from “operator UI” into actual BAS supervisory control.

@@ -24,6 +24,7 @@ import TemplateLibraryPage from "../../modules/engineering/template-library/Temp
 import ValidationCenterPage from "../../modules/engineering/validation-center/ValidationCenterPage";
 import DeploymentPage from "../../modules/engineering/deployment/DeploymentPage";
 import UserManagerPage from "../../modules/engineering/user-manager/UserManagerPage";
+import BacnetExplorerPage from "../../modules/engineering/bacnet-explorer/BacnetExplorerPage";
 
 // shared layout
 import Sidebar from "../layout/Sidebar";
@@ -104,6 +105,7 @@ export default function AppRoutes() {
         component={LegacyNetworkConfigurationRedirect}
       />
       <RouteWithSidebar path={Routes.EngineeringNetwork.path} component={EngineeringNetworkSection} />
+      <RouteWithSidebar exact path={Routes.EngineeringBacnetExplorer.path} component={BacnetExplorerPage} />
       <RouteWithSidebar exact path={Routes.EngineeringPointMapping.path} component={PointMappingPage} />
       <RouteWithSidebar exact path={Routes.EngineeringGraphicsManager.path} component={GraphicsManagerPage} />
       <RouteWithSidebar exact path={Routes.EngineeringTemplateLibrary.path} component={TemplateLibraryPage} />

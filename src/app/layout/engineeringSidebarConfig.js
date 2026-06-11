@@ -11,6 +11,7 @@ import {
   faObjectGroup,
   faEthernet,
   faNetworkWired,
+  faProjectDiagram,
   faSlidersH,
   faClipboardList,
   faCheckCircle,
@@ -53,10 +54,12 @@ export function getEngineeringSidebarGroups({ includeAdministration }) {
         Routes.EngineeringNetwork.path,
         Routes.EngineeringNetworkDiscovery.path,
         Routes.EngineeringNetworkConfiguration.path,
+        Routes.EngineeringBacnetExplorer.path,
       ],
       children: [
         { path: Routes.EngineeringNetworkDiscovery.path, title: "Network Discovery", icon: faNetworkWired },
         { path: Routes.EngineeringNetworkConfiguration.path, title: "Network Configuration", icon: faSlidersH },
+        { path: Routes.EngineeringBacnetExplorer.path, title: "BACnet Explorer", icon: faProjectDiagram },
       ],
     },
     {

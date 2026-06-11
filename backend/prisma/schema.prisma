@@ -434,3 +434,47 @@ model GlobalGraphicTemplate {
   @@index([appliesToEquipmentType])
   @@index([status])
 }
+
+/// Staging cache for BACnet device discovery (not yet mapped to ControllersMapped).
+model BacnetDevice {
+  id             String    @id @default(uuid())
+  deviceInstance Int
+  address        String
+  vendorId       Int?
+  maxApdu        Int?
+  segmentation   Int?
+  protocol       String?
+  objectName     String?
+  modelName      String?
+  lastSeenAt     DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  discoveredObjects BacnetDiscoveredObject[]
+
+  @@unique([deviceInstance, address])
+  @@index([address])
+}
+
+/// Staging cache for BACnet objects discovered on a device (not yet mapped to PointsMapped).
+model BacnetDiscoveredObject {
+  id             String    @id @default(uuid())
+  bacnetDeviceId String
+  objectType     String
+  objectTypeId   Int
+  objectInstance Int
+  objectName     String?
+  description    String?
+  presentValue   Json?
+  units          String?
+  outOfService   Boolean?
+  reliability    String?
+  lastReadAt     DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  bacnetDevice BacnetDevice @relation(fields: [bacnetDeviceId], references: [id], onDelete: Cascade)
+
+  @@unique([bacnetDeviceId, objectTypeId, objectInstance])
+  @@index([bacnetDeviceId])
+}
