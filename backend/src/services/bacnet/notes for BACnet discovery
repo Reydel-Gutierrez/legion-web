@@ -1,8 +1,6 @@
-Invoke-RestMethod `
-  -Method Post `
-  -Uri "http://localhost:4000/api/runtime/bacnet/discover" `
-  -ContentType "application/json" `
-  -Body '{"timeoutMs":5000}'
+Invoke-RestMethod `  -Method Post`
+-Uri "http://localhost:4000/api/runtime/bacnet/discover" `  -ContentType "application/json"`
+-Body '{"timeoutMs":5000}'
 
 If it works, you should see devices respond.
 
@@ -29,31 +27,27 @@ Test reading one point
 
 After discovery, pick a device address and try:
 
-Invoke-RestMethod `
-  -Method Post `
-  -Uri "http://localhost:4000/api/runtime/bacnet/read" `
-  -ContentType "application/json" `
-  -Body '{
-    "address": "192.168.1.43",
-    "deviceInstance": 43002,
-    "objectType": "AV",
-    "objectInstance": 1
-  }'
+Invoke-RestMethod `  -Method Post`
+-Uri "http://localhost:4000/api/runtime/bacnet/read" `  -ContentType "application/json"`
+-Body '{
+"address": "192.168.1.43",
+"deviceInstance": 43002,
+"objectType": "AV",
+"objectInstance": 1
+}'
 Test writing carefully
 
 Only write to a safe AV/BV test point, not a real fan/start/valve command yet.
 
-Invoke-RestMethod `
-  -Method Post `
-  -Uri "http://localhost:4000/api/runtime/bacnet/write" `
-  -ContentType "application/json" `
-  -Body '{
-    "address": "192.168.1.43",
-    "objectType": "AV",
-    "objectInstance": 1,
-    "value": 74,
-    "priority": 8
-  }'
+Invoke-RestMethod `  -Method Post`
+-Uri "http://localhost:4000/api/runtime/bacnet/write" `  -ContentType "application/json"`
+-Body '{
+"address": "192.168.1.43",
+"objectType": "AV",
+"objectInstance": 1,
+"value": 74,
+"priority": 8
+}'
 My next recommendation
 
 Do not connect this to the frontend yet.
