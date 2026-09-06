@@ -69,11 +69,11 @@ export function getAlarms() {
 }
 
 /** @returns {Promise<import("../contracts").Alarm[]>} */
-export async function fetchAlarmsForSite(siteId) {
+export async function fetchAlarmsForSite(siteId, query = {}) {
   if (!siteId || !isBackendSiteId(siteId)) {
     return [];
   }
-  const events = await alarmApi.listAlarmEvents(siteId, {});
+  const events = await alarmApi.listAlarmEvents(siteId, query);
   const list = Array.isArray(events) ? events : [];
   return list.map(alarmApi.mapAlarmEventToAlarmRow);
 }

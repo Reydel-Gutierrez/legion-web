@@ -1,6 +1,4 @@
 import React, { useMemo, useState } from "react";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faBell } from "@fortawesome/free-solid-svg-icons";
 import ExpandableWorkspaceCard from "../../../components/legion/ExpandableWorkspaceCard";
 import StatusIndicator from "../../../components/legion/StatusIndicator";
 import {
@@ -99,6 +97,7 @@ export default function EquipmentPointsCard({
                 const value = equipmentPointDisplayValue(p, pointUiState);
                 const alarm = resolvePointAlarmState(p, alarms, equipmentId || p.equipmentId);
                 const status = pointStatusLabel(p, value, EQUIPMENT_OOS_LABEL, alarm.active ? alarm.label : null);
+                const communication = pointStatusLabel(p, value, EQUIPMENT_OOS_LABEL);
                 return (
                   <tr
                     key={p.id}
@@ -117,15 +116,15 @@ export default function EquipmentPointsCard({
                   >
                     <td>
                       <span className={`points-table__name${alarm.active ? " points-table__name--alarm" : ""}`}>
-                        {alarm.active ? (
-                          <FontAwesomeIcon icon={faBell} className="points-table__alarm-icon" title={alarm.label} />
-                        ) : null}
                         {p.pointDescription || p.pointName || p.pointKey || p.pointId}
                       </span>
                     </td>
                     <td>{value ?? "—"}</td>
                     <td>
                       <StatusIndicator status={statusTone(status)} label={status} />
+                      {alarm.active && communication !== "Normal" ? (
+                        <div className="small text-muted">{communication}</div>
+                      ) : null}
                     </td>
                   </tr>
                 );

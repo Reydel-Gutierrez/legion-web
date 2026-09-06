@@ -6,6 +6,15 @@
 /** Matches backend `runtime.store` default when poll rate is unknown. */
 export const DEFAULT_OPERATOR_POLL_MS = 20000;
 
+/** Normalize communication labels from API/release/tree sources to the shared vocabulary. */
+export function normalizeCommStatus(value) {
+  const s = String(value ?? "").trim().toUpperCase();
+  if (["OFFLINE", "DOWN", "DISABLED", "FAULT"].includes(s)) return "OFFLINE";
+  if (["LIVE", "ONLINE", "OK", "NORMAL"].includes(s)) return "LIVE";
+  if (["STALE", "WARN", "WARNING"].includes(s)) return "STALE";
+  return null;
+}
+
 /**
  * @param {unknown} pollRateMs
  * @returns {number}

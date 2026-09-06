@@ -1,4 +1,4 @@
-import { getEquipmentStatus } from "./statusUtils";
+import { getEquipmentStatus, normalizeCommStatus } from "./statusUtils";
 
 function compact(value) {
   return String(value || "")
@@ -51,7 +51,9 @@ export function matchActiveAlarmsForPoint(point, alarms, equipmentId) {
   return list.filter((a) => {
     const aEq = String(a.equipmentId || "");
     if (eqId && aEq && aEq !== eqId) return false;
-    if (dbId && a.pointId && String(a.pointId) === dbId) return true;
+    if (dbId && a.pointId) return String(a.pointId) === dbId;
+    // Text keys are only unique within an equipment assignment.
+    if (!eqId || aEq !== eqId) return false;
     if (keys.size === 0) return false;
     return alarmKeys(a).some((k) => keys.has(k));
   });
@@ -91,7 +93,7 @@ export function countActiveAlarmsForEquipment(alarms, equipmentId) {
  * @param {object[]} [runtimeControllers]
  * @returns {object|null}
  */
-export function annotateFacilityTreeAlarms(tree, alarms, runtimeControllers) {
+export function annotateFacilityTreeAlarms(tree, alarms, runtimeControllers, now = Date.now()) {
   if (!tree) return tree;
 
   const runtimeByEq = new Map();
@@ -105,14 +107,14 @@ export function annotateFacilityTreeAlarms(tree, alarms, runtimeControllers) {
     const own =
       node.kind === "equipment" ? countActiveAlarmsForEquipment(alarms, node.id) : 0;
     const alarmCount = own + children.reduce((sum, child) => sum + (child.alarmCount || 0), 0);
-    let commStatus = node.commStatus || null;
+    let commStatus = normalizeCommStatus(node.commStatus || node.equipmentCommStatus || node.status);
     if (node.kind === "equipment") {
       const rt = runtimeByEq.get(String(node.id));
       if (rt) {
         commStatus =
           rt.online === false
             ? "OFFLINE"
-            : getEquipmentStatus({ lastSeenAt: rt.lastSeenAt, pollRateMs: rt.pollRateMs });
+            : getEquipmentStatus({ lastSeenAt: rt.lastSeenAt, pollRateMs: rt.pollRateMs, now });
       }
     }
     return { ...node, children, alarmCount, commStatus };

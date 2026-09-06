@@ -190,6 +190,7 @@ export default function OperatorShell({ children }) {
             onDashboardModeChange={onDashboardModeChange}
             tree={tree}
             releaseData={releaseData}
+            hasActiveAlarms={alarms.length > 0}
           />
           <div className="operator-shell__workspace">
             {showCommissioning ? (

@@ -109,4 +109,24 @@ describe("equipmentOccupancy", () => {
     expect(next.at.getHours()).toBe(18);
     expect(next.at.getMinutes()).toBe(30);
   });
+
+  it("does not borrow a schedule explicitly assigned to another same-named unit", () => {
+    expect(resolveEquipmentOccupancy({ schedules: [{ ...weekdayOccupied, equipmentId: "other" }],
+      equipment: fcu, now: new Date("2026-09-07T12:00:00") }).source).toBe("none");
+  });
+
+  it("skips overlapping boundaries which do not change occupancy", () => {
+    const windows = [weekdayOccupied, { ...weekdayOccupied, startTime: "17:00", endTime: "21:00" }];
+    const next = getNextOccupancyChange(windows, fcu, new Date("2026-09-07T12:00:00"));
+    expect(next.at.getHours()).toBe(21);
+    expect(next.occupied).toBe(false);
+  });
+
+  it("reports override expiry when it actually changes occupancy", () => {
+    const now = new Date("2026-09-07T12:00:00");
+    const next = getNextOccupancyChange([weekdayOccupied], fcu, now,
+      { occupied: false, until: "2026-09-07T13:00:00" });
+    expect(next.at.getHours()).toBe(13);
+    expect(next.occupied).toBe(true);
+  });
 });

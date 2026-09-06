@@ -29,8 +29,8 @@ export function classifyOperatorPointKind(row) {
 }
 
 export function pointStatusLabel(row, displayValue, oosLabel, alarmLabel) {
-  if (displayValue === oosLabel) return "Out of service";
   if (alarmLabel) return alarmLabel;
+  if (displayValue === oosLabel) return "Out of service";
   const freshness = row?.commFreshnessStatus;
   if (freshness === "LIVE") return "Normal";
   if (freshness === "STALE") return "Stale";

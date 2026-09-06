@@ -2,7 +2,8 @@ import React from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faChevronDown, faChevronRight } from "@fortawesome/free-solid-svg-icons";
 import FacilityKindIcon from "../../../components/legion/FacilityKindIcon";
-import StatusIndicator from "../../../components/legion/StatusIndicator";
+import OperatorAlarmBell from "../../../components/legion/OperatorAlarmBell";
+import { normalizeCommStatus } from "../../../lib/operator/statusUtils";
 
 export default function FacilityTreeNode({
   node,
@@ -17,6 +18,7 @@ export default function FacilityTreeNode({
   const hasChildren = children.length > 0;
   const expanded = expandedIds.has(String(node.id));
   const selected = String(selectedId) === String(node.id);
+  const commStatus = normalizeCommStatus(node.commStatus || node.equipmentCommStatus || node.status);
 
   return (
     <li className={`facility-tree__item${isLast ? " is-last" : ""}${depth === 0 ? " is-root" : ""}`}>
@@ -38,28 +40,27 @@ export default function FacilityTreeNode({
           <span className="facility-tree__twist facility-tree__twist--leaf" />
         )}
         <button type="button" className="facility-tree__hit" onClick={() => onSelect(node)}>
-          <FacilityKindIcon kind={node.kind} className="facility-tree__icon" />
-          <span className="facility-tree__label">{node.label}</span>
-          {node.kind === "equipment" && node.commStatus ? (
-            <StatusIndicator
-              className="facility-tree__comm"
-              status={node.commStatus}
-              label={
-                node.commStatus === "LIVE"
-                  ? "Online"
-                  : node.commStatus === "STALE"
-                    ? "Stale"
-                    : node.commStatus === "OFFLINE"
-                      ? "Offline"
-                      : node.commStatus
+          <span className="facility-tree__icons">
+            {node.kind === "equipment" ? (
+              <span className="facility-tree__status-gutter">
+                {node.alarmCount > 0 ? <OperatorAlarmBell /> : null}
+              </span>
+            ) : null}
+            <FacilityKindIcon
+              kind={node.kind}
+              style={
+                node.kind === "equipment" && commStatus === "OFFLINE"
+                  ? { color: "#d64545", stroke: "#d64545" }
+                  : undefined
               }
+              className={`facility-tree__icon${
+                node.kind === "equipment" && commStatus === "OFFLINE"
+                  ? " facility-tree__icon--offline"
+                  : ""
+              }`}
             />
-          ) : null}
-          {node.alarmCount > 0 ? (
-            <span className="facility-tree__alarm">
-              {node.alarmCount} Alarm{node.alarmCount === 1 ? "" : "s"}
-            </span>
-          ) : null}
+          </span>
+          <span className="facility-tree__label">{node.label}</span>
         </button>
       </div>
       {hasChildren && expanded ? (

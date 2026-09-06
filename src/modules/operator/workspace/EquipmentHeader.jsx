@@ -1,5 +1,6 @@
 import React from "react";
 import StatusIndicator from "../../../components/legion/StatusIndicator";
+import OperatorAlarmBell from "../../../components/legion/OperatorAlarmBell";
 import FacilityKindIcon from "../../../components/legion/FacilityKindIcon";
 import { getEquipmentTypeLabel } from "../../engineering/equipment-builder/equipmentTypes";
 import OperatorBreadcrumbs from "./OperatorBreadcrumbs";
@@ -53,10 +54,7 @@ export default function EquipmentHeader({
               <h1 className="workspace-header__title">{name}</h1>
               <StatusIndicator status={status} label={statusLabel} />
               {alarmCount > 0 ? (
-                <StatusIndicator
-                  status="ALARM"
-                  label={`${alarmCount} Alarm${alarmCount === 1 ? "" : "s"}`}
-                />
+                <OperatorAlarmBell />
               ) : null}
             </div>
             <p className="workspace-header__meta">

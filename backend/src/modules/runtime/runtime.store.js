@@ -29,6 +29,8 @@ function nowIso() {
 function createDefaultController(code, opts = {}) {
   return {
     runtimeId: opts.runtimeId ?? null,
+    catalogRuntimeId: opts.catalogRuntimeId ?? opts.runtimeId ?? null,
+    siteId: opts.siteId ?? null,
     controllerCode: code,
     protocol: 'SIM',
     deviceType: opts.deviceType ?? null,
