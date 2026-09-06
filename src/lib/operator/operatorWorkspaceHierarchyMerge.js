@@ -384,6 +384,8 @@ export function applyHierarchyLiveToWorkspaceRows(rows, releaseData, bundlesByEq
     );
 
     const ctrlLabel = resolveControllerDisplayLabel(bundle, eqMeta);
+    // Preserve identity even when communication is lost so active alarms still match.
+    if (pt) row = { ...row, databasePointId: String(pt.id) };
 
     let mappedToLabel = row.mappedToLabel;
     if (mappingRow) {

@@ -29,6 +29,23 @@ describe("pointAlarms", () => {
     expect(resolvePointAlarmState(point, [{ ...alarms[0], state: "History" }]).active).toBe(false);
   });
 
+  it("keeps point identity and equipment boundaries authoritative", () => {
+    const alarm = { state: "ACTIVE", equipmentId: "eq-1", pointId: "other-point", pointKey: "SPACE_TEMP" };
+    expect(resolvePointAlarmState(point, [alarm]).active).toBe(false);
+    expect(resolvePointAlarmState(point, [{ ...alarm, pointId: "pt-1", equipmentId: "eq-2" }]).active).toBe(false);
+    expect(resolvePointAlarmState({ ...point, databasePointId: null }, [{ state: "ACTIVE", pointKey: "SPACE_TEMP" }]).active).toBe(false);
+  });
+
+  it("keeps acknowledged active alarms independent of online communication", () => {
+    const tree = { id: "eq-1", kind: "equipment", children: [] };
+    const result = annotateFacilityTreeAlarms(tree,
+      [{ state: "ACTIVE", equipmentId: "eq-1", ack: true }],
+      [{ equipmentId: "eq-1", online: true, lastSeenAt: new Date().toISOString() }]);
+    expect(result.alarmCount).toBe(1);
+    expect(result.commStatus).toBe("LIVE");
+    expect(tree.alarmCount).toBeUndefined();
+  });
+
   it("rolls alarm counts from equipment up to floor, building, and site", () => {
     const tree = {
       id: "site",

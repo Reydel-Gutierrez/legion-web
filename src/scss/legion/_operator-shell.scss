@@ -246,28 +246,59 @@ body.operator-shell-active {
   min-width: 0;
 }
 
-.facility-tree__comm {
+.facility-tree__icons {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  width: 16px;
   flex-shrink: 0;
-  font-size: 11px;
 }
 
-.facility-tree__alarm {
+.facility-tree__status-gutter {
+  position: absolute;
+  right: calc(100% + 2px);
+  top: 50%;
+  transform: translateY(-50%);
+  width: 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  pointer-events: none;
+}
+
+.operator-alarm-bell {
   flex-shrink: 0;
+  transform-origin: 50% 15%;
+}
+
+.facility-tree__icon.plc-controller-icon.facility-tree__icon--offline {
   color: $op-fault;
-  font-size: 11px;
-  font-weight: 700;
-  white-space: nowrap;
+  stroke: $op-fault;
 }
 
-.facility-tree__alarm::before {
-  content: "";
-  display: inline-block;
-  width: 7px;
-  height: 7px;
-  margin-right: 5px;
-  border-radius: 50%;
-  background: $op-fault;
-  vertical-align: 1px;
+.operator-alarm-bell--active {
+  color: $op-fault;
+  animation: operator-alarm-ring 2.8s ease-in-out infinite;
+}
+
+.facility-tree__icons .operator-alarm-bell,
+.equipment-header .operator-alarm-bell {
+  font-size: 11px;
+}
+
+@keyframes operator-alarm-ring {
+  0%, 24%, 100% { transform: rotate(0); }
+  4%, 12% { transform: rotate(12deg); }
+  8%, 16% { transform: rotate(-12deg); }
+  20% { transform: rotate(5deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .operator-alarm-bell--active {
+    animation: none;
+  }
 }
 
 .facility-tree__empty {

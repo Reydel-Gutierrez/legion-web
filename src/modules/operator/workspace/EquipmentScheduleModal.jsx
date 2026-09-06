@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Modal, Button, Form } from "@themesberg/react-bootstrap";
 import { operatorRepository } from "../../../lib/data";
 import { canEditSchedules } from "../../../lib/access/operatorPermissions";
@@ -8,6 +8,7 @@ import {
   getNextOccupancyChange,
   getTodayScheduleWindows,
   getWeeklySchedule,
+  scheduleMatchesEquipment,
 } from "../../../lib/operator/equipmentOccupancy";
 
 const WEEKDAY_ORDER = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -45,11 +46,13 @@ export default function EquipmentScheduleModal({
   const [mode, setMode] = useState("view");
   const [editor, setEditor] = useState(() => emptyEditor(equipment?.displayLabel || equipment?.name || "Equipment"));
   const [editingId, setEditingId] = useState(null);
+  const equipmentId = equipment?.id;
+  useEffect(() => { setMode("view"); }, [equipmentId, show]);
 
   const equipmentName = equipment?.displayLabel || equipment?.name || "Equipment";
   const matching = useMemo(
-    () => (schedules || []).filter((s) => s && (s.equipmentId === equipment?.id || s.equipment === equipmentName)),
-    [schedules, equipment, equipmentName]
+    () => (schedules || []).filter((s) => scheduleMatchesEquipment(s, equipment)),
+    [schedules, equipment]
   );
 
   const todayWindows = useMemo(
@@ -57,14 +60,17 @@ export default function EquipmentScheduleModal({
     [schedules, equipment, now]
   );
   const nextChange = useMemo(
-    () => getNextOccupancyChange(schedules, equipment, now),
-    [schedules, equipment, now]
+    () => getNextOccupancyChange(schedules, equipment, now,
+      occupancy?.source === "override" ? occupancy : null),
+    [schedules, equipment, now, occupancy]
   );
   const weekly = useMemo(() => getWeeklySchedule(schedules, equipment), [schedules, equipment]);
 
   const openEditor = (schedule) => {
+    if (!canEdit) return;
     if (schedule) {
-      const dayObj = DAY_KEYS.reduce((acc, d) => ({ ...acc, [d]: (schedule.days || []).includes(d) }), {});
+      const dayObj = DAY_KEYS.reduce((acc, d) => ({ ...acc, [d]: Array.isArray(schedule.days)
+        ? schedule.days.includes(d) : Boolean(schedule.days?.[d]) }), {});
       setEditingId(schedule.id);
       setEditor({
         name: schedule.name || `${equipmentName} Occupancy`,
@@ -84,15 +90,16 @@ export default function EquipmentScheduleModal({
   };
 
   const saveEditor = () => {
+    if (!canEdit) return;
     const days = DAY_KEYS.filter((d) => editor.days[d]);
-    if (!editor.name.trim() || days.length === 0) return;
+    if (!editor.name.trim() || days.length === 0 || !editor.startTime || !editor.endTime) return;
     const nowStamp = new Date().toLocaleString();
     const row = {
       id: editingId || `SCH-${Date.now()}`,
       name: editor.name,
       equipment: equipmentName,
       equipmentId: equipment?.id,
-      equipType: "FCU",
+      equipType: equipment?.type || equipment?.equipmentType || "Other",
       point: editor.point,
       action: editor.action,
       startTime: editor.startTime,
@@ -108,6 +115,7 @@ export default function EquipmentScheduleModal({
   };
 
   const applyOverride = (occupied, hours) => {
+    if (!canEdit) return;
     let until;
     if (hours === "next" && nextChange?.at) {
       until = nextChange.at.toISOString();
@@ -120,6 +128,7 @@ export default function EquipmentScheduleModal({
   };
 
   const clearOverride = () => {
+    if (!canEdit) return;
     operatorRepository.clearEquipmentOccupancyOverride(siteKey, equipment?.id);
     if (onSchedulesChange) onSchedulesChange(operatorRepository.getSchedules(siteKey));
   };
@@ -237,6 +246,7 @@ export default function EquipmentScheduleModal({
             {canEdit ? (
               <div className="equip-schedule__override">
                 <h3 className="equip-schedule__heading">Temporary override</h3>
+                <p className="small text-muted">Applies to this browser’s occupancy schedule. It does not command the controller.</p>
                 <div className="equip-schedule__override-row">
                   <Button size="sm" variant="outline-secondary" onClick={() => applyOverride(true, 1)}>
                     Occupied 1h
@@ -244,7 +254,7 @@ export default function EquipmentScheduleModal({
                   <Button size="sm" variant="outline-secondary" onClick={() => applyOverride(false, 1)}>
                     Unoccupied 1h
                   </Button>
-                  <Button size="sm" variant="outline-secondary" onClick={() => applyOverride(occupancy?.occupied, "next")}>
+                  <Button size="sm" variant="outline-secondary" disabled={!nextChange} onClick={() => applyOverride(occupancy?.occupied, "next")}>
                     Hold until next change
                   </Button>
                   {occupancy?.source === "override" ? (
@@ -271,9 +281,17 @@ export default function EquipmentScheduleModal({
         ) : (
           <>
             {canEdit ? (
-              <Button variant="outline-secondary" onClick={() => openEditor(matching[0] || null)}>
-                Edit Schedule
-              </Button>
+              <>
+                {matching.length > 1 ? (
+                  <Form.Control as="select" size="sm" aria-label="Schedule to edit" value={editingId || matching[0].id}
+                    onChange={(e) => setEditingId(e.target.value)}>
+                    {matching.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                  </Form.Control>
+                ) : null}
+                <Button variant="outline-secondary" onClick={() => openEditor(matching.find((s) => s.id === editingId) || matching[0] || null)}>
+                  Edit Schedule
+                </Button>
+              </>
             ) : null}
             <Button variant="secondary" onClick={handleHide}>
               Close

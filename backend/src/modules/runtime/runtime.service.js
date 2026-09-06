@@ -4,7 +4,7 @@ const prisma = require('../../lib/prisma');
 const pointService = require('../points/point.service');
 const { SIMULATED_CONTROLLERS_CATALOG, getCatalogEntryByRuntimeId } = require('../../lib/simulatedControllers/catalog');
 const { reconnectSimCatalogToExistingEquipment } = require('../../lib/simCatalogBindingSync');
-const { store, createDefaultController, nowIso, DEFAULT_POLL_MS } = require('./runtime.store');
+const { store, createDefaultController, DEFAULT_POLL_MS } = require('./runtime.store');
 
 /** Verbose SIM poll → DB writes (mapped equipment only). */
 const DEV_RUNTIME_SIM_POLL_LOG = process.env.NODE_ENV === 'development';
@@ -323,6 +323,8 @@ function resolveStoreController(codeOrEquipmentId) {
 
   const byRuntime = sims.find((c) => c.runtimeId && String(c.runtimeId) === k);
   if (byRuntime) return byRuntime;
+  const byCatalog = sims.filter((c) => c.catalogRuntimeId === k);
+  if (byCatalog.length === 1) return byCatalog[0];
 
   const lower = k.toLowerCase();
   const byCode = sims.filter((c) => String(c.controllerCode || '').toLowerCase() === lower);
@@ -337,6 +339,7 @@ function publicControllerDto(c) {
   return {
     controllerCode: c.controllerCode,
     runtimeId: c.runtimeId,
+    siteId: c.siteId,
     /** Route param for /api/runtime/controllers/:code (stable catalog id, e.g. sim-fcu-01) */
     runtimeRouteKey: storeKey,
     protocol: c.protocol,
@@ -360,7 +363,16 @@ function publicControllerDto(c) {
   };
 }
 
-async function pollController(storeKey) {
+const inFlightPolls = new Map();
+
+function pollController(storeKey) {
+  if (inFlightPolls.has(storeKey)) return inFlightPolls.get(storeKey);
+  const task = pollControllerOnce(storeKey).finally(() => inFlightPolls.delete(storeKey));
+  inFlightPolls.set(storeKey, task);
+  return task;
+}
+
+async function pollControllerOnce(storeKey) {
   const ctrl = store.controllers[storeKey];
   if (!ctrl) return;
 
@@ -379,9 +391,14 @@ async function pollController(storeKey) {
   if (mappedId) {
     const loaded = await loadPersistedBindingForEquipment(mappedId);
     ec = loaded.ec;
+    if (!ec || String(ec.protocol || '').toUpperCase() !== 'SIM' ||
+        String(ec.controllerCode).toUpperCase() !== String(ctrl.controllerCode).toUpperCase()) {
+      ctrl.pollWarnings.push('SIM assignment is disabled, removed, or changed.');
+      return;
+    }
     mappings = loaded.mappings || [];
     if (ec) {
-      if (ec.pollRateMs != null) ctrl.pollRateMs = ec.pollRateMs;
+      ctrl.pollRateMs = Math.max(DEFAULT_POLL_MS, Number(ec.pollRateMs) || DEFAULT_POLL_MS);
       ctrl.controllerCode = ec.controllerCode;
     }
     points = await prisma.point.findMany({
@@ -395,49 +412,42 @@ async function pollController(storeKey) {
 
   const simKeysPresent = [...SIM_POINT_KEYS].filter((k) => pointsByCodeForSim.has(k));
   if (simKeysPresent.length === 0) {
-    ctrl.pollWarnings.push('No sim point keys in catalog/equipment; heartbeat only.');
-    ctrl.lastSeenAt = nowIso();
-    ctrl.stats.pollCount += 1;
-    ctrl.stats.lastPollAt = ctrl.lastSeenAt;
-    if (ec) {
-      await persistMappedSimControllerOnline(ec, new Date(ctrl.lastSeenAt));
-    }
+    ctrl.pollWarnings.push('No supported sim point keys; no runtime sample produced.');
     return;
   }
 
   const { nextStrings, simScratch } = computeSimValues(pointsByCodeForSim, ctrl.simScratch);
   ctrl.simScratch = simScratch;
 
-  ctrl.lastSeenAt = nowIso();
-  ctrl.stats.pollCount += 1;
-  ctrl.stats.lastPollAt = ctrl.lastSeenAt;
-  const pollAt = new Date(ctrl.lastSeenAt);
+  const pollAt = new Date();
+  const recordSuccessfulPoll = () => {
+    ctrl.lastSeenAt = pollAt.toISOString();
+    ctrl.stats.pollCount += 1;
+    ctrl.stats.lastPollAt = ctrl.lastSeenAt;
+  };
 
   if (!mappedId) {
+    recordSuccessfulPoll();
     return;
   }
 
   const boundMappings = (mappings || []).filter((m) => m.isBound);
   if (boundMappings.length === 0) {
     ctrl.pollWarnings.push('Mapped equipment has no bound point mappings; skipping DB writes.');
-    if (ec) await persistMappedSimControllerOnline(ec, pollAt);
     return;
   }
   if (!points.length) {
     ctrl.pollWarnings.push('Mapped equipment has no point rows in DB; skipping writes.');
-    if (ec) await persistMappedSimControllerOnline(ec, pollAt);
     return;
   }
 
   const writeMappings = boundMappings.filter((m) => m.readEnabled);
   if (writeMappings.length === 0) {
     ctrl.pollWarnings.push('No read-enabled point mappings; skipping DB writes.');
-    if (ec) await persistMappedSimControllerOnline(ec, pollAt);
     return;
   }
 
-  if (ec) await persistMappedSimControllerOnline(ec, pollAt);
-
+  let successfulWrites = 0;
   for (const m of writeMappings) {
     const row = points.find((p) => p.id === m.pointId);
     if (!row) {
@@ -455,6 +465,7 @@ async function pollController(storeKey) {
     }
     const key = String(m.fieldPointKey || '').trim().toUpperCase();
     const value = nextStrings[key];
+    if (value === undefined) continue;
     const prev = row.presentValue != null ? String(row.presentValue) : '';
     const payload = {
       lastSeenAt: pollAt,
@@ -486,10 +497,15 @@ async function pollController(storeKey) {
     }
     try {
       await pointService.updatePoint(row.id, payload);
+      successfulWrites += 1;
     } catch (e) {
       // eslint-disable-next-line no-console
       console.warn(`[runtime] ${storeKey} failed updating ${key || m.pointId}:`, e?.message || e);
     }
+  }
+  if (successfulWrites > 0) {
+    recordSuccessfulPoll();
+    await persistMappedSimControllerOnline(ec, pollAt);
   }
 }
 
@@ -516,28 +532,39 @@ function startPollLoop() {
 }
 
 async function applyPersistedAssignmentsToSimControllers() {
+  const desired = new Set();
   for (const entry of SIMULATED_CONTROLLERS_CATALOG) {
-    const rt = store.controllers[entry.runtimeId];
-    if (!rt) continue;
-
-    const ec = await prisma.controllersMapped.findFirst({
+    const assignments = await prisma.controllersMapped.findMany({
       where: {
         isEnabled: true,
         protocol: { equals: 'SIM', mode: 'insensitive' },
         controllerCode: { equals: entry.controllerCode, mode: 'insensitive' },
       },
-      orderBy: { updatedAt: 'desc' },
+      orderBy: { equipmentId: 'asc' },
     });
-
-    if (ec) {
-      rt.mappedEquipmentId = String(ec.equipmentId);
-      if (ec.pollRateMs != null) rt.pollRateMs = ec.pollRateMs;
-      rt.controllerCode = ec.controllerCode;
-    } else {
-      rt.mappedEquipmentId = null;
-      rt.controllerCode = entry.controllerCode;
-      rt.pollRateMs = DEFAULT_POLL_MS;
+    // Assignments are site scoped in Prisma. Never select a global "latest" winner.
+    // Keep the unassigned catalog device discoverable from new projects as before.
+    for (const ec of [null, ...assignments]) {
+      const runtimeId = ec ? `${entry.runtimeId}:${ec.equipmentId}` : entry.runtimeId;
+      desired.add(runtimeId);
+      if (!store.controllers[runtimeId]) {
+        store.controllers[runtimeId] = createDefaultController(entry.controllerCode, {
+          runtimeId,
+          catalogRuntimeId: entry.runtimeId,
+          siteId: ec?.siteId,
+          deviceType: entry.deviceType,
+          deviceInstance: entry.deviceInstance,
+          deviceAddress: entry.deviceAddress,
+          fieldPoints: entry.fieldPoints,
+          mappedEquipmentId: ec ? String(ec.equipmentId) : null,
+        });
+      }
+      const rt = store.controllers[runtimeId];
+      rt.pollRateMs = Math.max(DEFAULT_POLL_MS, Number(ec?.pollRateMs) || DEFAULT_POLL_MS);
     }
+  }
+  for (const key of Object.keys(store.controllers)) {
+    if (store.controllers[key].protocol === 'SIM' && !desired.has(key)) delete store.controllers[key];
   }
 }
 
@@ -545,20 +572,6 @@ async function applyPersistedAssignmentsToSimControllers() {
  * SIM devices always exist from the catalog (runtime ids). ControllersMapped rows only attach `mappedEquipmentId`.
  */
 async function hydrateSimulatedControllersFromCatalog() {
-  for (const { runtimeId } of SIMULATED_CONTROLLERS_CATALOG) {
-    delete store.controllers[runtimeId];
-  }
-  for (const entry of SIMULATED_CONTROLLERS_CATALOG) {
-    store.controllers[entry.runtimeId] = createDefaultController(entry.controllerCode, {
-      runtimeId: entry.runtimeId,
-      deviceType: entry.deviceType,
-      deviceInstance: entry.deviceInstance,
-      deviceAddress: entry.deviceAddress,
-      fieldPoints: entry.fieldPoints,
-      mappedEquipmentId: null,
-      pollRateMs: DEFAULT_POLL_MS,
-    });
-  }
   await applyPersistedAssignmentsToSimControllers();
   // eslint-disable-next-line no-console
   console.log(`[runtime] SIM catalog loaded (${SIMULATED_CONTROLLERS_CATALOG.length} simulated device(s))`);
@@ -600,7 +613,6 @@ function setOnline(code, online) {
   const k = String(c.runtimeId || '').trim();
   const ref = store.controllers[k] || c;
   ref.online = Boolean(online);
-  ref.lastSeenAt = ref.online ? nowIso() : ref.lastSeenAt;
   return publicControllerDto(ref);
 }
 
@@ -653,7 +665,11 @@ async function listDiscoveryDevices(siteId) {
       pointCount = c.fieldPoints.length;
     }
 
-    const cat = c.runtimeId ? getCatalogEntryByRuntimeId(c.runtimeId) : null;
+    if (isSim && siteId && c.siteId && String(c.siteId) !== String(siteId)) continue;
+    if (isSim && !mappedId && Object.values(store.controllers).some((other) =>
+      other.mappedEquipmentId && other.catalogRuntimeId === c.catalogRuntimeId &&
+      (!siteId || String(other.siteId) === String(siteId)))) continue;
+    const cat = getCatalogEntryByRuntimeId(c.catalogRuntimeId || c.runtimeId);
     const addressFromDb =
       ec?.networkAddress != null && String(ec.networkAddress).trim() !== ''
         ? String(ec.networkAddress).trim()

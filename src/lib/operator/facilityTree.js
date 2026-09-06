@@ -18,6 +18,7 @@ function equipmentNode(eq) {
     sortOrder: eq.sortOrder,
     type: eq.type || eq.equipmentType || "",
     status: eq.status || "",
+    commStatus: eq.commStatus || eq.equipmentCommStatus || null,
     floorId: eq.floorId || "",
     buildingId: eq.buildingId || "",
     children: [],

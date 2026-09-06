@@ -15,10 +15,11 @@ for (let col = 0; col < 3; col += 1) {
  * Landscape CGM/PLC controller: DIN rails, left keypad/display, right I/O LEDs.
  * Stroke mark so it matches overview line-art and stays clear at 16–24px.
  */
-export default function PlcControllerIcon({ className = "" }) {
+export default function PlcControllerIcon({ className = "", style }) {
   return (
     <svg
       className={`plc-controller-icon ${className}`.trim()}
+      style={style}
       viewBox="0 0 24 24"
       width="1em"
       height="1em"

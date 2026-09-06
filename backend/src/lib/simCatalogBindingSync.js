@@ -64,7 +64,6 @@ async function upsertPointsFromCatalogFieldDefs(equipment, fieldPoints) {
         pointType: def.pointType != null ? String(def.pointType) : 'Analog Input',
         unit: def.unit != null ? String(def.unit) : null,
         writable: Boolean(def.writable),
-        presentValue: def.presentValue != null ? String(def.presentValue) : null,
         status: 'ACTIVE',
       },
       create: {

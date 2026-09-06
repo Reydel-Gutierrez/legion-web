@@ -80,7 +80,13 @@ export default function EquipmentWorkspace({
   );
 
   useEffect(() => {
-    setSchedules(operatorRepository.getSchedules(siteKey) || []);
+    const refreshSchedules = () => {
+      setSchedules(operatorRepository.getSchedules(siteKey) || []);
+      setClockTick(Date.now());
+    };
+    refreshSchedules();
+    window.addEventListener("storage", refreshSchedules);
+    return () => window.removeEventListener("storage", refreshSchedules);
   }, [siteKey]);
 
   const occupancy = useMemo(() => {
@@ -227,7 +233,11 @@ export default function EquipmentWorkspace({
         location={location}
         commHeadline={live.commHeadline}
         occupancy={occupancy}
-        onOpenSchedule={() => setShowScheduleModal(true)}
+        onOpenSchedule={() => {
+          setSchedules(operatorRepository.getSchedules(siteKey) || []);
+          setClockTick(Date.now());
+          setShowScheduleModal(true);
+        }}
         alarmCount={alarmCount}
       />
       <div className="equipment-workspace__grid">

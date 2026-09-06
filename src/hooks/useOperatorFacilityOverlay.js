@@ -11,11 +11,12 @@ import { annotateFacilityTreeAlarms } from "../lib/operator/pointAlarms";
 export function useOperatorFacilityOverlay(siteId, tree) {
   const [alarms, setAlarms] = useState([]);
   const [runtimeControllers, setRuntimeControllers] = useState([]);
+  const [nowTick, setNowTick] = useState(Date.now);
 
   useEffect(() => {
+    setAlarms([]);
+    setRuntimeControllers([]);
     if (!siteId || !isBackendSiteId(siteId)) {
-      setAlarms([]);
-      setRuntimeControllers([]);
       return undefined;
     }
     let cancelled = false;
@@ -23,17 +24,17 @@ export function useOperatorFacilityOverlay(siteId, tree) {
     async function refresh() {
       try {
         const [alarmRows, controllers] = await Promise.all([
-          operatorRepository.fetchAlarmsForSite(siteId).catch(() => []),
-          USE_HIERARCHY_API ? runtimeApi.listRuntimeControllers().catch(() => []) : Promise.resolve([]),
+          operatorRepository.fetchAlarmsForSite(siteId, { state: "active" }).catch(() => null),
+          USE_HIERARCHY_API ? runtimeApi.listRuntimeControllers().catch(() => null) : Promise.resolve([]),
         ]);
         if (cancelled) return;
-        setAlarms(Array.isArray(alarmRows) ? alarmRows : []);
-        setRuntimeControllers(Array.isArray(controllers) ? controllers : []);
+        // A failed request must not falsely clear an active alarm.
+        if (Array.isArray(alarmRows)) setAlarms(alarmRows);
+        if (Array.isArray(controllers)) setRuntimeControllers(controllers);
       } catch {
-        if (!cancelled) {
-          setAlarms([]);
-          setRuntimeControllers([]);
-        }
+        // Preserve the last known alarm state while communication recovers.
+      } finally {
+        if (!cancelled) setNowTick(Date.now());
       }
     }
 
@@ -46,8 +47,8 @@ export function useOperatorFacilityOverlay(siteId, tree) {
   }, [siteId]);
 
   const annotatedTree = useMemo(
-    () => annotateFacilityTreeAlarms(tree, alarms, runtimeControllers),
-    [tree, alarms, runtimeControllers]
+    () => annotateFacilityTreeAlarms(tree, alarms, runtimeControllers, nowTick),
+    [tree, alarms, runtimeControllers, nowTick]
   );
 
   return { alarms, annotatedTree };

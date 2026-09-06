@@ -83,11 +83,8 @@ export function useEquipmentLivePoints({ equipment, releaseData, siteId }) {
         });
         setRuntimeForEquipment(rt || null);
       } catch {
-        if (!cancelled) {
-          setHierarchyLiveBundle(null);
-          setRuntimeForEquipment(null);
-          setPersistedDbController(null);
-        }
+        // Retain the last real sample and let the ticking freshness rules age it.
+        // Falling back to release rows here can restore outdated values/status.
       }
     }
 
@@ -141,7 +138,7 @@ export function useEquipmentLivePoints({ equipment, releaseData, siteId }) {
             pollRateMs: pollMs,
             now: nowTick,
           })
-      : null;
+      : USE_HIERARCHY_API ? "OFFLINE" : null;
 
   const patchPointUi = useCallback((rowId, patch) => {
     setPointUiState((s) => ({

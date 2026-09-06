@@ -51,8 +51,8 @@ export function findOccupancyPoint(points) {
 
 export function scheduleMatchesEquipment(schedule, equipment) {
   if (!schedule || !equipment) return false;
-  if (schedule.equipmentId != null && String(schedule.equipmentId) === String(equipment.id)) {
-    return true;
+  if (schedule.equipmentId != null && String(schedule.equipmentId).trim()) {
+    return String(schedule.equipmentId) === String(equipment.id);
   }
   const schedName = normName(schedule.equipment);
   if (!schedName) return false;
@@ -199,12 +199,14 @@ export function getTodayScheduleWindows(schedules, equipment, now = new Date()) 
 /**
  * @returns {{ at: Date, occupied: boolean, label: string } | null}
  */
-export function getNextOccupancyChange(schedules, equipment, now = new Date()) {
+export function getNextOccupancyChange(schedules, equipment, now = new Date(), override = null) {
   const matching = matchingSchedules(schedules, equipment);
   if (matching.length === 0) return null;
   const at = now instanceof Date ? now : new Date(now);
   const startMs = at.getTime();
-  let best = null;
+  const events = new Set();
+  const overrideUntil = override?.until ? new Date(override.until).getTime() : NaN;
+  if (overrideUntil > startMs) events.add(overrideUntil);
 
   for (let dayOffset = 0; dayOffset < 8; dayOffset += 1) {
     const day = new Date(at.getFullYear(), at.getMonth(), at.getDate() + dayOffset);
@@ -214,30 +216,33 @@ export function getNextOccupancyChange(schedules, equipment, now = new Date()) {
       const startMin = parseTimeToMinutes(s.startTime);
       const endMin = parseTimeToMinutes(s.endTime);
       const overnight = endMin <= startMin;
-      const addEvent = (minutes, occupied) => {
+      const addEvent = (minutes) => {
         const when = new Date(day.getFullYear(), day.getMonth(), day.getDate(), 0, 0, 0, 0);
         when.setMinutes(minutes);
         if (when.getTime() <= startMs) return;
-        if (!best || when.getTime() < best.at.getTime()) {
-          best = {
-            at: when,
-            occupied,
-            label: occupied ? "Occupied" : "Unoccupied",
-          };
-        }
+        events.add(when.getTime());
       };
       if (days.includes(dayKey)) {
-        addEvent(startMin, actionMeansOccupied(s.action));
-        if (!overnight) addEvent(endMin, false);
+        addEvent(startMin);
+        if (!overnight) addEvent(endMin);
       }
       const prevKey = DAY_KEYS[(day.getDay() + 6) % 7];
       if (overnight && days.includes(prevKey)) {
-        addEvent(endMin, false);
+        addEvent(endMin);
       }
     });
   }
 
-  return best;
+  const occupiedAt = (ms) => ms < overrideUntil
+    ? Boolean(override.occupied)
+    : occupiedFromSchedules(matching, new Date(ms));
+  for (const ms of [...events].sort((a, b) => a - b)) {
+    const occupied = occupiedAt(ms);
+    if (occupied !== occupiedAt(ms - 1)) {
+      return { at: new Date(ms), occupied, label: occupied ? "Occupied" : "Unoccupied" };
+    }
+  }
+  return null;
 }
 
 export function formatNextOccupancyChange(next) {

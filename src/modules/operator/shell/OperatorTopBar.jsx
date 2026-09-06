@@ -1,12 +1,13 @@
-import React, { useMemo, useState } from "react";
+import React, { useState } from "react";
 import { Link, useHistory } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faBell, faChevronDown, faFileAlt } from "@fortawesome/free-solid-svg-icons";
+import { faChevronDown, faFileAlt } from "@fortawesome/free-solid-svg-icons";
 import { Routes } from "../../../routes";
 import { accessRepository } from "../../../lib/data";
 import NOTIFICATIONS_DATA from "../../../lib/data/notifications";
 import { useSiteRuntimeStatus } from "../../../hooks/useSiteRuntimeStatus";
 import StatusIndicator from "../../../components/legion/StatusIndicator";
+import OperatorAlarmBell from "../../../components/legion/OperatorAlarmBell";
 import DashboardModeSelector from "./DashboardModeSelector";
 import OperatorGlobalSearch from "./OperatorGlobalSearch";
 
@@ -23,6 +24,7 @@ export default function OperatorTopBar({
   onDashboardModeChange,
   tree,
   releaseData,
+  hasActiveAlarms = false,
 }) {
   const history = useHistory();
   const { siteStatus, siteStatusLabel, lastSyncLabel } = useSiteRuntimeStatus();
@@ -37,8 +39,6 @@ export default function OperatorTopBar({
       return { fullName: "Operator", roleName: "Operator" };
     }
   })();
-
-  const unread = useMemo(() => notifications.filter((n) => !n.read).length, [notifications]);
 
   return (
     <header className="operator-topbar">
@@ -75,8 +75,7 @@ export default function OperatorTopBar({
               setUserOpen(false);
             }}
           >
-            <FontAwesomeIcon icon={faBell} />
-            {unread > 0 ? <span className="operator-topbar__badge" /> : null}
+            <OperatorAlarmBell active={hasActiveAlarms} />
           </button>
           {bellOpen ? (
             <div className="operator-menu operator-menu--notifications">
