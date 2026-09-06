@@ -373,6 +373,8 @@ async function main() {
     },
   });
 
+  // Drops seed-era LC-CGC / LC-CVC lab rows only. Engineering FCU-1 is rebound
+  // to the in-memory SIM catalog by runtime initialize (not recreated here).
   const legacySimRemoved = await removeLegacySimDemoData(prisma, site.id);
 
   await prisma.point.upsert({

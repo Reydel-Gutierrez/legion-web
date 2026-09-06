@@ -2,12 +2,119 @@
 
 /**
  * Legion runtime SIM controller catalog.
- * Empty — lab SIM devices were retired in favor of real BACnet/IP runtime.
+ * In-memory lab devices for discovery + the operator live-point poll loop.
  * DB assignment (ControllersMapped) is optional; link is resolved by `controllerCode`.
+ * Does not create equipment rows — Engineering FCU-1 is bound at runtime when it exists.
  */
 
-/** @type {Array<object>} */
-const SIMULATED_CONTROLLERS_CATALOG = [];
+const FCU_SIM_DEVICE_LABEL = 'LC-CGC';
+const FCU_SIM_VENDOR = 'Legion Controls';
+const FCU_SIM_BACNET_DEVICE_INSTANCE = '10004';
+const FCU_SIM_DISCOVERY_NETWORK = 'SIM';
+const FCU_SIM_DEVICE_ADDRESS = '4';
+
+/** Defaults aligned with runtime simulator expectations (presentValue stored as string). */
+const FCU_SIM_POINT_DEFINITIONS = [
+  { pointCode: 'SPACE_TEMP', pointName: 'Space Temperature', pointType: 'Analog Input', unit: '°F', writable: false, presentValue: '72' },
+  { pointCode: 'DISCHARGE_AIR_TEMP', pointName: 'Discharge Air Temperature', pointType: 'Analog Input', unit: '°F', writable: false, presentValue: '58' },
+  { pointCode: 'SPACE_TEMP_SP', pointName: 'Space Temperature Setpoint', pointType: 'Analog Value', unit: '°F', writable: true, presentValue: '72' },
+  { pointCode: 'FAN_STATUS', pointName: 'Fan Status', pointType: 'Binary Value', unit: null, writable: false, presentValue: 'false' },
+  { pointCode: 'UNIT_STATUS', pointName: 'Unit Status', pointType: 'Character String Value', unit: null, writable: false, presentValue: 'IDLE' },
+  { pointCode: 'OCCUPIED', pointName: 'Occupied', pointType: 'Binary Value', unit: null, writable: false, presentValue: 'true' },
+  { pointCode: 'COOL_CALL', pointName: 'Cooling Call', pointType: 'Binary Value', unit: null, writable: false, presentValue: 'false' },
+  { pointCode: 'HEAT_CALL', pointName: 'Heating Call', pointType: 'Binary Value', unit: null, writable: false, presentValue: 'false' },
+  { pointCode: 'VALVE_CMD', pointName: 'Valve Command', pointType: 'Analog Output', unit: '%', writable: true, presentValue: '0' },
+  { pointCode: 'FAN_CMD', pointName: 'Fan Command', pointType: 'Binary Value', unit: null, writable: true, presentValue: 'false' },
+  { pointCode: 'ALARM_STATUS', pointName: 'Alarm Status', pointType: 'Character String Value', unit: null, writable: false, presentValue: 'normal' },
+];
+
+/** @typedef {typeof FCU_SIM_POINT_DEFINITIONS[number]} SimFieldPointDef */
+
+/**
+ * @type {Array<{
+ *   runtimeId: string,
+ *   controllerCode: string,
+ *   protocol: string,
+ *   deviceType: string,
+ *   deviceInstance: string,
+ *   deviceAddress: string,
+ *   deviceLabel: string,
+ *   vendorName: string,
+ *   discoveryNetwork: string,
+ *   fieldPoints: SimFieldPointDef[],
+ * }>}
+ */
+const SIMULATED_CONTROLLERS_CATALOG = [
+  {
+    runtimeId: 'sim-fcu-01',
+    controllerCode: 'FCU-1',
+    protocol: 'SIM',
+    deviceType: 'FCU',
+    deviceInstance: String(FCU_SIM_BACNET_DEVICE_INSTANCE),
+    deviceAddress: String(FCU_SIM_DEVICE_ADDRESS),
+    deviceLabel: FCU_SIM_DEVICE_LABEL,
+    vendorName: FCU_SIM_VENDOR,
+    discoveryNetwork: FCU_SIM_DISCOVERY_NETWORK,
+    fieldPoints: FCU_SIM_POINT_DEFINITIONS,
+  },
+  {
+    runtimeId: 'sim-fcu-02',
+    controllerCode: 'FCU-2',
+    protocol: 'SIM',
+    deviceType: 'FCU',
+    deviceInstance: '10005',
+    deviceAddress: '5',
+    deviceLabel: 'LC-CGC',
+    vendorName: FCU_SIM_VENDOR,
+    discoveryNetwork: FCU_SIM_DISCOVERY_NETWORK,
+    fieldPoints: FCU_SIM_POINT_DEFINITIONS,
+  },
+  {
+    runtimeId: 'sim-vav-01',
+    controllerCode: 'VAV-1',
+    protocol: 'SIM',
+    deviceType: 'VAV',
+    deviceInstance: '10100',
+    deviceAddress: '100',
+    deviceLabel: 'LC-CVC',
+    vendorName: FCU_SIM_VENDOR,
+    discoveryNetwork: FCU_SIM_DISCOVERY_NETWORK,
+    fieldPoints: [
+      {
+        pointCode: 'SPACE_TEMP',
+        pointName: 'Zone Temperature',
+        pointType: 'Analog Input',
+        unit: '°F',
+        writable: false,
+        presentValue: '72',
+      },
+      {
+        pointCode: 'SPACE_TEMP_SP',
+        pointName: 'Cooling Setpoint',
+        pointType: 'Analog Value',
+        unit: '°F',
+        writable: true,
+        presentValue: '72',
+      },
+      {
+        pointCode: 'DAMPER_CMD',
+        pointName: 'Damper Command',
+        pointType: 'Analog Output',
+        unit: '%',
+        writable: true,
+        presentValue: '35',
+      },
+      {
+        pointCode: 'OCCUPIED',
+        pointName: 'Occupied',
+        pointType: 'Binary Value',
+        unit: null,
+        writable: false,
+        presentValue: 'true',
+      },
+    ],
+  },
+];
 
 const byRuntimeId = new Map(SIMULATED_CONTROLLERS_CATALOG.map((e) => [e.runtimeId, e]));
 
@@ -63,6 +170,12 @@ function getCatalogEntryByRuntimeId(id) {
 
 module.exports = {
   SIMULATED_CONTROLLERS_CATALOG,
+  FCU_SIM_POINT_DEFINITIONS,
+  FCU_SIM_DEVICE_LABEL,
+  FCU_SIM_VENDOR,
+  FCU_SIM_BACNET_DEVICE_INSTANCE,
+  FCU_SIM_DISCOVERY_NETWORK,
+  FCU_SIM_DEVICE_ADDRESS,
   getCatalogEntryByControllerCode,
   getCatalogEntryByDeviceInstance,
   getCatalogEntryByRuntimeId,

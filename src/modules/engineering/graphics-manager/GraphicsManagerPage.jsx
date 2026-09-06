@@ -123,6 +123,13 @@ function flattenLayoutNodes(node, acc = []) {
   return acc;
 }
 
+function layoutGraphicName(type) {
+  if (type === "site") return "Site Overview Graphic";
+  if (type === "building") return "Building Layout Graphic";
+  if (type === "floor") return "Floor Layout Graphic";
+  return "Site Layout Graphic";
+}
+
 // ---------------------------------------------------------------------------
 // GraphicsManagerPage
 // ---------------------------------------------------------------------------
@@ -238,17 +245,19 @@ export default function GraphicsManagerPage() {
   const selectedGraphic = useMemo(() => {
     if (selectedLayoutNodeId) {
       const base = workingSiteLayoutGraphics[selectedLayoutNodeId] ?? null;
+      const layoutName = layoutGraphicName(selectedLayoutNode?.type);
       if (base)
         return {
           ...base,
           objects: base.objects ?? [],
           backgroundImage: base.backgroundImage,
           canvasSize: base.canvasSize || LAYOUT_GRAPHIC_CANVAS_DEFAULT,
+          name: layoutName,
         };
       return {
         id: `layout-${selectedLayoutNodeId}`,
         nodeId: selectedLayoutNodeId,
-        name: "Site Layout Graphic",
+        name: layoutName,
         status: "WORKING",
         lastEdited: "Now",
         objects: [],
@@ -274,7 +283,7 @@ export default function GraphicsManagerPage() {
         canvasSize: { ...EQUIPMENT_GRAPHIC_CANVAS_DEFAULT },
       };
     return workingGraphic;
-  }, [selectedEquipmentId, selectedLayoutNodeId, workingGraphics, workingSiteLayoutGraphics, workingGraphic]);
+  }, [selectedEquipmentId, selectedLayoutNodeId, selectedLayoutNode, workingGraphics, workingSiteLayoutGraphics, workingGraphic]);
 
   const canvasWidth =
     selectedGraphic?.canvasSize?.width ??
@@ -1349,9 +1358,14 @@ export default function GraphicsManagerPage() {
             objectPositionX: 50,
             objectPositionY: 50,
           });
-          const imageMsg = selectedLayoutNodeId
-            ? "Building image updated successfully"
-            : "Floor graphic saved successfully";
+          const imageMsg =
+            selectedLayoutNode?.type === "site"
+              ? "Site overview image updated successfully"
+              : selectedLayoutNode?.type === "building"
+                ? "Building image updated successfully"
+                : selectedLayoutNodeId
+                  ? "Floor graphic saved successfully"
+                  : "Floor graphic saved successfully";
           appNotify.success(imageMsg);
           appLogger.success(imageMsg, { area: "Graphics Manager", action: "Import background image" });
         } catch (err) {
@@ -1399,7 +1413,7 @@ export default function GraphicsManagerPage() {
       };
       el.click();
     }
-  }, [setGraphicBackgroundImage, selectedGraphic, canvasWidth, canvasHeight, selectedLayoutNodeId]);
+  }, [setGraphicBackgroundImage, selectedGraphic, canvasWidth, canvasHeight, selectedLayoutNodeId, selectedLayoutNode]);
 
   const handleOpenAssignModal = useCallback(() => {
     setAssignPendingLayoutNodeId(selectedLayoutNodeId);
@@ -1799,6 +1813,9 @@ export default function GraphicsManagerPage() {
           (selectedGraphic?.name &&
           selectedGraphic.name !== "Unassigned Graphic" &&
           selectedGraphic.name !== "Site Layout Graphic" &&
+          selectedGraphic.name !== "Site Overview Graphic" &&
+          selectedGraphic.name !== "Building Layout Graphic" &&
+          selectedGraphic.name !== "Floor Layout Graphic" &&
           selectedGraphic.name !== "New Graphic"
             ? selectedGraphic.name
             : "") ||

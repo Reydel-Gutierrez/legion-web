@@ -11,7 +11,8 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio",
-    "db:seed": "prisma db seed"
+    "db:seed": "prisma db seed",
+    "smoke:bacnet": "node scripts/smoke-bacnet-routes.js"
   },
   "engines": {
     "node": ">=16.0.0"

@@ -490,8 +490,8 @@ async function listEvents(siteId, query) {
     include: {
       definition: {
         include: {
-          point: { select: { pointName: true, pointCode: true } },
-          equipment: { select: { name: true, equipmentType: true } },
+          point: { select: { id: true, pointName: true, pointCode: true } },
+          equipment: { select: { id: true, name: true, equipmentType: true } },
         },
       },
     },
@@ -510,8 +510,8 @@ async function acknowledgeEvent(siteId, eventId) {
     include: {
       definition: {
         include: {
-          point: { select: { pointName: true, pointCode: true } },
-          equipment: { select: { name: true, equipmentType: true } },
+          point: { select: { id: true, pointName: true, pointCode: true } },
+          equipment: { select: { id: true, name: true, equipmentType: true } },
         },
       },
     },

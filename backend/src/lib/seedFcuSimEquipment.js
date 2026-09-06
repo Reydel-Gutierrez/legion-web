@@ -1,11 +1,12 @@
 'use strict';
 
 /**
- * Removes retired Legion SIM lab equipment (FCU/VAV demo rows) and cascaded points/mappings.
+ * Removes retired Legion SIM lab equipment (seed-created LC-CGC / LC-CVC demo rows).
+ * Does not delete Engineering equipment whose code/name is FCU-1 — those bind to the
+ * in-memory SIM catalog at runtime.
  * Safe to run idempotently during seed.
  */
 
-const LEGACY_SIM_EQUIPMENT_CODES = ['FCU-1', 'FCU-2', 'VAV-1'];
 const LEGACY_SIM_EQUIPMENT_NAMES = ['LC-CGC', 'LC-CVC'];
 
 /**
@@ -20,14 +21,9 @@ async function removeLegacySimDemoData(prisma, siteId) {
   const rows = await prisma.equipment.findMany({
     where: {
       siteId: sid,
-      OR: [
-        ...LEGACY_SIM_EQUIPMENT_CODES.map((code) => ({
-          code: { equals: code, mode: 'insensitive' },
-        })),
-        ...LEGACY_SIM_EQUIPMENT_NAMES.map((name) => ({
-          name: { equals: name, mode: 'insensitive' },
-        })),
-      ],
+      OR: LEGACY_SIM_EQUIPMENT_NAMES.map((name) => ({
+        name: { equals: name, mode: 'insensitive' },
+      })),
     },
     select: { id: true, code: true, name: true },
   });
@@ -53,6 +49,5 @@ async function removeLegacySimDemoData(prisma, siteId) {
 
 module.exports = {
   removeLegacySimDemoData,
-  LEGACY_SIM_EQUIPMENT_CODES,
   LEGACY_SIM_EQUIPMENT_NAMES,
 };

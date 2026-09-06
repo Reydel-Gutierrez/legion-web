@@ -4,7 +4,7 @@ import {
   faChevronDown,
   faChevronRight,
   faBuilding,
-  faCity,
+  faGlobeAmericas,
   faLayerGroup,
   faPlus,
   faBoxOpen,
@@ -14,7 +14,7 @@ import {
 import HierarchyEquipmentSection from "./HierarchyEquipmentSection";
 
 const NODE_ICONS = {
-  site: faCity,
+  site: faGlobeAmericas,
   building: faBuilding,
   floor: faLayerGroup,
 };

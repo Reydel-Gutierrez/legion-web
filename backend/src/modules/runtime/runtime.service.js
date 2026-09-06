@@ -3,6 +3,7 @@
 const prisma = require('../../lib/prisma');
 const pointService = require('../points/point.service');
 const { SIMULATED_CONTROLLERS_CATALOG, getCatalogEntryByRuntimeId } = require('../../lib/simulatedControllers/catalog');
+const { reconnectSimCatalogToExistingEquipment } = require('../../lib/simCatalogBindingSync');
 const { store, createDefaultController, nowIso, DEFAULT_POLL_MS } = require('./runtime.store');
 
 /** Verbose SIM poll → DB writes (mapped equipment only). */
@@ -564,6 +565,14 @@ async function hydrateSimulatedControllersFromCatalog() {
 }
 
 async function initialize() {
+  try {
+    const reconnect = await reconnectSimCatalogToExistingEquipment();
+    // eslint-disable-next-line no-console
+    console.log('[runtime] SIM catalog reconnect', reconnect);
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.warn('[runtime] SIM catalog reconnect failed:', e?.message || e);
+  }
   await hydrateSimulatedControllersFromCatalog();
   const keys = Object.keys(store.controllers);
   if (keys.length === 0) {

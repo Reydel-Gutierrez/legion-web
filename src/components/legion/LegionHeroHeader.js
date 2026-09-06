@@ -14,8 +14,10 @@ import { isBackendSiteId } from "../../lib/data/siteIdUtils";
 import { coerceSiteKeyToApiId } from "../../lib/data/siteApiResolution";
 import { saveWorkingVersionForSite } from "../../lib/data/persistence/engineeringVersionPersistence";
 import { appNotify, appLogger, withEngineeringAction } from "../../lib/app-activity";
+import { useOperatorChrome } from "../../app/providers/OperatorChromeProvider";
 
 export default function LegionHeroHeader() {
+  const { hideHero } = useOperatorChrome();
   const { currentMode } = useWorkspaceMode();
   const history = useHistory();
   const { validationSnapshot, hasBlockingErrors } = useValidation();
@@ -62,6 +64,8 @@ export default function LegionHeroHeader() {
       history.push(Routes.EngineeringDeployment.path);
     }
   };
+
+  if (hideHero) return null;
 
   return (
     <div

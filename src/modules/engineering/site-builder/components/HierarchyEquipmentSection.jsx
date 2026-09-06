@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faFolder, faGripVertical, faCopy } from "@fortawesome/free-solid-svg-icons";
+import { faGripVertical, faCopy } from "@fortawesome/free-solid-svg-icons";
+import PlcControllerIcon from "../../../../components/legion/PlcControllerIcon";
 
 const STATUS_CHIP_CLASS = {
   MISSING_CONTROLLER: "hierarchy-equipment-status-chip hierarchy-equipment-status-chip--warning",
@@ -140,7 +141,7 @@ export default function HierarchyEquipmentSection({
               onClick={() => onSelectEquipment?.(eq)}
             >
               <span className="hierarchy-equipment-col-name">
-                <FontAwesomeIcon icon={faFolder} className="fa-xs me-1 text-white-50" />
+                <PlcControllerIcon className="hierarchy-equipment-type-icon me-1 text-white-50" />
                 {eq.name}
               </span>
             </div>
@@ -217,7 +218,7 @@ export default function HierarchyEquipmentSection({
               )}
             </span>
             <span className="hierarchy-equipment-col-name">
-              <FontAwesomeIcon icon={faFolder} className="fa-xs me-1 text-white-50" />
+              <PlcControllerIcon className="hierarchy-equipment-type-icon me-1 text-white-50" />
               {eq.name}
               {canDuplicate && (
                 <button

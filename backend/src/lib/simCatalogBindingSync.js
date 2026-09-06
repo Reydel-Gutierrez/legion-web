@@ -16,6 +16,7 @@
 
 const prisma = require('./prisma');
 const {
+  SIMULATED_CONTROLLERS_CATALOG,
   getCatalogEntryByControllerCode,
   simCatalogRepairPatchForNumericControllerCode,
 } = require('./simulatedControllers/catalog');
@@ -258,7 +259,98 @@ async function syncSimCatalogBindingsForSiteId(siteId) {
   return { siteId: sid, results };
 }
 
+function protocolOf(row) {
+  return String(row?.protocol || '').trim().toUpperCase();
+}
+
+/**
+ * Bind existing Engineering equipment (e.g. FCU-1) to the in-memory SIM catalog.
+ * Does not create equipment rows. Skips units already assigned to a non-SIM protocol.
+ * @returns {Promise<{ attempted: number, bound: number, skipped: Array<object> }>}
+ */
+async function reconnectSimCatalogToExistingEquipment() {
+  const skipped = [];
+  let bound = 0;
+
+  for (const entry of SIMULATED_CONTROLLERS_CATALOG) {
+    const code = String(entry.controllerCode || '').trim();
+    if (!code) continue;
+
+    const equipmentRows = await prisma.equipment.findMany({
+      where: {
+        OR: [
+          { code: { equals: code, mode: 'insensitive' } },
+          { name: { equals: code, mode: 'insensitive' } },
+        ],
+      },
+      orderBy: { updatedAt: 'desc' },
+    });
+
+    if (equipmentRows.length === 0) {
+      skipped.push({ controllerCode: code, reason: 'no_equipment' });
+      continue;
+    }
+
+    for (const equipment of equipmentRows) {
+      const existing = await prisma.controllersMapped.findUnique({
+        where: { equipmentId: equipment.id },
+      });
+      if (existing && protocolOf(existing) && protocolOf(existing) !== 'SIM') {
+        skipped.push({
+          controllerCode: code,
+          equipmentId: equipment.id,
+          reason: 'non_sim_protocol',
+          protocol: existing.protocol,
+        });
+        continue;
+      }
+
+      if (!existing) {
+        try {
+          await prisma.controllersMapped.create({
+            data: {
+              equipmentId: equipment.id,
+              controllerCode: entry.controllerCode,
+              displayName: entry.deviceLabel || entry.controllerCode,
+              protocol: 'SIM',
+              deviceInstance: entry.deviceInstance != null ? String(entry.deviceInstance) : null,
+              networkAddress: entry.deviceAddress != null ? String(entry.deviceAddress) : null,
+              siteId: equipment.siteId,
+              buildingId: equipment.buildingId,
+              floorId: equipment.floorId,
+              pollRateMs: 20000,
+              isSimulated: true,
+              isEnabled: true,
+              status: 'ASSIGNED',
+              metadataJson: { vendor: entry.vendorName || 'Legion Controls', source: 'sim-catalog-reconnect' },
+            },
+          });
+        } catch (e) {
+          skipped.push({
+            controllerCode: code,
+            equipmentId: equipment.id,
+            reason: 'create_failed',
+            error: e?.message || String(e),
+          });
+          continue;
+        }
+      }
+
+      const sync = await syncSimCatalogBindingsForEquipmentId(equipment.id);
+      bound += 1;
+      devLog('[DEV] sim catalog reconnect', {
+        controllerCode: code,
+        equipmentId: equipment.id,
+        ...sync,
+      });
+    }
+  }
+
+  return { attempted: SIMULATED_CONTROLLERS_CATALOG.length, bound, skipped };
+}
+
 module.exports = {
   syncSimCatalogBindingsForEquipmentId,
   syncSimCatalogBindingsForSiteId,
+  reconnectSimCatalogToExistingEquipment,
 };

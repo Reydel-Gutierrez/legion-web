@@ -57,16 +57,32 @@ export default function SchedulesPage() {
     const updatedAt = nowStamp(); const updatedBy = "reydel";
 
     if (editingId) {
-      setSchedules((prev) => prev.map((s) => s.id !== editingId ? s : ({ ...s, name: editor.name, equipment: editor.equipment, equipType: inferType(editor.equipment), point: editor.point, action: editor.action, startTime: editor.startTime, endTime: editor.endTime, days, enabled: editor.enabled, updatedAt, updatedBy })));
+      setSchedules((prev) => {
+        const next = prev.map((s) => s.id !== editingId ? s : ({ ...s, name: editor.name, equipment: editor.equipment, equipType: inferType(editor.equipment), point: editor.point, action: editor.action, startTime: editor.startTime, endTime: editor.endTime, days, enabled: editor.enabled, updatedAt, updatedBy }));
+        operatorRepository.saveSchedulesForSite(site, next);
+        return next;
+      });
     } else {
       const newId = `SCH-${String(10000 + schedules.length + 1)}`;
-      setSchedules((prev) => [{ id: newId, name: editor.name, equipment: editor.equipment, equipType: inferType(editor.equipment), point: editor.point, action: editor.action, startTime: editor.startTime, endTime: editor.endTime, days, enabled: editor.enabled, updatedAt, updatedBy }, ...prev]);
+      setSchedules((prev) => {
+        const next = [{ id: newId, name: editor.name, equipment: editor.equipment, equipType: inferType(editor.equipment), point: editor.point, action: editor.action, startTime: editor.startTime, endTime: editor.endTime, days, enabled: editor.enabled, updatedAt, updatedBy }, ...prev];
+        operatorRepository.saveSchedulesForSite(site, next);
+        return next;
+      });
     }
     setShowEditor(false);
   };
 
-  const toggleEnabled = (id) => setSchedules((prev) => prev.map((s) => s.id === id ? ({ ...s, enabled: !s.enabled, updatedAt: nowStamp(), updatedBy: "reydel" }) : s));
-  const deleteSchedule = (id) => window.confirm("Delete this schedule?") && setSchedules((prev) => prev.filter((s) => s.id !== id));
+  const toggleEnabled = (id) => setSchedules((prev) => {
+    const next = prev.map((s) => s.id === id ? ({ ...s, enabled: !s.enabled, updatedAt: nowStamp(), updatedBy: "reydel" }) : s);
+    operatorRepository.saveSchedulesForSite(site, next);
+    return next;
+  });
+  const deleteSchedule = (id) => window.confirm("Delete this schedule?") && setSchedules((prev) => {
+    const next = prev.filter((s) => s.id !== id);
+    operatorRepository.saveSchedulesForSite(site, next);
+    return next;
+  });
 
   return (
     <Container fluid className="px-0">

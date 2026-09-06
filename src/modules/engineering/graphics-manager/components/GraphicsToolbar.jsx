@@ -131,7 +131,13 @@ export default function GraphicsToolbar({
         size="sm"
         className="legion-hero-btn legion-hero-btn--secondary"
         onClick={onImportImage}
-        title={hasSelection ? "Set image as workspace background" : "Assign a site, building, floor, or equipment first (opens Assign Graphic)"}
+        title={
+          hasSelection
+            ? selectedLayoutNode?.type === "site"
+              ? "Set the Operator Site Overview image (saved on the Site and included in deploy)"
+              : "Set image as workspace background"
+            : "Assign a site, building, floor, or equipment first (opens Assign Graphic)"
+        }
       >
         <FontAwesomeIcon icon={faImage} className="me-1" />
         Import Image

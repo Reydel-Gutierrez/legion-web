@@ -1,5 +1,6 @@
 import React, { useMemo, useRef, useState, useEffect, useCallback } from "react";
 import FloorZoneGlassChip from "../../engineering/graphics-manager/components/FloorZoneGlassChip";
+import FloorEquipmentWidget from "../workspace/FloorEquipmentWidget";
 import {
   isZoneShape,
   getStyleForZoneState,
@@ -154,10 +155,14 @@ export default function DeployedGraphicPreview({
   maxWidth,
   maxHeight,
   zoomFactor = 1,
+  /** When "contain", fill the parent card and scale the graphic to the center with no scroll. */
+  fit = "default",
   presentation = DEPLOYED_GRAPHIC_PRESENTATION.equipment,
   onOpenEquipmentDetail,
   enableFloorZones = true,
   resolveEquipmentLabel,
+  resolveEquipment,
+  pinVariant = "glass",
   /** When false, zone widgets show real/empty values only (operator site layout). */
   allowSimulatedFallback = true,
   equipmentLiveBundles = null,
@@ -169,6 +174,7 @@ export default function DeployedGraphicPreview({
   const canvasWidth = graphic?.canvasSize?.width ?? DEFAULT_CANVAS_WIDTH;
   const canvasHeight = graphic?.canvasSize?.height ?? DEFAULT_CANVAS_HEIGHT;
   const isLayoutPresentation = presentation === DEPLOYED_GRAPHIC_PRESENTATION.layout;
+  const containFit = !isLayoutPresentation && fit === "contain";
   // Viewport size (how big the preview rectangle is in the operator UI).
   // Decoupled from canvas world size so we can keep the graphic readable without
   // expanding the card to match engineering canvas dimensions.
@@ -305,7 +311,7 @@ export default function DeployedGraphicPreview({
     return () => ro.disconnect();
   }, []);
 
-  const containerStyle = isLayoutPresentation
+  const containerStyle = isLayoutPresentation || containFit
     ? {
         width: "100%",
         height: "100%",
@@ -456,20 +462,26 @@ export default function DeployedGraphicPreview({
   return (
     <div
       ref={containerRef}
-      className={`deployed-graphic-preview${isLayoutPresentation ? " deployed-graphic-preview--layout" : ""}`}
+      className={`deployed-graphic-preview${isLayoutPresentation ? " deployed-graphic-preview--layout" : ""}${
+        containFit ? " deployed-graphic-preview--contain" : ""
+      }`}
       style={{
         ...containerStyle,
         ...(isLayoutPresentation
           ? {
-              overflow: "hidden",
+              overflow: zoomFactor > 1 ? "auto" : "visible",
               maxWidth: "100%",
             }
-          : {
-              // Equipment: viewport is fixed; allow overflow so labels are not clipped.
-              overflow: "visible",
-              maxWidth: "100%",
-              margin: "0 auto",
-            }),
+          : containFit
+            ? {
+                overflow: "hidden",
+                maxWidth: "100%",
+              }
+            : {
+                overflow: "visible",
+                maxWidth: "100%",
+                margin: "0 auto",
+              }),
       }}
     >
       <div
@@ -618,20 +630,44 @@ export default function DeployedGraphicPreview({
               .filter((obj) => obj.visible !== false)
               .map((obj) =>
                 isZoneShape(obj) ? (
-                  <FloorZoneGlassChip
-                    key={`zone-glass-${obj.id}`}
-                    zoneObject={obj}
-                    mergedValues={zonePointValuesById[obj.id]}
-                    equipmentTitle={resolveEquipmentLabelFn(obj.zoneConfig?.linkedEquipmentId)}
-                    allowSimulatedFallback={allowSimulatedFallback}
-                    expanded={
-                      expandedGlassZoneId === obj.id && obj.zoneConfig?.wedgeEnabled !== false
-                    }
-                    onToggleExpand={() =>
-                      setExpandedGlassZoneId((prev) => (prev === obj.id ? null : obj.id))
-                    }
-                    onOpenEquipmentDetail={onOpenEquipmentDetail}
-                  />
+                  pinVariant === "operator" ? (
+                    <FloorEquipmentWidget
+                      key={`zone-pin-${obj.id}`}
+                      zoneObject={obj}
+                      mergedValues={zonePointValuesById[obj.id]}
+                      equipmentTitle={resolveEquipmentLabelFn(obj.zoneConfig?.linkedEquipmentId)}
+                      equipmentType={
+                        resolveEquipment && obj.zoneConfig && obj.zoneConfig.linkedEquipmentId
+                          ? (() => {
+                              const eq = resolveEquipment(obj.zoneConfig.linkedEquipmentId);
+                              return (eq && (eq.type || eq.equipmentType)) || "";
+                            })()
+                          : ""
+                      }
+                      expanded={
+                        expandedGlassZoneId === obj.id && obj.zoneConfig?.wedgeEnabled !== false
+                      }
+                      onToggleExpand={() =>
+                        setExpandedGlassZoneId((prev) => (prev === obj.id ? null : obj.id))
+                      }
+                      onLookInto={onOpenEquipmentDetail}
+                    />
+                  ) : (
+                    <FloorZoneGlassChip
+                      key={`zone-glass-${obj.id}`}
+                      zoneObject={obj}
+                      mergedValues={zonePointValuesById[obj.id]}
+                      equipmentTitle={resolveEquipmentLabelFn(obj.zoneConfig?.linkedEquipmentId)}
+                      allowSimulatedFallback={allowSimulatedFallback}
+                      expanded={
+                        expandedGlassZoneId === obj.id && obj.zoneConfig?.wedgeEnabled !== false
+                      }
+                      onToggleExpand={() =>
+                        setExpandedGlassZoneId((prev) => (prev === obj.id ? null : obj.id))
+                      }
+                      onOpenEquipmentDetail={onOpenEquipmentDetail}
+                    />
+                  )
                 ) : null
               )}
         </div>

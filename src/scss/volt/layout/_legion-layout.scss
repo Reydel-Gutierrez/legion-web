@@ -2826,6 +2826,12 @@ $legion-search-placeholder: #7b818f;
     }
   }
 
+  .hierarchy-equipment-type-icon {
+    width: 0.85em;
+    height: 0.85em;
+    vertical-align: -0.1em;
+  }
+
   .hierarchy-equipment-status-chip {
     font-size: 0.7rem;
     font-weight: 600;
@@ -3153,6 +3159,12 @@ $legion-search-placeholder: #7b818f;
       opacity: 1;
       color: $legion-accent-engineering !important;
     }
+  }
+
+  .hierarchy-equipment-type-icon {
+    width: 0.85em;
+    height: 0.85em;
+    vertical-align: -0.1em;
   }
 
   .hierarchy-equipment-status-chip {

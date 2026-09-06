@@ -3,6 +3,7 @@
 const express = require('express');
 const { asyncHandler } = require('../../middleware/asyncHandler');
 const runtimeController = require('./runtime.controller');
+const bacnetRoutes = require('../bacnet/bacnet.routes');
 
 const router = express.Router();
 
@@ -19,5 +20,7 @@ router.post('/controllers/:code/stop', asyncHandler((req, res) => runtimeControl
 router.post('/controllers/:code/poll-now', asyncHandler((req, res) => runtimeController.pollNow(req, res)));
 
 router.get('/discovery-devices', asyncHandler((req, res) => runtimeController.discoveryDevices(req, res)));
+
+router.use('/bacnet', bacnetRoutes);
 
 module.exports = router;

@@ -4,6 +4,15 @@ import * as hierarchyRepository from "./hierarchyRepository";
 import * as alarmApi from "../adapters/api/alarmApiAdapter";
 import * as operatorApi from "../adapters/api/operatorApi";
 import { getWorkspacePointsForEquipmentFromRelease } from "../workspacePointsFromRelease";
+import {
+  loadSchedules,
+  saveSchedules,
+  upsertSchedule,
+  deleteSchedule,
+  loadOccupancyOverride,
+  saveOccupancyOverride,
+  clearOccupancyOverride,
+} from "../../operator/scheduleStore";
 
 export { USE_MOCK_DATA, USE_HIERARCHY_API } from "../config";
 
@@ -118,9 +127,33 @@ export function getWorkspacePointsForEquipment(equipmentId, equipmentName, statu
   return operatorApi.getWorkspacePointsForEquipment(equipmentId, equipmentName, status, options);
 }
 
-// Schedules
+// Schedules — local store until a schedules HTTP API exists.
 export function getSchedules(siteId) {
-  return operatorApi.getSchedules(siteId);
+  return loadSchedules(siteId);
+}
+
+export function saveSchedulesForSite(siteId, schedules) {
+  return saveSchedules(siteId, schedules);
+}
+
+export function upsertScheduleForSite(siteId, schedule) {
+  return upsertSchedule(siteId, schedule);
+}
+
+export function deleteScheduleForSite(siteId, scheduleId) {
+  return deleteSchedule(siteId, scheduleId);
+}
+
+export function getOccupancyOverride(siteId, equipmentId) {
+  return loadOccupancyOverride(siteId, equipmentId);
+}
+
+export function setOccupancyOverride(siteId, equipmentId, override) {
+  return saveOccupancyOverride(siteId, equipmentId, override);
+}
+
+export function clearEquipmentOccupancyOverride(siteId, equipmentId) {
+  clearOccupancyOverride(siteId, equipmentId);
 }
 
 // Events (full list)
