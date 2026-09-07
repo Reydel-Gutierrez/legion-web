@@ -18,13 +18,14 @@ import {
   formatCommandValueForDisplay,
   OperatorPointCommandField,
 } from "../equipment/OperatorPointCommandField";
-import { OperatorAlarmConfigModal } from "../equipment/OperatorAlarmConfigModal";
 import EquipmentHeader from "./EquipmentHeader";
 import EquipmentGraphicCard from "./EquipmentGraphicCard";
 import EquipmentTrendsCard from "./EquipmentTrendsCard";
 import EquipmentPointsCard from "./EquipmentPointsCard";
 import EquipmentDetailsCard from "./EquipmentDetailsCard";
-import EquipmentScheduleModal from "./EquipmentScheduleModal";
+import EquipmentAlarmWorkspace from "./EquipmentAlarmWorkspace";
+import EquipmentOccupancyWorkspace from "./EquipmentOccupancyWorkspace";
+import EquipmentTrendWorkspace from "./EquipmentTrendWorkspace";
 import { locationForFacilityNode } from "../../../lib/operator/operatorSelection";
 import { countActiveAlarmsForEquipment } from "../../../lib/operator/pointAlarms";
 
@@ -60,14 +61,28 @@ export default function EquipmentWorkspace({
 
   const [expandedId, setExpandedId] = useState(null);
   const [clockTick, setClockTick] = useState(() => Date.now());
-  const [showScheduleModal, setShowScheduleModal] = useState(false);
+  const [workspaceMode, setWorkspaceMode] = useState(null);
   const [schedules, setSchedules] = useState(() => operatorRepository.getSchedules(siteKey) || []);
   const [commandModalRow, setCommandModalRow] = useState(null);
   const [showCommandModal, setShowCommandModal] = useState(false);
-  const [showAlarmModal, setShowAlarmModal] = useState(false);
   const [alarmModalRow, setAlarmModalRow] = useState(null);
   const [commandValue, setCommandValue] = useState("");
   const [serviceStateChoice, setServiceStateChoice] = useState("in_service");
+  const [configuredAlarmCount, setConfiguredAlarmCount] = useState(0);
+  const [configuredTrendCount, setConfiguredTrendCount] = useState(0);
+  useEffect(() => { try { const key = `legion.trend.store.v1::${encodeURIComponent(siteKey || "__default__")}`; const parsed = JSON.parse(localStorage.getItem(key) || "{}"); setConfiguredTrendCount(Array.isArray(parsed.assignments) ? parsed.assignments.filter((a) => String(a.assetId) === String(equipment?.id)).length : 0); } catch { setConfiguredTrendCount(0); } }, [siteKey, equipment?.id, workspaceMode]);
+
+  const refreshAlarmCount = useCallback(async () => {
+    if (!siteKey || !equipment?.id) return;
+    try {
+      const defs = await operatorRepository.listOperatorAlarmDefinitions(siteKey, { equipmentId: equipment.id });
+      setConfiguredAlarmCount(Array.isArray(defs) ? defs.length : 0);
+    } catch {
+      setConfiguredAlarmCount(0);
+    }
+  }, [siteKey, equipment?.id]);
+
+  useEffect(() => { refreshAlarmCount(); }, [refreshAlarmCount]);
 
   useEffect(() => {
     const id = window.setInterval(() => setClockTick(Date.now()), 30000);
@@ -145,8 +160,8 @@ export default function EquipmentWorkspace({
       const first = live.displayPoints[0];
       if (first) {
         if (commandIntent === "alarm") {
+          setWorkspaceMode("alarms");
           setAlarmModalRow(first);
-          setShowAlarmModal(true);
         } else {
           openPointCommandModal(first);
         }
@@ -208,6 +223,16 @@ export default function EquipmentWorkspace({
   const commandApplyDisabled = modalProfile.mode === "typed" && modalProfile.allOperational === false;
   const displayName = equipment?.displayLabel || equipment?.name || "Equipment";
 
+  if (workspaceMode === "alarms") {
+    return <EquipmentAlarmWorkspace equipment={equipment} points={live.displayPoints} alarms={siteAlarms} releaseData={releaseData} siteKey={siteKey} initialPoint={alarmModalRow} onBack={() => setWorkspaceMode(null)} onSaved={refreshAlarmCount} />;
+  }
+  if (workspaceMode === "occupancy") {
+    return <EquipmentOccupancyWorkspace equipment={equipment} schedules={schedules} occupancy={occupancy} currentUser={currentUser} now={new Date(clockTick)} siteKey={siteKey} onBack={() => setWorkspaceMode(null)} onSchedulesChange={(next) => { setSchedules(next || []); setClockTick(Date.now()); }} />;
+  }
+  if (workspaceMode === "trends") {
+    return <EquipmentTrendWorkspace equipment={equipment} releaseData={releaseData} siteKey={siteKey} onBack={() => setWorkspaceMode(null)} onSaved={() => setConfiguredTrendCount((count) => count + 1)} />;
+  }
+
   if (!equipment) {
     return (
       <div className="operator-placeholder">
@@ -233,13 +258,17 @@ export default function EquipmentWorkspace({
         location={location}
         commHeadline={live.commHeadline}
         occupancy={occupancy}
-        onOpenSchedule={() => {
-          setSchedules(operatorRepository.getSchedules(siteKey) || []);
-          setClockTick(Date.now());
-          setShowScheduleModal(true);
-        }}
+        onOpenSchedule={() => setWorkspaceMode("occupancy")}
+        onOpenAlarms={() => { setAlarmModalRow(null); setWorkspaceMode("alarms"); }}
+        onOpenTrends={() => setWorkspaceMode("trends")}
+        configuredTrendCount={configuredTrendCount}
         alarmCount={alarmCount}
+        configuredAlarmCount={configuredAlarmCount}
       />
+      {false && <div className="equipment-tool-strip">
+        <button type="button" className="equipment-tool-card" onClick={() => setWorkspaceMode("occupancy")}><span>Occupancy</span><strong>{occupancy?.label || "Unoccupied"}</strong><small>{occupancy?.source === "override" ? "Temporary override" : "Open weekly schedule"}</small></button>
+        <button type="button" className="equipment-tool-card equipment-tool-card--alarm" onClick={() => { setAlarmModalRow(null); setWorkspaceMode("alarms"); }}><span>Alarms</span><strong>{alarmCount} Active</strong><small>{configuredAlarmCount} Configured · Open logic workspace</small></button>
+      </div>}
       <div className="equipment-workspace__grid">
         <EquipmentGraphicCard
           graphic={graphic}
@@ -361,14 +390,15 @@ export default function EquipmentWorkspace({
           )}
         </Modal.Body>
         <Modal.Footer className="d-flex flex-wrap gap-2 justify-content-between">
-          <Button
-            variant="outline-secondary"
-            onClick={() => {
+            <Button
+              variant="outline-secondary"
+              onClick={() => {
               if (commandModalRow) setAlarmModalRow(commandModalRow);
-              setShowAlarmModal(true);
-            }}
+              setShowCommandModal(false);
+              setWorkspaceMode("alarms");
+              }}
           >
-            Alarm
+              Configure Alarm
           </Button>
           <div className="d-flex gap-2 ms-auto">
             <Button variant="secondary" onClick={closeCommandModal}>
@@ -381,33 +411,6 @@ export default function EquipmentWorkspace({
         </Modal.Footer>
       </Modal>
 
-      <OperatorAlarmConfigModal
-        show={showAlarmModal}
-        onHide={() => {
-          setShowAlarmModal(false);
-          setAlarmModalRow(null);
-        }}
-        siteId={siteKey}
-        equipmentId={equipment.id}
-        row={alarmModalRow}
-        activeReleaseData={releaseData}
-        onSaved={() => {}}
-      />
-
-      <EquipmentScheduleModal
-        show={showScheduleModal}
-        onHide={() => setShowScheduleModal(false)}
-        siteKey={siteKey}
-        equipment={equipment}
-        occupancy={occupancy}
-        schedules={schedules}
-        onSchedulesChange={(next) => {
-          setSchedules(next || operatorRepository.getSchedules(siteKey) || []);
-          setClockTick(Date.now());
-        }}
-        currentUser={currentUser}
-        now={new Date(clockTick)}
-      />
     </div>
   );
 }

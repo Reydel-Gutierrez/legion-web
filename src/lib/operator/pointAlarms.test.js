@@ -79,4 +79,20 @@ describe("pointAlarms", () => {
     expect(annotated.children[0].alarmCount).toBe(2);
     expect(annotated.alarmCount).toBe(2);
   });
+
+  it("uses the persisted workspace controller when no live runtime row exists", () => {
+    const tree = {
+      id: "site",
+      kind: "site",
+      children: [{ id: "floor", kind: "floor", children: [{ id: "fcu-3", kind: "equipment", children: [] }] }],
+    };
+    const annotated = annotateFacilityTreeAlarms(
+      tree,
+      [],
+      [],
+      Date.parse("2026-09-06T12:00:00Z"),
+      [{ equipmentId: "fcu-3", status: "ONLINE", lastSeenAt: null, pollRateMs: 20000 }]
+    );
+    expect(annotated.children[0].children[0].commStatus).toBe("OFFLINE");
+  });
 });

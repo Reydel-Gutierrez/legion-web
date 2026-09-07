@@ -1,4 +1,6 @@
 import React from "react";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faBell } from "@fortawesome/free-solid-svg-icons";
 import StatusIndicator from "../../../components/legion/StatusIndicator";
 import OperatorAlarmBell from "../../../components/legion/OperatorAlarmBell";
 import FacilityKindIcon from "../../../components/legion/FacilityKindIcon";
@@ -14,7 +16,11 @@ export default function EquipmentHeader({
   commHeadline,
   occupancy,
   onOpenSchedule,
+  onOpenAlarms,
+  onOpenTrends,
+  configuredTrendCount = 0,
   alarmCount = 0,
+  configuredAlarmCount = 0,
 }) {
   const name = equipment?.displayLabel || equipment?.name || selectedNode?.label || "Equipment";
   const typeCode = equipment?.type || equipment?.equipmentType || "";
@@ -71,7 +77,14 @@ export default function EquipmentHeader({
             </p>
           </div>
         </div>
-        <EquipmentOccupancyChip occupancy={occupancy} onOpen={onOpenSchedule} />
+        <div className="equipment-header__utilities">
+          <EquipmentOccupancyChip occupancy={occupancy} onOpen={onOpenSchedule} />
+          <button type="button" className="equipment-trend-chip" onClick={onOpenTrends} aria-label={`Trends ${configuredTrendCount} configured. Open trends workspace.`}><span className="equipment-trend-chip__icon" aria-hidden="true">↗</span><span className="equipment-trend-chip__copy"><span className="equipment-trend-chip__label">TRENDS</span><strong>{configuredTrendCount} Configured</strong></span></button>
+          <button type="button" className={`equipment-alarm-chip${alarmCount > 0 ? " equipment-alarm-chip--active" : ""}`} onClick={onOpenAlarms} aria-label={`Alarms ${alarmCount} active. Open alarm logic workspace.`}>
+            <span className="equipment-alarm-chip__icon" aria-hidden="true"><FontAwesomeIcon icon={faBell} /></span>
+            <span className="equipment-alarm-chip__copy"><span className="equipment-alarm-chip__label">Alarms</span><strong>{alarmCount} Active</strong></span>
+          </button>
+        </div>
       </div>
     </header>
   );

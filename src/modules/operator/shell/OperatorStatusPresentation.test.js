@@ -4,6 +4,7 @@ import { MemoryRouter } from "react-router-dom";
 import FacilityTreeNode from "./FacilityTreeNode";
 import OperatorTopBar from "./OperatorTopBar";
 import EquipmentHeader from "../workspace/EquipmentHeader";
+import { annotateFacilityTreeAlarms } from "../../../lib/operator/pointAlarms";
 
 jest.mock("../../../hooks/useSiteRuntimeStatus", () => ({
   useSiteRuntimeStatus: () => ({ siteStatus: "LIVE", siteStatusLabel: "Online" }),
@@ -39,6 +40,25 @@ it("colors the existing controller icon red while keeping the alarm in the separ
   expect(container.querySelector(".facility-tree__label").textContent).toBe("AHU-2");
   expect(container.querySelector(".facility-tree__row.is-selected")).toBeTruthy();
   expect(container.querySelector(".facility-tree__alarm, .facility-tree__comm")).toBeNull();
+});
+
+it("passes the workspace Offline state through the annotated tree into the controller SVG", () => {
+  const tree = {
+    id: "site",
+    kind: "site",
+    children: [{ id: "floor", kind: "floor", children: [{ id: "fcu-3", kind: "equipment", label: "FCU-3", children: [] }] }],
+  };
+  const annotated = annotateFacilityTreeAlarms(
+    tree,
+    [],
+    [],
+    Date.parse("2026-09-06T12:00:00Z"),
+    [{ equipmentId: "fcu-3", status: "ONLINE", lastSeenAt: null, pollRateMs: 20000 }]
+  );
+  const { container } = render(<FacilityTreeNode {...treeProps} node={annotated.children[0].children[0]} />);
+  const icon = container.querySelector(".plc-controller-icon");
+  expect(annotated.children[0].children[0].commStatus).toBe("OFFLINE");
+  expect(icon.classList.contains("facility-tree__icon--offline")).toBe(true);
 });
 
 it.each(["site", "building", "floor"])("shows no alarm indicators on %s nodes", (kind) => {
