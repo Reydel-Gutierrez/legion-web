@@ -7,7 +7,7 @@ import {
   equipmentPointDisplayValue,
   useEquipmentLivePoints,
 } from "../../../hooks/useEquipmentLivePoints";
-import { operatorRepository, accessRepository } from "../../../lib/data";
+import { operatorRepository, operatorDefinitionsRepository, accessRepository } from "../../../lib/data";
 import {
   findOccupancyPoint,
   resolveEquipmentOccupancy,
@@ -62,7 +62,8 @@ export default function EquipmentWorkspace({
   const [expandedId, setExpandedId] = useState(null);
   const [clockTick, setClockTick] = useState(() => Date.now());
   const [workspaceMode, setWorkspaceMode] = useState(null);
-  const [schedules, setSchedules] = useState(() => operatorRepository.getSchedules(siteKey) || []);
+  const [schedules, setSchedules] = useState([]);
+  const [scheduleLoadError, setScheduleLoadError] = useState("");
   const [commandModalRow, setCommandModalRow] = useState(null);
   const [showCommandModal, setShowCommandModal] = useState(false);
   const [alarmModalRow, setAlarmModalRow] = useState(null);
@@ -70,7 +71,15 @@ export default function EquipmentWorkspace({
   const [serviceStateChoice, setServiceStateChoice] = useState("in_service");
   const [configuredAlarmCount, setConfiguredAlarmCount] = useState(0);
   const [configuredTrendCount, setConfiguredTrendCount] = useState(0);
-  useEffect(() => { try { const key = `legion.trend.store.v1::${encodeURIComponent(siteKey || "__default__")}`; const parsed = JSON.parse(localStorage.getItem(key) || "{}"); setConfiguredTrendCount(Array.isArray(parsed.assignments) ? parsed.assignments.filter((a) => String(a.assetId) === String(equipment?.id)).length : 0); } catch { setConfiguredTrendCount(0); } }, [siteKey, equipment?.id, workspaceMode]);
+  const trendEquipmentId = equipment ? equipment.id : null;
+  useEffect(() => {
+    let active = true;
+    setConfiguredTrendCount(0);
+    operatorDefinitionsRepository.fetchTrendStore(siteKey).then((store) => {
+      if (active) setConfiguredTrendCount(store.assignments.filter((assignment) => assignment.enabled && String(assignment.assetId) === String(trendEquipmentId)).length);
+    }).catch(() => {});
+    return () => { active = false; };
+  }, [siteKey, trendEquipmentId, workspaceMode]);
 
   const refreshAlarmCount = useCallback(async () => {
     if (!siteKey || !equipment?.id) return;
@@ -95,13 +104,15 @@ export default function EquipmentWorkspace({
   );
 
   useEffect(() => {
+    let active = true;
+    setSchedules([]);
     const refreshSchedules = () => {
-      setSchedules(operatorRepository.getSchedules(siteKey) || []);
+      operatorDefinitionsRepository.fetchSchedules(siteKey).then((rows) => { if (active) { setSchedules(rows); setScheduleLoadError(""); } }).catch((error) => { if (active) setScheduleLoadError(error.message); });
       setClockTick(Date.now());
     };
     refreshSchedules();
     window.addEventListener("storage", refreshSchedules);
-    return () => window.removeEventListener("storage", refreshSchedules);
+    return () => { active = false; window.removeEventListener("storage", refreshSchedules); };
   }, [siteKey]);
 
   const occupancy = useMemo(() => {
@@ -251,6 +262,7 @@ export default function EquipmentWorkspace({
 
   return (
     <div className={`equipment-workspace${expandedId ? ` is-expanded-${expandedId}` : ""}`}>
+      {scheduleLoadError ? <div role="alert" className="alert alert-warning">Schedules could not be loaded: {scheduleLoadError}</div> : null}
       <EquipmentHeader
         tree={tree}
         selectedNode={selectedNode}
@@ -277,7 +289,7 @@ export default function EquipmentWorkspace({
           expandedId={expandedId}
           onToggleExpand={setExpandedId}
         />
-        <EquipmentTrendsCard
+        <EquipmentTrendsCard onConfigure={() => setWorkspaceMode("trends")}
           siteKey={siteKey}
           equipmentId={equipment.id}
           displayPoints={live.displayPoints}

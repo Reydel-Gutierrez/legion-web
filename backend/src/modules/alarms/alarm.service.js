@@ -1,4 +1,5 @@
 const prisma = require('../../lib/prisma');
+const { Prisma } = require('@prisma/client');
 const { HttpError } = require('../../lib/httpError');
 
 /** @type {Map<string, number>} definitionId -> first violated timestamp (ms) */
@@ -39,6 +40,48 @@ function numericOrNull(parsed) {
   if (parsed.kind === 'empty') return null;
   const n = parseFloat(parsed.str);
   return Number.isNaN(n) ? null : n;
+}
+
+function evaluateLeaf(leaf, pointsByKey) {
+  const source = pointsByKey.get(String(leaf.pointKey || leaf.pointId || ''));
+  if (!source) return { violated: false, displayValue: '—' };
+  const a = parsePresentValue(source.presentValue);
+  const targetPoint = leaf.targetPointKey ? pointsByKey.get(String(leaf.targetPointKey)) : null;
+  const b = targetPoint ? parsePresentValue(targetPoint.presentValue) : null;
+  const value = leaf.value;
+  const n = value === '' || value === null || value === undefined ? null : Number(value);
+  const op = leaf.operator;
+  let violated = false;
+  if (op === 'IS_ON') violated = isOn(a);
+  else if (op === 'IS_OFF') violated = isOff(a);
+  else if (targetPoint) {
+    const av = numericOrNull(a); const bv = numericOrNull(b);
+    if (av !== null && bv !== null) {
+      if (op === 'EQ') violated = av === bv; else if (op === 'NEQ') violated = av !== bv;
+      else if (op === 'GT') violated = av > bv; else if (op === 'GTE') violated = av >= bv;
+      else if (op === 'LT') violated = av < bv; else if (op === 'LTE') violated = av <= bv;
+    } else if (op === 'EQ' || op === 'NEQ') violated = op === 'EQ' ? a.str === b.str : a.str !== b.str;
+  } else if (op === 'EQ' || op === 'NEQ') {
+    const expected = String(value ?? '').toLowerCase();
+    const actual = a.str.toLowerCase();
+    violated = op === 'EQ' ? actual === expected : actual !== expected;
+  } else if (n !== null && numericOrNull(a) !== null) {
+    const av = numericOrNull(a);
+    if (op === 'GT') violated = av > n; else if (op === 'GTE') violated = av >= n;
+    else if (op === 'LT') violated = av < n; else if (op === 'LTE') violated = av <= n;
+  }
+  return { violated, displayValue: source.presentValue == null ? '—' : String(source.presentValue) };
+}
+
+function evaluateConditionTree(node, pointsByKey) {
+  if (!node) return { violated: false, displayValue: '—' };
+  if (node.type === 'condition' || node.type === 'comparison') return evaluateLeaf(node, pointsByKey);
+  const children = Array.isArray(node.children) ? node.children : [];
+  const results = children.map((child) => evaluateConditionTree(child, pointsByKey));
+  const violated = String(node.logic || 'AND').toUpperCase() === 'OR'
+    ? results.some((item) => item.violated)
+    : results.length > 0 && results.every((item) => item.violated);
+  return { violated, displayValue: results.find((item) => item.displayValue !== '—')?.displayValue || '—' };
 }
 
 /**
@@ -303,6 +346,7 @@ async function createDefinition(siteId, body) {
     delaySeconds,
     messageTemplate,
     autoAcknowledge,
+    conditionTree,
     buildingId,
     floorId,
   } = body;
@@ -321,7 +365,7 @@ async function createDefinition(siteId, body) {
   if (!equipment) throw new HttpError(404, 'Equipment not found for this site');
 
   const catEnum = bodyEnum(CATEGORY_MAP, category, 'category');
-  if (catEnum === 'DEVIATION' || catEnum === 'COMPARISON') {
+  if (!conditionTree && (catEnum === 'DEVIATION' || catEnum === 'COMPARISON')) {
     const hasTgt =
       (targetPointId && String(targetPointId).trim()) ||
       (targetPointKey != null && String(targetPointKey).trim());
@@ -378,6 +422,7 @@ async function createDefinition(siteId, body) {
         delaySeconds != null && delaySeconds !== '' ? parseInt(String(delaySeconds), 10) : null,
       messageTemplate: messageTemplate != null ? String(messageTemplate) : null,
       autoAcknowledge: Boolean(autoAcknowledge),
+      conditionTree: conditionTree && typeof conditionTree === 'object' ? conditionTree : Prisma.DbNull,
     },
     include: {
       point: { select: { id: true, pointName: true, pointCode: true, presentValue: true } },
@@ -447,6 +492,10 @@ async function updateDefinition(siteId, definitionId, body) {
   }
   if (body.messageTemplate !== undefined) data.messageTemplate = body.messageTemplate != null ? String(body.messageTemplate) : null;
   if (body.autoAcknowledge !== undefined) data.autoAcknowledge = Boolean(body.autoAcknowledge);
+  if (body.conditionTree !== undefined) {
+    if (body.conditionTree !== null && typeof body.conditionTree !== 'object') throw new HttpError(400, 'conditionTree must be an object');
+    data.conditionTree = body.conditionTree === null ? Prisma.DbNull : body.conditionTree;
+  }
 
   if (Object.keys(data).length === 0) throw new HttpError(400, 'No fields to update');
 
@@ -534,8 +583,15 @@ async function evaluateOneDefinition(defRow) {
   let full = await loadDefinitionBundle(defRow.id);
   if (!full) return;
 
-  const sourcePoint = await resolveLivePointForDefinition(full, 'source');
-  const needsTarget = full.category === 'DEVIATION' || full.category === 'COMPARISON';
+  const treeKeys = full.conditionTree ? [...new Set((function collect(node) {
+    if (!node) return [];
+    if (node.type === 'condition' || node.type === 'comparison') return [node.pointKey, node.targetPointKey].filter(Boolean);
+    return (node.children || []).flatMap(collect);
+  })(full.conditionTree))] : [];
+  const treePoints = treeKeys.length ? await prisma.point.findMany({ where: { equipmentId: full.equipmentId, siteId: full.siteId, pointCode: { in: treeKeys } } }) : [];
+  const pointsByKey = new Map(treePoints.map((point) => [String(point.pointCode), point]));
+  const sourcePoint = treeKeys.length ? treePoints[0] : await resolveLivePointForDefinition(full, 'source');
+  const needsTarget = !full.conditionTree && (full.category === 'DEVIATION' || full.category === 'COMPARISON');
   const targetPoint = needsTarget ? await resolveLivePointForDefinition(full, 'target') : null;
 
   if (sourcePoint || targetPoint) {
@@ -601,7 +657,9 @@ async function evaluateOneDefinition(defRow) {
     targetPoint: needsTarget ? targetPoint : full.targetPoint,
   };
 
-  const { violated, displayValue } = resolveViolated(evalDef, Boolean(active));
+  const { violated, displayValue } = full.conditionTree
+    ? evaluateConditionTree(full.conditionTree, pointsByKey)
+    : resolveViolated(evalDef, Boolean(active));
   const delaySec = full.delaySeconds != null && full.delaySeconds > 0 ? full.delaySeconds : 0;
 
   let effectiveViolated = violated;
@@ -714,6 +772,11 @@ async function evaluateForPointIds(pointIds) {
       select: { id: true },
     });
     defs.forEach((d) => defIds.add(d.id));
+    const treeDefs = await prisma.alarmDefinition.findMany({
+      where: { siteId: p.siteId, equipmentId: p.equipmentId, enabled: true, conditionTree: { not: Prisma.AnyNull } },
+      select: { id: true },
+    });
+    treeDefs.forEach((d) => defIds.add(d.id));
   }
   for (const id of defIds) {
     await evaluateDefinitionById(id);

@@ -20,6 +20,7 @@ const geocodeRoutes = require('./modules/geocode/geocode.routes');
 const runtimeRoutes = require('./modules/runtime/runtime.routes');
 const equipmentControllersRoutes = require('./modules/equipmentControllers/equipmentControllers.routes');
 const pointMappingsRoutes = require('./modules/pointMappings/pointMappings.routes');
+const operatorDefinitionsRoutes = require('./modules/operatorDefinitions/operatorDefinitions.routes');
 
 const app = express();
 
@@ -54,6 +55,7 @@ app.use('/api/runtime', (req, res, next) => {
 app.use('/api/runtime', runtimeRoutes);
 app.use('/api/equipment-controllers', equipmentControllersRoutes);
 app.use('/api/point-mappings', pointMappingsRoutes);
+app.use('/api/operator', operatorDefinitionsRoutes);
 
 if (process.env.NODE_ENV === 'development') {
   const { syncSimCatalogBindingsForEquipmentId } = require('./lib/simCatalogBindingSync');

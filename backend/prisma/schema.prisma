@@ -48,6 +48,10 @@ model Site {
   alarmDefinitions  AlarmDefinition[]
   alarmEvents       AlarmEvent[]
   controllersMapped ControllersMapped[]
+  trendDefinitions TrendDefinition[]
+  trendAssignments TrendAssignment[]
+  scheduleDefinitions ScheduleDefinition[]
+  scheduleAssignments ScheduleAssignment[]
 }
 
 model SiteVersion {
@@ -159,6 +163,8 @@ model Equipment {
   alarmEvents      AlarmEvent[]
   controllersMapped ControllersMapped?
   pointsMapped      PointsMapped[]
+  trendAssignments  TrendAssignment[]
+  scheduleAssignments ScheduleAssignment[]
 
   @@unique([siteId, code])
   @@unique([siteId, instanceNumber])
@@ -295,6 +301,79 @@ model Point {
   @@unique([equipmentId, pointCode])
 }
 
+/// Durable site-scoped trend definition. Point requirements are semantic JSON so templates
+/// can be resolved independently for each equipment assignment.
+model TrendDefinition {
+  id             String   @id @default(uuid())
+  siteId         String
+  name           String
+  enabled        Boolean  @default(true)
+  isTemplate     Boolean  @default(false)
+  equipmentType  String?
+  sampleInterval Int?
+  pointRequirements Json
+  version        Int      @default(1)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  site        Site              @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  assignments TrendAssignment[]
+
+  @@index([siteId, isTemplate])
+}
+
+model TrendAssignment {
+  id            String   @id @default(uuid())
+  definitionId  String
+  siteId        String
+  equipmentId   String
+  enabled       Boolean  @default(true)
+  resolvedMappings Json
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  definition TrendDefinition @relation(fields: [definitionId], references: [id], onDelete: Cascade)
+  site       Site             @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  equipment  Equipment        @relation(fields: [equipmentId], references: [id], onDelete: Cascade)
+
+  @@unique([definitionId, equipmentId])
+  @@index([siteId, equipmentId])
+}
+
+model ScheduleDefinition {
+  id        String   @id @default(uuid())
+  siteId    String
+  name      String
+  enabled   Boolean  @default(true)
+  isTemplate Boolean @default(false)
+  weeklyWindows Json
+  version   Int      @default(1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  site        Site                 @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  assignments ScheduleAssignment[]
+
+  @@index([siteId, isTemplate])
+}
+
+model ScheduleAssignment {
+  id           String   @id @default(uuid())
+  definitionId String
+  siteId       String
+  equipmentId  String
+  enabled      Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  definition ScheduleDefinition @relation(fields: [definitionId], references: [id], onDelete: Cascade)
+  site       Site               @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  equipment  Equipment          @relation(fields: [equipmentId], references: [id], onDelete: Cascade)
+
+  @@unique([definitionId, equipmentId])
+  @@index([siteId, equipmentId])
+}
+
 model AlarmDefinition {
   id               String            @id @default(uuid())
   siteId           String
@@ -318,6 +397,8 @@ model AlarmDefinition {
   delaySeconds     Int?
   messageTemplate  String?
   autoAcknowledge  Boolean           @default(false)
+  /// Generic persisted condition tree. Leaves reference logical point keys on this equipment.
+  conditionTree    Json?
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
 

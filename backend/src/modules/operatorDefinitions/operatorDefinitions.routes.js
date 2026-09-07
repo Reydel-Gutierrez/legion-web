@@ -1,0 +1,11 @@
+const express = require('express');
+const controller = require('./operatorDefinitions.controller');
+const { asyncHandler } = require('../../middleware/asyncHandler');
+const router = express.Router();
+router.get('/:siteId/:kind/definitions', asyncHandler(controller.list));
+router.post('/:siteId/:kind/definitions', asyncHandler(controller.create));
+router.patch('/:siteId/:kind/definitions/:id', asyncHandler(controller.update));
+router.delete('/:siteId/:kind/definitions/:id', asyncHandler(controller.remove));
+router.post('/:siteId/:kind/definitions/:id/assign', asyncHandler(controller.assign));
+router.delete('/:siteId/:kind/definitions/:id/assign/:equipmentId', asyncHandler(controller.unassign));
+module.exports = router;
