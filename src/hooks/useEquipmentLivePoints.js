@@ -8,7 +8,7 @@ import { getEquipmentControllerByEquipment } from "../lib/data/adapters/api/equi
 import { getPointMappingsByEquipment } from "../lib/data/adapters/api/pointMappingApiAdapter";
 import { applyHierarchyLiveToWorkspaceRows } from "../lib/operator/operatorWorkspaceHierarchyMerge";
 import { resolveLivePointsSourceEquipmentId } from "../lib/operator/operatorWorkspaceLivePointsSource";
-import { getEquipmentStatus } from "../lib/operator/statusUtils";
+import { resolveEquipmentCommStatus } from "../lib/operator/statusUtils";
 
 export const EQUIPMENT_OOS_LABEL = "Out Of Service";
 
@@ -130,15 +130,13 @@ export function useEquipmentLivePoints({ equipment, releaseData, siteId }) {
   const pollMs = runtimeForEquipment?.pollRateMs ?? persistedDbController?.pollRateMs;
   const lastSeen = runtimeForEquipment?.lastSeenAt ?? persistedDbController?.lastSeenAt;
   const commHeadline =
-    USE_HIERARCHY_API && (runtimeForEquipment || persistedDbController)
-      ? runtimeForEquipment?.online === false
-        ? "OFFLINE"
-        : getEquipmentStatus({
-            lastSeenAt: lastSeen,
-            pollRateMs: pollMs,
-            now: nowTick,
-          })
-      : USE_HIERARCHY_API ? "OFFLINE" : null;
+    USE_HIERARCHY_API
+      ? resolveEquipmentCommStatus({
+          runtimeController: runtimeForEquipment,
+          persistedController: persistedDbController,
+          now: nowTick,
+        })
+      : null;
 
   const patchPointUi = useCallback((rowId, patch) => {
     setPointUiState((s) => ({

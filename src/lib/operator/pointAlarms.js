@@ -1,4 +1,4 @@
-import { getEquipmentStatus, normalizeCommStatus } from "./statusUtils";
+import { normalizeCommStatus, resolveEquipmentCommStatus } from "./statusUtils";
 
 function compact(value) {
   return String(value || "")
@@ -93,13 +93,26 @@ export function countActiveAlarmsForEquipment(alarms, equipmentId) {
  * @param {object[]} [runtimeControllers]
  * @returns {object|null}
  */
-export function annotateFacilityTreeAlarms(tree, alarms, runtimeControllers, now = Date.now()) {
+export function annotateFacilityTreeAlarms(
+  tree,
+  alarms,
+  runtimeControllers,
+  now = Date.now(),
+  persistedControllers = []
+) {
   if (!tree) return tree;
 
   const runtimeByEq = new Map();
   (runtimeControllers || []).forEach((c) => {
-    const id = String(c?.equipmentId || c?.mappedEquipmentId || "").trim();
-    if (id) runtimeByEq.set(id, c);
+    [c?.equipmentId, c?.mappedEquipmentId].forEach((id) => {
+      const key = String(id || "").trim();
+      if (key) runtimeByEq.set(key, c);
+    });
+  });
+  const persistedByEq = new Map();
+  (persistedControllers || []).forEach((c) => {
+    const id = String(c?.equipmentId || "").trim();
+    if (id) persistedByEq.set(id, c);
   });
 
   function walk(node) {
@@ -110,12 +123,12 @@ export function annotateFacilityTreeAlarms(tree, alarms, runtimeControllers, now
     let commStatus = normalizeCommStatus(node.commStatus || node.equipmentCommStatus || node.status);
     if (node.kind === "equipment") {
       const rt = runtimeByEq.get(String(node.id));
-      if (rt) {
-        commStatus =
-          rt.online === false
-            ? "OFFLINE"
-            : getEquipmentStatus({ lastSeenAt: rt.lastSeenAt, pollRateMs: rt.pollRateMs, now });
-      }
+      const persisted = persistedByEq.get(String(node.id));
+      commStatus = resolveEquipmentCommStatus({
+        runtimeController: rt,
+        persistedController: persisted,
+        now,
+      });
     }
     return { ...node, children, alarmCount, commStatus };
   }

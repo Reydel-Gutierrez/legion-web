@@ -64,6 +64,21 @@ export function getEquipmentStatus({ lastSeenAt, pollRateMs, now }) {
 }
 
 /**
+ * Resolve equipment communication from the same runtime/persisted controller
+ * sources used by the equipment workspace and the facility tree.
+ */
+export function resolveEquipmentCommStatus({ runtimeController, persistedController, now }) {
+  const controller = runtimeController || persistedController;
+  if (!controller) return "OFFLINE";
+  if (controller.online === false) return "OFFLINE";
+  return getEquipmentStatus({
+    lastSeenAt: controller.lastSeenAt,
+    pollRateMs: controller.pollRateMs,
+    now,
+  });
+}
+
+/**
  * @param {"LIVE"|"STALE"|"OFFLINE"|string} status
  * @returns {string} CSS color
  */
