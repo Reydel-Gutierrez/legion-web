@@ -15,6 +15,7 @@
  */
 
 const { nextVersionNumber } = require('../siteVersions/siteVersion.service');
+const { captureLiveConfigForSite, materializeLiveConfigForSite } = require('../runtime/liveConfig.service');
 
 function byId(list) {
   const map = new Map();
@@ -249,6 +250,14 @@ async function applyPackageFiles(tx, siteId, files, options = {}) {
     },
   });
   await tx.site.update({ where: { id: siteId }, data: { activeReleaseVersionId: siteVersion.id } });
+
+  // This IS the activation event for an LS-100 (there is no separate "deploy the working state"
+  // step here — applying a package already means "make this Live"), so immediately capture the
+  // ControllersMapped/PointsMapped rows just upserted above and materialize them into the same
+  // LiveControllerBinding/LivePointBinding projection `siteVersion.service.js`'s same-database
+  // deploy path uses — Runtime must resolve identically regardless of which pipeline activated it.
+  const { controllerBindings, pointBindings } = await captureLiveConfigForSite(siteId, tx);
+  await materializeLiveConfigForSite(tx, siteId, siteVersion.id, controllerBindings, pointBindings);
 
   return { siteVersionId: siteVersion.id, versionNumber };
 }

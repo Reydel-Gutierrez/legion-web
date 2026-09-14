@@ -360,6 +360,21 @@ export async function listSiteVersions(siteId) {
   return apiFetch(`/api/sites/${encodeURIComponent(siteId)}/versions`);
 }
 
+/** ROLLBACK to the previously active release, or an explicit `toVersionId`. */
+export async function postRollback(siteId, options = {}) {
+  const body = {};
+  if (options.toVersionId) body.toVersionId = String(options.toVersionId);
+  if (options.actor != null && String(options.actor).trim()) body.actor = String(options.actor).trim();
+  return apiFetch(`/api/sites/${encodeURIComponent(siteId)}/rollback`, {
+    method: "POST",
+    body,
+    activity: {
+      label: "Rollback release",
+      toastOnError: true,
+    },
+  });
+}
+
 /** @returns {Promise<object[]>} UserSiteAccess rows with user + role */
 export async function listSiteUserAccess(siteId) {
   const raw = await apiFetch(`/api/sites/${encodeURIComponent(siteId)}/users`);

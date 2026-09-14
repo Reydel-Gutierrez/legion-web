@@ -430,6 +430,17 @@ export async function deployWorkingVersionViaApi(siteId, notes, options = {}) {
   return api.postDeploy(siteId, notes, options);
 }
 
+/** Release/version history rows (WORKING + RELEASED) for the Engineering Deployment History table. */
+export async function fetchSiteVersionHistory(siteId) {
+  const raw = await api.listSiteVersions(siteId);
+  return Array.isArray(raw?.versions) ? raw.versions : [];
+}
+
+/** Rollback to the previously active release, or an explicit `toVersionId`. */
+export async function rollbackReleaseViaApi(siteId, options = {}) {
+  return api.postRollback(siteId, options);
+}
+
 /** UserSiteAccess rows for a site (includes nested user + role). */
 export async function listSiteUserAccess(siteId) {
   return api.listSiteUserAccess(siteId);

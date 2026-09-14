@@ -15,6 +15,7 @@ const { buildZip } = require('../../lib/lspkg/zip');
 const { canonicalStringify, sha256Hex } = require('../../lib/lspkg/checksum');
 const { writeStagedPackage, readStagedPackage, deleteStagedPackage } = require('../../lib/lspkg/storage');
 const { applyPackageFiles } = require('./activation.service');
+const { resyncLiveSimBindings } = require('../runtime/runtime.service');
 
 const COMMISSIONING_ID = 'ls100';
 
@@ -230,6 +231,10 @@ async function activatePackage(packageRecordId, { actor } = {}) {
       data: { state: 'ACTIVE', activeSiteId: record.siteId, activePackageRecordId: record.id },
     });
     await audit({ siteId: record.siteId, packageRecordId: record.id, action: 'ACTIVATE', result: 'SUCCESS', actor, details: { siteVersionId: result.siteVersionId, versionNumber: result.versionNumber } });
+    await resyncLiveSimBindings().catch((e) => {
+      // eslint-disable-next-line no-console
+      console.warn('[deployment] Runtime live-binding resync skipped:', e?.message || e);
+    });
     return serializePackageRecord(activated);
   } catch (e) {
     // The transaction already rolled back every relational write for this attempt — restoring
@@ -270,6 +275,10 @@ async function rollbackToPreviousVersion(siteId, { actor } = {}) {
     const result = await prisma.$transaction(async (tx) => applyPackageFiles(tx, siteId, parent.payload.payloadJson, { notes: `Rollback to v${parent.versionNumber}`, source: 'ROLLBACK' }));
     await prisma.lsCommissioning.update({ where: { id: COMMISSIONING_ID }, data: { state: 'ACTIVE', activeSiteId: siteId } });
     await audit({ siteId, action: 'ROLLBACK', result: 'SUCCESS', actor, details: { restoredFromVersionNumber: parent.versionNumber, newSiteVersionId: result.siteVersionId } });
+    await resyncLiveSimBindings().catch((e) => {
+      // eslint-disable-next-line no-console
+      console.warn('[deployment] Runtime live-binding resync skipped:', e?.message || e);
+    });
     return { ok: true, siteVersionId: result.siteVersionId };
   } catch (e) {
     await prisma.lsCommissioning.update({ where: { id: COMMISSIONING_ID }, data: { state: 'FAILED' } }).catch(() => {});

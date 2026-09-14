@@ -11,6 +11,8 @@ const {
 const { buildWorkingSiteEquipmentFromDb } = require('../siteHierarchy/siteHierarchy.service');
 const { ensureSeedOwnerSiteAccess } = require('../../lib/siteAccess');
 const { syncSimCatalogBindingsForSiteId } = require('../../lib/simCatalogBindingSync');
+const { captureLiveConfigForSite, materializeLiveConfigForSite } = require('../runtime/liveConfig.service');
+const { resyncLiveSimBindings } = require('../runtime/runtime.service');
 
 /**
  * Operator / active-release snapshot uses a slightly flatter site tree than engineering working state.
@@ -82,8 +84,11 @@ function serializeVersionRow(version, includePayload = true) {
     status: version.status,
     createdAt: version.createdAt,
     updatedAt: version.updatedAt,
+    createdBy: version.createdBy ?? null,
     deployedAt: version.deployedAt,
+    deployedBy: version.deployedBy ?? null,
     parentVersionId: version.parentVersionId,
+    sourceWorkingVersionId: version.sourceWorkingVersionId ?? null,
     notes: version.notes,
   };
   if (includePayload) {
@@ -256,8 +261,26 @@ async function getActiveRelease(siteId) {
   return site.activeReleaseVersion;
 }
 
-async function deployWorkingVersion(siteId, options = {}) {
-  await assertSiteExists(siteId);
+/**
+ * BUILD RELEASE: validate the current WORKING version and freeze it into a brand-new, immutable
+ * RELEASED SiteVersion (its own row/versionNumber/payload). The WORKING version itself is left
+ * completely untouched — Engineering keeps editing the same working copy without needing to
+ * "obtain a new one" — and nothing about the Live/active release changes yet. See DEPLOY below for
+ * the separate activation step.
+ *
+ * Lineage: `parentVersionId` chains to the site's *current active RELEASED version* (null for a
+ * site's first-ever release) — never to the mutable WORKING row, so release ancestry stays a clean
+ * release-to-release chain no matter how many times WORKING is built from in between deploys.
+ * `sourceWorkingVersionId` separately records which WORKING draft produced this release — useful
+ * provenance, but not lineage, since that WORKING row keeps evolving afterward.
+ *
+ * Also freezes the site's current ControllersMapped/PointsMapped assignments into the release
+ * payload as `controllerBindings`/`pointBindings` (LC-ARCH-003 Phase 1.1) — this is what lets DEPLOY
+ * later materialize Runtime's Live projection from what was true at BUILD time, not from whatever
+ * Engineering has changed those tables to since.
+ */
+async function buildRelease(siteId, options = {}) {
+  const site = await assertSiteExists(siteId);
 
   await syncWorkingPayloadFromDb(siteId);
 
@@ -267,7 +290,7 @@ async function deployWorkingVersion(siteId, options = {}) {
   });
 
   if (!working) {
-    throw new HttpError(404, 'No working version to deploy');
+    throw new HttpError(404, 'No working version to build');
   }
 
   const payloadJson = working.payload?.payloadJson;
@@ -276,16 +299,16 @@ async function deployWorkingVersion(siteId, options = {}) {
     throw new HttpError(400, err);
   }
 
-  const workingFlat = payloadJson;
-  const deployedBy =
-    options.deployedBy != null && String(options.deployedBy).trim()
-      ? String(options.deployedBy).trim()
-      : 'Reydel Gutierrez';
+  const versionNumber = await nextVersionNumber(siteId);
+  const builtBy =
+    options.builtBy != null && String(options.builtBy).trim() ? String(options.builtBy).trim() : null;
+  const notes = options.notes != null && String(options.notes).trim() ? String(options.notes).trim() : null;
 
-  const snapshot = buildDeploymentSnapshotFromWorking(workingFlat, {
-    version: `v${working.versionNumber}`,
-    lastDeployedAt: new Date().toISOString(),
-    deployedBy,
+  const snapshot = buildDeploymentSnapshotFromWorking(payloadJson, {
+    version: `v${versionNumber}`,
+    lastDeployedAt: null,
+    deployedBy: null,
+    systemStatus: 'Built',
   });
 
   const dbMerged = await buildWorkingSiteEquipmentFromDb(siteId);
@@ -293,39 +316,182 @@ async function deployWorkingVersion(siteId, options = {}) {
   snapshot.site = opSite;
   snapshot.equipment = opEquipment;
 
+  const { controllerBindings, pointBindings } = await captureLiveConfigForSite(siteId);
+  snapshot.controllerBindings = controllerBindings;
+  snapshot.pointBindings = pointBindings;
+
   await ensureSeedOwnerSiteAccess(siteId);
 
-  const released = await prisma.$transaction(async (tx) => {
-    const deployedAt = new Date();
+  const release = await prisma.siteVersion.create({
+    data: {
+      siteId,
+      versionNumber,
+      status: 'RELEASED',
+      parentVersionId: site.activeReleaseVersionId || null,
+      sourceWorkingVersionId: working.id,
+      createdBy: builtBy,
+      notes,
+      payload: {
+        create: { payloadJson: snapshot },
+      },
+    },
+    include: { payload: true },
+  });
+
+  return release;
+}
+
+/**
+ * DEPLOY: activate an existing, already-built RELEASED version for a site. Never mutates the
+ * released version's engineering configuration (site/equipment/mappings/templates/etc.) — only the
+ * deploy-lifecycle stamps (`deployedAt`/`deployedBy` and the display-only snapshot fields mirrored
+ * for the Operator UI) change. Everything below — the active-pointer flip, materializing Runtime's
+ * Live projection from this release's own frozen bindings, and recording the activation event —
+ * happens in one transaction, so a failure leaves the previously active release (and the Live
+ * projection Runtime is reading) completely untouched.
+ * @param {{ deployedBy?: string, action?: 'DEPLOY'|'ROLLBACK' }} [options]
+ */
+async function deployRelease(siteId, releaseVersionId, options = {}) {
+  await assertSiteExists(siteId);
+
+  const release = await prisma.siteVersion.findUnique({
+    where: { id: releaseVersionId },
+    include: { payload: true },
+  });
+  if (!release || release.siteId !== siteId) {
+    throw new HttpError(404, 'Release version not found for this site');
+  }
+  if (release.status !== 'RELEASED') {
+    throw new HttpError(409, `Version v${release.versionNumber} is not a built release and cannot be deployed`);
+  }
+
+  const deployedBy =
+    options.deployedBy != null && String(options.deployedBy).trim() ? String(options.deployedBy).trim() : null;
+  const action = options.action === 'ROLLBACK' ? 'ROLLBACK' : 'DEPLOY';
+  const deployedAt = new Date();
+
+  const basePayload = release.payload?.payloadJson;
+  const displayPayload = isPlainObject(basePayload)
+    ? {
+        ...cloneJson(basePayload),
+        lastDeployedAt: deployedAt.toISOString(),
+        deployedBy,
+        systemStatus: 'Running',
+      }
+    : basePayload;
+  const controllerBindings = isPlainObject(basePayload) ? basePayload.controllerBindings : undefined;
+  const pointBindings = isPlainObject(basePayload) ? basePayload.pointBindings : undefined;
+
+  const activated = await prisma.$transaction(async (tx) => {
+    const siteBefore = await tx.site.findUnique({ where: { id: siteId }, select: { activeReleaseVersionId: true } });
+    const previousReleaseVersionId = siteBefore?.activeReleaseVersionId || null;
 
     const updatedVersion = await tx.siteVersion.update({
-      where: { id: working.id },
+      where: { id: release.id },
       data: {
-        status: 'RELEASED',
         deployedAt,
-        payload: {
-          update: {
-            payloadJson: snapshot,
-          },
-        },
+        deployedBy,
+        ...(displayPayload !== basePayload ? { payload: { update: { payloadJson: displayPayload } } } : {}),
       },
       include: { payload: true },
     });
 
     await tx.site.update({
       where: { id: siteId },
-      data: { activeReleaseVersionId: updatedVersion.id },
+      data: { activeReleaseVersionId: release.id },
+    });
+
+    // Materialize Runtime's Live projection from THIS release's own frozen bindings — never from
+    // whatever ControllersMapped/PointsMapped say right now (LC-ARCH-003 Phase 1.1).
+    await materializeLiveConfigForSite(tx, siteId, release.id, controllerBindings, pointBindings);
+
+    await tx.siteDeploymentEvent.create({
+      data: {
+        siteId,
+        releaseVersionId: release.id,
+        previousReleaseVersionId,
+        action,
+        activatedAt: deployedAt,
+        activatedBy: deployedBy,
+      },
     });
 
     return updatedVersion;
   });
 
+  // Best-effort, outside the transaction (matches the existing Engineering self-heal semantics):
+  // repair ControllersMapped/PointsMapped for SIM catalog equipment so the NEXT build captures
+  // complete bindings. Never affects the release/Live projection just activated above.
   await syncSimCatalogBindingsForSiteId(siteId).catch((e) => {
     // eslint-disable-next-line no-console
     console.warn('[deploy] SIM catalog binding sync skipped:', e?.message || e);
   });
 
-  return released;
+  // Re-sync Runtime's in-memory SIM store against the Live projection we just replaced.
+  await resyncLiveSimBindings().catch((e) => {
+    // eslint-disable-next-line no-console
+    console.warn('[deploy] Runtime live-binding resync skipped:', e?.message || e);
+  });
+
+  return activated;
+}
+
+/**
+ * Combined "Deploy version" convenience (matches the existing single-button Engineering UX):
+ * BUILD RELEASE followed immediately by DEPLOY of the release it just built. The two remain
+ * independently callable (see `buildRelease` / `deployRelease`) for a future UI that separates them.
+ */
+async function deployWorkingVersion(siteId, options = {}) {
+  const release = await buildRelease(siteId, { notes: options.notes, builtBy: options.deployedBy });
+  return deployRelease(siteId, release.id, { deployedBy: options.deployedBy });
+}
+
+/**
+ * ROLLBACK: reactivate a previously RELEASED version as-is (no duplication/edit of its content —
+ * the same immutable row simply becomes the active release again via `deployRelease`).
+ */
+async function rollbackToVersion(siteId, releaseVersionId, options = {}) {
+  return deployRelease(siteId, releaseVersionId, { deployedBy: options.actor, action: 'ROLLBACK' });
+}
+
+/**
+ * Convenience rollback: reactivate whichever RELEASED version was active immediately before the
+ * current one, without the caller needing to look it up first.
+ *
+ * Derives "previous" from the append-only `SiteDeploymentEvent` ledger — the most recent event
+ * whose `releaseVersionId` differs from the currently active release. A mutable `deployedAt` cache
+ * on the release row cannot answer this reliably once a release has been (re)activated more than
+ * once (it only remembers its own latest activation, not the full sequence), so this never uses it.
+ */
+async function rollbackToPreviousRelease(siteId, options = {}) {
+  await assertSiteExists(siteId);
+
+  const site = await prisma.site.findUnique({ where: { id: siteId } });
+  if (!site?.activeReleaseVersionId) {
+    throw new HttpError(409, 'Site has no active release to roll back from');
+  }
+
+  const events = await prisma.siteDeploymentEvent.findMany({ where: { siteId } });
+  const history = events.slice().sort((a, b) => b.sequence - a.sequence);
+
+  const previousEvent = history.find((e) => e.releaseVersionId !== site.activeReleaseVersionId);
+  if (!previousEvent) {
+    throw new HttpError(409, 'No prior released version exists to roll back to');
+  }
+
+  return rollbackToVersion(siteId, previousEvent.releaseVersionId, options);
+}
+
+/**
+ * Deployment/activation history for a site (append-only, includes every DEPLOY/ROLLBACK), newest
+ * first — the source of truth for "previous release" derivation, version history display, and
+ * future troubleshooting. Ordered by `sequence` (monotonic append order), not `activatedAt`: two
+ * activations can land in the same millisecond, which would otherwise make ordering ambiguous.
+ */
+async function listDeploymentEvents(siteId) {
+  await assertSiteExists(siteId);
+  const rows = await prisma.siteDeploymentEvent.findMany({ where: { siteId } });
+  return rows.slice().sort((a, b) => b.sequence - a.sequence);
 }
 
 async function listVersionHistory(siteId) {
@@ -341,8 +507,11 @@ async function listVersionHistory(siteId) {
       status: true,
       createdAt: true,
       updatedAt: true,
+      createdBy: true,
       deployedAt: true,
+      deployedBy: true,
       parentVersionId: true,
+      sourceWorkingVersionId: true,
       notes: true,
     },
   });
@@ -355,8 +524,13 @@ module.exports = {
   syncWorkingPayloadFromDb,
   putWorkingVersion,
   getActiveRelease,
+  buildRelease,
+  deployRelease,
   deployWorkingVersion,
+  rollbackToVersion,
+  rollbackToPreviousRelease,
   listVersionHistory,
+  listDeploymentEvents,
   serializeVersionRow,
   nextVersionNumber,
 };

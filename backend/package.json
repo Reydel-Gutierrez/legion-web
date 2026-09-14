@@ -19,7 +19,9 @@
     "test:direct-deploy": "node scripts/test-direct-deploy.js",
     "test:historian": "node scripts/test-historian-interval-safety.js",
     "test:sim-runtime": "node scripts/test-sim-runtime.js",
-    "test:all": "npm run test:lspkg && npm run test:deployment && npm run test:direct-deploy && npm run test:historian && npm run test:sim-runtime"
+    "test:site-version-lifecycle": "node scripts/test-site-version-lifecycle.js",
+    "test:live-config-boundary": "node scripts/test-live-config-boundary.js",
+    "test:all": "npm run test:lspkg && npm run test:deployment && npm run test:direct-deploy && npm run test:historian && npm run test:sim-runtime && npm run test:site-version-lifecycle && npm run test:live-config-boundary"
   },
   "engines": {
     "node": ">=16.0.0"

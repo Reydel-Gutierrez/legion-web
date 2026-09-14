@@ -34,7 +34,7 @@ function makeDb() {
     pointsMapped: [], alarmDefinitions: [], trendDefinitions: [], trendAssignments: [],
     scheduleDefinitions: [], scheduleAssignments: [], siteVersions: [], siteVersionPayloads: [],
     users: [], lsCommissioning: [], deploymentPackageRecords: [], deploymentBackupRecords: [],
-    deploymentAuditEntries: [],
+    deploymentAuditEntries: [], liveControllerBindings: [], livePointBindings: [],
   };
 
   /**
@@ -98,6 +98,8 @@ function makeDb() {
     point: genericModel(tables.points),
     controllersMapped: genericModel(tables.controllersMapped),
     pointsMapped: genericModel(tables.pointsMapped),
+    liveControllerBinding: genericModel(tables.liveControllerBindings),
+    livePointBinding: genericModel(tables.livePointBindings),
     alarmDefinition: genericModel(tables.alarmDefinitions, ['conditionTree']),
     trendDefinition: genericModel(tables.trendDefinitions),
     trendAssignment: genericModel(tables.trendAssignments),
@@ -135,7 +137,7 @@ function makeDb() {
     // bookkeeping deliberately happens OUTSIDE that transaction in deployment.service.js (a real
     // Postgres transaction only ever affects the statements run against it, never unrelated rows).
     $transaction: async (fn) => {
-      const txTables = ['sites', 'buildings', 'floors', 'equipment', 'points', 'controllersMapped', 'pointsMapped', 'alarmDefinitions', 'trendDefinitions', 'trendAssignments', 'scheduleDefinitions', 'scheduleAssignments', 'siteVersions', 'siteVersionPayloads'];
+      const txTables = ['sites', 'buildings', 'floors', 'equipment', 'points', 'controllersMapped', 'pointsMapped', 'liveControllerBindings', 'livePointBindings', 'alarmDefinitions', 'trendDefinitions', 'trendAssignments', 'scheduleDefinitions', 'scheduleAssignments', 'siteVersions', 'siteVersionPayloads'];
       const snapshot = Object.fromEntries(txTables.map((k) => [k, tables[k].map((r) => ({ ...r }))]));
       try {
         return await fn(db);

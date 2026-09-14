@@ -36,9 +36,9 @@ function getDeployerDisplayName() {
   try {
     const u = accessRepository.getCurrentUserForAccess();
     const n = (u?.fullName || "").trim();
-    return n || "Reydel Gutierrez";
+    return n || "Unknown User";
   } catch {
-    return "Reydel Gutierrez";
+    return "Unknown User";
   }
 }
 
@@ -73,6 +73,8 @@ export default function DeploymentPage() {
   const useApiDeploy = USE_HIERARCHY_API && isBackendSiteId(site);
   const [apiDeployLoading, setApiDeployLoading] = useState(false);
   const [apiVersionSummary, setApiVersionSummary] = useState(null);
+  const [apiVersionHistory, setApiVersionHistory] = useState([]);
+  const [rollbackLoadingId, setRollbackLoadingId] = useState(null);
   const [versionMetaTick, setVersionMetaTick] = useState(0);
 
   const hasPending = deploymentRepository.hasPendingChanges(pendingChanges);
@@ -80,6 +82,7 @@ export default function DeploymentPage() {
   useEffect(() => {
     if (!useApiDeploy) {
       setApiVersionSummary(null);
+      setApiVersionHistory([]);
       return undefined;
     }
     let cancelled = false;
@@ -91,10 +94,19 @@ export default function DeploymentPage() {
       .catch(() => {
         if (!cancelled) setApiVersionSummary(null);
       });
+    engineeringRepository
+      .fetchSiteVersionHistory(site)
+      .then((rows) => {
+        if (!cancelled) setApiVersionHistory(Array.isArray(rows) ? rows : []);
+      })
+      .catch(() => {
+        if (!cancelled) setApiVersionHistory([]);
+      });
     return () => {
       cancelled = true;
     };
   }, [useApiDeploy, site, versionMetaTick]);
+
   const readinessLabel =
     readiness === engineeringRepository.READINESS_STATUS.READY
       ? "Ready"
@@ -147,6 +159,33 @@ export default function DeploymentPage() {
       }
     },
     [dispatch, workingState.deploymentHistory, site, registerBackendActiveRelease]
+  );
+
+  const handleRollback = useCallback(
+    async (versionId) => {
+      if (!useApiDeploy || rollbackLoadingId) return;
+      setRollbackLoadingId(versionId);
+      appNotify.info("Rolling back release...");
+      appLogger.info("Rolling back release...", { area: "Deployment", action: "Rollback" });
+      try {
+        const res = await engineeringRepository.postRollbackRelease(site, {
+          toVersionId: versionId,
+          actor: getDeployerDisplayName(),
+        });
+        applyApiDeploySuccess(res);
+        engineeringRepository.notifyEngineeringHierarchyChanged(site);
+        setVersionMetaTick((t) => t + 1);
+        appNotify.success("Rolled back successfully");
+        appLogger.success("Rolled back successfully", { area: "Deployment", action: "Rollback" });
+      } catch (e) {
+        const msg = e?.message ? `Rollback failed: ${e.message}` : "Rollback failed";
+        appNotify.error(msg);
+        appLogger.error(msg, { area: "Deployment", action: "Rollback", details: e?.message });
+      } finally {
+        setRollbackLoadingId(null);
+      }
+    },
+    [useApiDeploy, rollbackLoadingId, site, applyApiDeploySuccess]
   );
 
   const handleDeployConfiguration = useCallback(async () => {
@@ -573,18 +612,55 @@ export default function DeploymentPage() {
                 </tr>
               </thead>
               <tbody>
-                {historyList.map((row, idx) => (
-                  <tr key={`${row.version}-${idx}`}>
-                    <td className="border-light border-opacity-10 text-white">{row.version}</td>
-                    <td className="border-light border-opacity-10 text-white-50">{formatDate(row.date)}</td>
-                    <td className="border-light border-opacity-10 text-white-50">{row.user}</td>
-                    <td className="border-light border-opacity-10">
-                      <Badge bg="success">{row.result}</Badge>
-                    </td>
-                    <td className="border-light border-opacity-10 text-white-50">{row.notes || "—"}</td>
-                    <td className="border-light border-opacity-10 text-white-50 small">Placeholder</td>
-                  </tr>
-                ))}
+                {useApiDeploy
+                  ? apiVersionHistory
+                      .filter((row) => row.status === "RELEASED")
+                      .sort((a, b) => (b.versionNumber || 0) - (a.versionNumber || 0))
+                      .map((row) => {
+                        const isActive = apiVersionSummary?.activeVersionNumber === row.versionNumber;
+                        return (
+                          <tr key={row.id}>
+                            <td className="border-light border-opacity-10 text-white">
+                              v{row.versionNumber} {isActive && <Badge bg="info" className="ms-1">Active</Badge>}
+                            </td>
+                            <td className="border-light border-opacity-10 text-white-50">
+                              {formatDate(row.deployedAt)} {formatTime(row.deployedAt)}
+                            </td>
+                            <td className="border-light border-opacity-10 text-white-50">{row.deployedBy || "—"}</td>
+                            <td className="border-light border-opacity-10">
+                              <Badge bg="success">Success</Badge>
+                            </td>
+                            <td className="border-light border-opacity-10 text-white-50">{row.notes || "—"}</td>
+                            <td className="border-light border-opacity-10 text-white-50 small">
+                              {isActive ? (
+                                "—"
+                              ) : (
+                                <Button
+                                  size="sm"
+                                  variant="outline-light"
+                                  className="legion-hero-btn legion-hero-btn--secondary"
+                                  disabled={rollbackLoadingId != null}
+                                  onClick={() => handleRollback(row.id)}
+                                >
+                                  {rollbackLoadingId === row.id ? "Rolling back…" : "Rollback"}
+                                </Button>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })
+                  : historyList.map((row, idx) => (
+                      <tr key={`${row.version}-${idx}`}>
+                        <td className="border-light border-opacity-10 text-white">{row.version}</td>
+                        <td className="border-light border-opacity-10 text-white-50">{formatDate(row.date)}</td>
+                        <td className="border-light border-opacity-10 text-white-50">{row.user}</td>
+                        <td className="border-light border-opacity-10">
+                          <Badge bg="success">{row.result}</Badge>
+                        </td>
+                        <td className="border-light border-opacity-10 text-white-50">{row.notes || "—"}</td>
+                        <td className="border-light border-opacity-10 text-white-50 small">—</td>
+                      </tr>
+                    ))}
               </tbody>
             </Table>
             </div>

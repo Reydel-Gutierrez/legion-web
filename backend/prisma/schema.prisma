@@ -20,9 +20,9 @@ enum SiteVersionStatus {
 }
 
 model Site {
-  id        String       @id @default(uuid())
-  name      String
-  status    EntityStatus @default(ACTIVE)
+  id               String       @id @default(uuid())
+  name             String
+  status           EntityStatus @default(ACTIVE)
   /// Engineering / Site Builder metadata (persisted; working-version sync reads these)
   timezone         String?
   siteType         String?
@@ -30,52 +30,101 @@ model Site {
   displayLabel     String?
   engineeringNotes String?
   icon             String?
-  createdAt DateTime     @default(now())
-  updatedAt DateTime     @updatedAt
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
 
   /// User who created the site (shown as project owner in UIs that filter by creator)
   createdByUserId String?
   createdByUser   User?   @relation("SitesCreatedByUser", fields: [createdByUserId], references: [id], onDelete: SetNull)
 
-  activeReleaseVersionId String? @unique
+  activeReleaseVersionId String?      @unique
   activeReleaseVersion   SiteVersion? @relation("ActiveRelease", fields: [activeReleaseVersionId], references: [id], onDelete: SetNull)
 
-  buildings         Building[]
-  equipment         Equipment[]
-  points            Point[]
-  userSiteAccess    UserSiteAccess[]
-  siteVersions      SiteVersion[]
-  alarmDefinitions  AlarmDefinition[]
-  alarmEvents       AlarmEvent[]
-  controllersMapped ControllersMapped[]
-  trendDefinitions TrendDefinition[]
-  trendAssignments TrendAssignment[]
-  scheduleDefinitions ScheduleDefinition[]
-  scheduleAssignments ScheduleAssignment[]
+  buildings              Building[]
+  equipment              Equipment[]
+  points                 Point[]
+  userSiteAccess         UserSiteAccess[]
+  siteVersions           SiteVersion[]
+  alarmDefinitions       AlarmDefinition[]
+  alarmEvents            AlarmEvent[]
+  controllersMapped      ControllersMapped[]
+  trendDefinitions       TrendDefinition[]
+  trendAssignments       TrendAssignment[]
+  scheduleDefinitions    ScheduleDefinition[]
+  scheduleAssignments    ScheduleAssignment[]
+  deploymentEvents       SiteDeploymentEvent[]
+  liveControllerBindings LiveControllerBinding[]
 }
 
 model SiteVersion {
-  id        String @id @default(uuid())
-  siteId    String
-  versionNumber Int
-  status    SiteVersionStatus
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  createdBy String?
-  deployedAt DateTime?
-  parentVersionId String?
-  notes     String?
+  id                     String            @id @default(uuid())
+  siteId                 String
+  versionNumber          Int
+  status                 SiteVersionStatus
+  createdAt              DateTime          @default(now())
+  updatedAt              DateTime          @updatedAt
+  /// Who built/saved this version (WORKING edits or the BUILD RELEASE action).
+  createdBy              String?
+  /// Set the moment this RELEASED version last became the active release (deploy or rollback).
+  /// Convenience cache of the most recent activation only — `SiteDeploymentEvent` is the
+  /// authoritative, append-only activation history (repeated deploy/rollback never overwrites it).
+  deployedAt             DateTime?
+  /// Who last activated this RELEASED version (deploy or rollback) — distinct from createdBy.
+  deployedBy             String?
+  /// For a RELEASED version: the prior RELEASED version it superseded (null for the first release).
+  /// For a WORKING version: the RELEASED version it was seeded from. Never points at a mutable
+  /// WORKING row — release lineage must chain release-to-release only.
+  parentVersionId        String?
+  /// RELEASED only: the WORKING row whose content this release was built from (provenance, not
+  /// lineage — a WORKING row keeps evolving after being built from, so this is informational only).
+  sourceWorkingVersionId String?
+  notes                  String?
 
-  site Site @relation(fields: [siteId], references: [id], onDelete: Cascade)
-  parent SiteVersion? @relation("VersionHierarchy", fields: [parentVersionId], references: [id], onDelete: SetNull)
-  children SiteVersion[] @relation("VersionHierarchy")
-  payload SiteVersionPayload?
-  activeReleaseForSite Site? @relation("ActiveRelease")
+  site                 Site                  @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  parent               SiteVersion?          @relation("VersionHierarchy", fields: [parentVersionId], references: [id], onDelete: SetNull)
+  children             SiteVersion[]         @relation("VersionHierarchy")
+  sourceWorkingVersion SiteVersion?          @relation("ReleaseSourceWorking", fields: [sourceWorkingVersionId], references: [id], onDelete: SetNull)
+  builtReleases        SiteVersion[]         @relation("ReleaseSourceWorking")
+  payload              SiteVersionPayload?
+  activeReleaseForSite Site?                 @relation("ActiveRelease")
+  deploymentEvents     SiteDeploymentEvent[]
 
   @@unique([siteId, versionNumber])
   @@index([siteId])
   @@index([status])
   @@index([siteId, status])
+}
+
+enum SiteDeploymentAction {
+  DEPLOY
+  ROLLBACK
+}
+
+/// Append-only activation ledger (LC-ARCH-003 Phase 1.1): the authoritative history of which
+/// RELEASED SiteVersion was active when. `Site.activeReleaseVersionId` remains the authoritative
+/// CURRENT pointer; this table exists so repeated deploy/rollback of the same release never
+/// destroys the ability to reconstruct "what was live, and when" or to derive "the previous release"
+/// correctly (a mutable last-activated timestamp on the immutable release row cannot do either).
+model SiteDeploymentEvent {
+  id                       String               @id @default(uuid())
+  /// Monotonic append order — the authoritative ordering for "what happened when". `activatedAt`
+  /// is wall-clock metadata only: several activations can land in the same millisecond (fast
+  /// sequential deploy/rollback calls, coarse OS clock resolution), which would otherwise make
+  /// "previous release" derivation ambiguous. This can never tie.
+  sequence                 Int                  @default(autoincrement())
+  siteId                   String
+  releaseVersionId         String
+  /// The release that was active immediately before this event (null for a site's first-ever deploy).
+  previousReleaseVersionId String?
+  action                   SiteDeploymentAction
+  activatedAt              DateTime             @default(now())
+  activatedBy              String?
+
+  site    Site        @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  release SiteVersion @relation(fields: [releaseVersionId], references: [id], onDelete: Cascade)
+
+  @@index([siteId, sequence])
+  @@index([releaseVersionId])
 }
 
 model SiteVersionPayload {
@@ -107,64 +156,65 @@ model Building {
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
 
-  site      Site       @relation(fields: [siteId], references: [id], onDelete: Cascade)
-  floors    Floor[]
-  equipment Equipment[]
-  points    Point[]
+  site              Site                @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  floors            Floor[]
+  equipment         Equipment[]
+  points            Point[]
   controllersMapped ControllersMapped[]
 
   @@unique([siteId, name])
 }
 
 model Floor {
-  id         String       @id @default(uuid())
-  buildingId String
-  name       String
-  status     EntityStatus @default(ACTIVE)
+  id            String       @id @default(uuid())
+  buildingId    String
+  name          String
+  status        EntityStatus @default(ACTIVE)
   /// Operator / Site Builder display name (falls back to name when unset)
-  displayLabel    String?
-  floorType       String?
-  occupancyType   String?
-  sortOrder       Int          @default(0)
-  createdAt  DateTime     @default(now())
-  updatedAt  DateTime     @updatedAt
+  displayLabel  String?
+  floorType     String?
+  occupancyType String?
+  sortOrder     Int          @default(0)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
 
-  building  Building    @relation(fields: [buildingId], references: [id], onDelete: Cascade)
-  equipment Equipment[]
-  points    Point[]
+  building          Building            @relation(fields: [buildingId], references: [id], onDelete: Cascade)
+  equipment         Equipment[]
+  points            Point[]
   controllersMapped ControllersMapped[]
 
   @@unique([buildingId, name])
 }
 
 model Equipment {
-  id            String       @id @default(uuid())
-  siteId        String
-  buildingId    String
-  floorId       String
-  name          String
-  code          String
-  equipmentType String
+  id             String       @id @default(uuid())
+  siteId         String
+  buildingId     String
+  floorId        String
+  name           String
+  code           String
+  equipmentType  String
   /// Optional template label from Template Library (engineering)
-  templateName  String?
+  templateName   String?
   /// BACnet / controller-style address for mapping (user-entered in Site Builder)
-  address       String?
+  address        String?
   /// User-defined instance / tag (unique per site when set; Site Builder)
   instanceNumber String?
-  status        EntityStatus @default(ACTIVE)
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
+  status         EntityStatus @default(ACTIVE)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
 
-  site     Site     @relation(fields: [siteId], references: [id], onDelete: Cascade)
-  building Building @relation(fields: [buildingId], references: [id], onDelete: Cascade)
-  floor    Floor    @relation(fields: [floorId], references: [id], onDelete: Cascade)
-  points   Point[]
-  alarmDefinitions AlarmDefinition[]
-  alarmEvents      AlarmEvent[]
-  controllersMapped ControllersMapped?
-  pointsMapped      PointsMapped[]
-  trendAssignments  TrendAssignment[]
-  scheduleAssignments ScheduleAssignment[]
+  site                  Site                   @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  building              Building               @relation(fields: [buildingId], references: [id], onDelete: Cascade)
+  floor                 Floor                  @relation(fields: [floorId], references: [id], onDelete: Cascade)
+  points                Point[]
+  alarmDefinitions      AlarmDefinition[]
+  alarmEvents           AlarmEvent[]
+  controllersMapped     ControllersMapped?
+  pointsMapped          PointsMapped[]
+  trendAssignments      TrendAssignment[]
+  scheduleAssignments   ScheduleAssignment[]
+  liveControllerBinding LiveControllerBinding?
 
   @@unique([siteId, code])
   @@unique([siteId, instanceNumber])
@@ -193,10 +243,10 @@ model ControllersMapped {
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 
-  site      Site      @relation(fields: [siteId], references: [id], onDelete: Cascade)
-  building  Building? @relation(fields: [buildingId], references: [id], onDelete: SetNull)
-  floor     Floor?    @relation(fields: [floorId], references: [id], onDelete: SetNull)
-  equipment Equipment @relation(fields: [equipmentId], references: [id], onDelete: Cascade)
+  site         Site           @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  building     Building?      @relation(fields: [buildingId], references: [id], onDelete: SetNull)
+  floor        Floor?         @relation(fields: [floorId], references: [id], onDelete: SetNull)
+  equipment    Equipment      @relation(fields: [equipmentId], references: [id], onDelete: Cascade)
   pointsMapped PointsMapped[]
 
   @@unique([siteId, controllerCode])
@@ -230,6 +280,78 @@ model PointsMapped {
 
   @@unique([equipmentControllerId, fieldPointKey])
   @@unique([equipmentControllerId, pointId])
+  @@index([equipmentId])
+  @@index([pointId])
+}
+
+// -------------------------------------------------------------------------------------------
+// LC-ARCH-003 Phase 1.1: Live runtime-facing projection of controller/point bindings.
+// `ControllersMapped`/`PointsMapped` above are Engineering-authored (mutable, edited directly by
+// Site Builder / Point Mapping) and must never be read by Runtime — that was the Phase 1 boundary
+// gap. `LiveControllerBinding`/`LivePointBinding` are the deployed projection: populated only by
+// `deployRelease`'s materialization step (see `runtime/liveConfig.service.js`), sourced from the
+// RELEASED SiteVersion's own frozen `controllerBindings`/`pointBindings` payload (captured at BUILD
+// time from ControllersMapped/PointsMapped), never from whatever those tables say *now*. Runtime
+// polling (`runtime.service.js`) reads and writes ONLY these tables, never ControllersMapped/
+// PointsMapped directly.
+// -------------------------------------------------------------------------------------------
+
+/// One row per equipment with a controller binding in the currently active release.
+model LiveControllerBinding {
+  id               String    @id @default(uuid())
+  siteId           String
+  equipmentId      String    @unique
+  controllerCode   String
+  displayName      String?
+  protocol         String
+  deviceInstance   String?
+  ipAddress        String?
+  networkAddress   String?
+  buildingId       String?
+  floorId          String?
+  pollRateMs       Int?      @default(5000)
+  isSimulated      Boolean   @default(false)
+  isEnabled        Boolean   @default(true)
+  /// Runtime communication heartbeat — set by `runtime.service.js`, never by deploy/materialization.
+  status           String?
+  lastSeenAt       DateTime?
+  /// Which RELEASED SiteVersion currently backs this binding (debugging/traceability only).
+  releaseVersionId String
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  site          Site               @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  equipment     Equipment          @relation(fields: [equipmentId], references: [id], onDelete: Cascade)
+  pointBindings LivePointBinding[]
+
+  @@index([siteId])
+  @@index([controllerCode])
+}
+
+/// Maps a runtime/field point key to a Legion Point row, mirroring the active release's PointsMapped
+/// snapshot for one `LiveControllerBinding`.
+model LivePointBinding {
+  id                      String   @id @default(uuid())
+  liveControllerBindingId String
+  equipmentId             String
+  pointId                 String
+  legionPointCode         String?
+  fieldPointKey           String
+  fieldPointName          String?
+  fieldObjectType         String?
+  fieldObjectInstance     String?
+  fieldDataType           String?
+  readEnabled             Boolean  @default(true)
+  writeEnabled            Boolean  @default(false)
+  isBound                 Boolean  @default(true)
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  controllerBinding LiveControllerBinding @relation(fields: [liveControllerBindingId], references: [id], onDelete: Cascade)
+  point             Point                 @relation(fields: [pointId], references: [id], onDelete: Cascade)
+
+  @@unique([liveControllerBindingId, fieldPointKey])
+  @@unique([liveControllerBindingId, pointId])
   @@index([equipmentId])
   @@index([pointId])
 }
@@ -293,11 +415,12 @@ model Point {
   building  Building  @relation(fields: [buildingId], references: [id], onDelete: Cascade)
   floor     Floor     @relation(fields: [floorId], references: [id], onDelete: Cascade)
 
-  alarmDefinitionsAsSource AlarmDefinition[] @relation("AlarmDefinitionSourcePoint")
-  alarmDefinitionsAsTarget AlarmDefinition[] @relation("AlarmDefinitionTargetPoint")
-  alarmEvents              AlarmEvent[]      @relation("AlarmEventPoint")
-  pointsMapped PointsMapped[]
-  historySamples PointHistorySample[]
+  alarmDefinitionsAsSource AlarmDefinition[]    @relation("AlarmDefinitionSourcePoint")
+  alarmDefinitionsAsTarget AlarmDefinition[]    @relation("AlarmDefinitionTargetPoint")
+  alarmEvents              AlarmEvent[]         @relation("AlarmEventPoint")
+  pointsMapped             PointsMapped[]
+  historySamples           PointHistorySample[]
+  livePointBindings        LivePointBinding[]
 
   @@unique([equipmentId, pointCode])
 }
@@ -327,20 +450,20 @@ model PointHistorySample {
 /// Durable site-scoped trend definition. Point requirements are semantic JSON so templates
 /// can be resolved independently for each equipment assignment.
 model TrendDefinition {
-  id             String   @id @default(uuid())
-  siteId         String
-  name           String
-  enabled        Boolean  @default(true)
-  isTemplate     Boolean  @default(false)
-  equipmentType  String?
-  sampleInterval Int?
+  id                String   @id @default(uuid())
+  siteId            String
+  name              String
+  enabled           Boolean  @default(true)
+  isTemplate        Boolean  @default(false)
+  equipmentType     String?
+  sampleInterval    Int?
   /// Historian retention window for this trend's points, in days. Additive/nullable so existing
   /// rows default without a backfill; a cleanup job can read it once one exists.
-  retentionDays  Int?     @default(30)
+  retentionDays     Int?     @default(30)
   pointRequirements Json
-  version        Int      @default(1)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  version           Int      @default(1)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 
   site        Site              @relation(fields: [siteId], references: [id], onDelete: Cascade)
   assignments TrendAssignment[]
@@ -349,33 +472,33 @@ model TrendDefinition {
 }
 
 model TrendAssignment {
-  id            String   @id @default(uuid())
-  definitionId  String
-  siteId        String
-  equipmentId   String
-  enabled       Boolean  @default(true)
+  id               String   @id @default(uuid())
+  definitionId     String
+  siteId           String
+  equipmentId      String
+  enabled          Boolean  @default(true)
   resolvedMappings Json
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
   definition TrendDefinition @relation(fields: [definitionId], references: [id], onDelete: Cascade)
-  site       Site             @relation(fields: [siteId], references: [id], onDelete: Cascade)
-  equipment  Equipment        @relation(fields: [equipmentId], references: [id], onDelete: Cascade)
+  site       Site            @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  equipment  Equipment       @relation(fields: [equipmentId], references: [id], onDelete: Cascade)
 
   @@unique([definitionId, equipmentId])
   @@index([siteId, equipmentId])
 }
 
 model ScheduleDefinition {
-  id        String   @id @default(uuid())
-  siteId    String
-  name      String
-  enabled   Boolean  @default(true)
-  isTemplate Boolean @default(false)
+  id            String   @id @default(uuid())
+  siteId        String
+  name          String
+  enabled       Boolean  @default(true)
+  isTemplate    Boolean  @default(false)
   weeklyWindows Json
-  version   Int      @default(1)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  version       Int      @default(1)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   site        Site                 @relation(fields: [siteId], references: [id], onDelete: Cascade)
   assignments ScheduleAssignment[]
@@ -401,38 +524,38 @@ model ScheduleAssignment {
 }
 
 model AlarmDefinition {
-  id               String            @id @default(uuid())
-  siteId           String
-  buildingId       String?
-  floorId          String?
-  equipmentId      String
+  id              String            @id @default(uuid())
+  siteId          String
+  buildingId      String?
+  floorId         String?
+  equipmentId     String
   /// Stable template / logical point key (e.g. zoneTemp); source of truth with equipmentId.
-  pointKey         String
+  pointKey        String
   /// Optional bound Point row when mapped in DB; may be null until discovery/mapping.
-  pointId          String?
-  name             String
-  enabled          Boolean           @default(true)
-  severity         AlarmSeverity     @default(WARNING)
-  category         AlarmRuleCategory
-  operator         AlarmOperator
-  targetValue      Float?
-  targetPointId    String?
+  pointId         String?
+  name            String
+  enabled         Boolean           @default(true)
+  severity        AlarmSeverity     @default(WARNING)
+  category        AlarmRuleCategory
+  operator        AlarmOperator
+  targetValue     Float?
+  targetPointId   String?
   /// Logical reference on same equipment when target Point is not bound yet.
-  targetPointKey   String?
-  deadband         Float?
-  delaySeconds     Int?
-  messageTemplate  String?
-  autoAcknowledge  Boolean           @default(false)
+  targetPointKey  String?
+  deadband        Float?
+  delaySeconds    Int?
+  messageTemplate String?
+  autoAcknowledge Boolean           @default(false)
   /// Generic persisted condition tree. Leaves reference logical point keys on this equipment.
-  conditionTree    Json?
-  createdAt        DateTime          @default(now())
-  updatedAt        DateTime          @updatedAt
+  conditionTree   Json?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
 
-  site         Site       @relation(fields: [siteId], references: [id], onDelete: Cascade)
-  equipment    Equipment  @relation(fields: [equipmentId], references: [id], onDelete: Cascade)
-  point        Point?     @relation("AlarmDefinitionSourcePoint", fields: [pointId], references: [id], onDelete: SetNull)
-  targetPoint  Point?     @relation("AlarmDefinitionTargetPoint", fields: [targetPointId], references: [id], onDelete: SetNull)
-  events       AlarmEvent[]
+  site        Site         @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  equipment   Equipment    @relation(fields: [equipmentId], references: [id], onDelete: Cascade)
+  point       Point?       @relation("AlarmDefinitionSourcePoint", fields: [pointId], references: [id], onDelete: SetNull)
+  targetPoint Point?       @relation("AlarmDefinitionTargetPoint", fields: [targetPointId], references: [id], onDelete: SetNull)
+  events      AlarmEvent[]
 
   @@index([siteId])
   @@index([equipmentId])
@@ -478,7 +601,7 @@ model User {
   createdAt DateTime     @default(now())
   updatedAt DateTime     @updatedAt
 
-  sitesCreated  Site[]           @relation("SitesCreatedByUser")
+  sitesCreated   Site[]           @relation("SitesCreatedByUser")
   userSiteAccess UserSiteAccess[]
 }
 
@@ -618,7 +741,7 @@ model DeploymentPackageRecord {
   manifestJson         Json
   changePreviewJson    Json?
   validationErrorsJson Json?
-  receivedAt           DateTime  @default(now())
+  receivedAt           DateTime                @default(now())
   validatedAt          DateTime?
   activatedAt          DateTime?
   supersededAt         DateTime?

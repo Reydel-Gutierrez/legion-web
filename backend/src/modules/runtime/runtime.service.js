@@ -38,27 +38,28 @@ function simStoreControllerForMappedEquipment(equipmentId) {
 }
 
 /**
- * @param {object} ec - ControllersMapped row
+ * @param {object} ec - LiveControllerBinding row (the deployed projection, never ControllersMapped)
  * @param {Date} nowDate
  */
 async function persistMappedSimControllerOnline(ec, nowDate) {
   if (!ec?.id) return;
   try {
-    await prisma.controllersMapped.update({
+    await prisma.liveControllerBinding.update({
       where: { id: ec.id },
       data: { lastSeenAt: nowDate, status: 'ONLINE' },
     });
   } catch (e) {
     // eslint-disable-next-line no-console
-    console.warn('[runtime] ControllersMapped heartbeat persist failed:', e?.message || e);
+    console.warn('[runtime] LiveControllerBinding heartbeat persist failed:', e?.message || e);
   }
 }
 
 /**
  * Mark mapped SIM controllers/points OFFLINE when in-memory poll heartbeat is stale.
+ * Reads/writes only the deployed Live projection — never ControllersMapped/PointsMapped.
  */
 async function reconcileSimMappedStaleState() {
-  const ecs = await prisma.controllersMapped.findMany({
+  const ecs = await prisma.liveControllerBinding.findMany({
     where: {
       isEnabled: true,
       protocol: { equals: 'SIM', mode: 'insensitive' },
@@ -81,7 +82,7 @@ async function reconcileSimMappedStaleState() {
 
     if (!memFresh) {
       try {
-        await prisma.controllersMapped.update({
+        await prisma.liveControllerBinding.update({
           where: { id: ec.id },
           data: { status: 'OFFLINE' },
         });
@@ -90,8 +91,8 @@ async function reconcileSimMappedStaleState() {
       }
     }
 
-    const mappings = await prisma.pointsMapped.findMany({
-      where: { equipmentControllerId: ec.id, isBound: true, readEnabled: true },
+    const mappings = await prisma.livePointBinding.findMany({
+      where: { liveControllerBindingId: ec.id, isBound: true, readEnabled: true },
     });
     for (const m of mappings) {
       const pt = await prisma.point.findUnique({
@@ -213,25 +214,31 @@ function mergePointsByCodeForSim(allPoints, mappings) {
   return merged;
 }
 
+/**
+ * Resolve the DEPLOYED binding for one equipment — LiveControllerBinding/LivePointBinding only.
+ * An Engineering ControllersMapped/PointsMapped edit that hasn't been deployed must never surface
+ * here (LC-ARCH-003 Phase 1.1: Engineering/Live isolation).
+ */
 async function loadPersistedBindingForEquipment(equipmentId) {
   const eid = String(equipmentId || '').trim();
   if (!eid) return { ec: null, mappings: [] };
-  const ec = await prisma.controllersMapped.findFirst({
+  const ec = await prisma.liveControllerBinding.findFirst({
     where: { equipmentId: eid, isEnabled: true },
   });
   if (!ec) return { ec: null, mappings: [] };
-  const mappings = await prisma.pointsMapped.findMany({
-    where: { equipmentControllerId: ec.id },
+  const mappings = await prisma.livePointBinding.findMany({
+    where: { liveControllerBindingId: ec.id },
   });
   return { ec, mappings };
 }
 
 /**
- * After assign/unassign API, re-resolve ControllersMapped → catalog SIM rows (global reconciliation).
+ * Called after a deploy/rollback activates a new release (never from an Engineering-side
+ * ControllersMapped/PointsMapped edit — that would leak unreleased config into Runtime). Re-resolves
+ * every site's LiveControllerBinding rows against the catalog so the in-memory SIM store matches
+ * whatever is now deployed.
  */
-async function refreshInMemoryBindingForEquipmentId(equipmentId) {
-  const eid = String(equipmentId || '').trim();
-  if (!eid) return;
+async function resyncLiveSimBindings() {
   await applyPersistedAssignmentsToSimControllers();
 }
 
@@ -586,7 +593,7 @@ function startPollLoop() {
 async function applyPersistedAssignmentsToSimControllers() {
   const desired = new Set();
   for (const entry of SIMULATED_CONTROLLERS_CATALOG) {
-    const assignments = await prisma.controllersMapped.findMany({
+    const assignments = await prisma.liveControllerBinding.findMany({
       where: {
         isEnabled: true,
         protocol: { equals: 'SIM', mode: 'insensitive' },
@@ -797,8 +804,7 @@ module.exports = {
   pollController,
   listDiscoveryDevices,
   listFieldPointsForController,
-  refreshInMemoryBindingForEquipmentId,
-  refreshInMemoryBindingForControllerCode: refreshInMemoryBindingForEquipmentId,
+  resyncLiveSimBindings,
   FCU_CONTROLLER_CODE,
   staleThresholdMs,
   reconcileSimMappedStaleState,

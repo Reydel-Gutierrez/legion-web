@@ -96,6 +96,24 @@ export async function postDeployWorkingVersion(siteId, notes, options = {}) {
   return hierarchyRepository.deployWorkingVersionViaApi(siteId, notes, options);
 }
 
+/** Release/version history (WORKING + RELEASED rows) for the Deployment History table. */
+export async function fetchSiteVersionHistory(siteId) {
+  if (!USE_HIERARCHY_API) return Promise.resolve([]);
+  return hierarchyRepository.fetchSiteVersionHistory(siteId);
+}
+
+/**
+ * Rollback the active release to whichever RELEASED version was active immediately before it,
+ * or to an explicit `toVersionId`.
+ * @param {string} siteId
+ * @param {{ toVersionId?: string, actor?: string }} [options]
+ * @returns {Promise<object|null>} API JSON (e.g. `{ activeRelease }`) or null when API is off
+ */
+export async function postRollbackRelease(siteId, options = {}) {
+  if (!USE_HIERARCHY_API) return Promise.resolve(null);
+  return hierarchyRepository.rollbackReleaseViaApi(siteId, options);
+}
+
 export function notifyEngineeringHierarchyChanged(siteId) {
   hierarchyRepository.notifyHierarchyChanged(siteId);
 }

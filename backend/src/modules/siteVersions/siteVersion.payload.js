@@ -66,7 +66,7 @@ function buildDeploymentSnapshotFromWorking(workingData, overrides = {}) {
   return {
     version: newVersion,
     lastDeployedAt: overrides.lastDeployedAt || now.toISOString(),
-    deployedBy: overrides.deployedBy ?? 'Reydel Gutierrez',
+    deployedBy: overrides.deployedBy ?? null,
     systemStatus: overrides.systemStatus ?? 'Running',
     site: workingData?.site ? { ...workingData.site } : null,
     equipment: Array.isArray(workingData?.equipment)

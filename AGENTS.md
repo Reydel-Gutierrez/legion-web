@@ -61,6 +61,36 @@ The application is organized around:
 - Alarming
 - Trending/historian functionality
 
+### Engineering / Release / Live Lifecycle (`backend/src/modules/siteVersions`)
+
+Every Site has a mutable Engineering **WORKING** `SiteVersion`, zero or more immutable **RELEASED**
+`SiteVersion`s, and one **active** release (`Site.activeReleaseVersionId`). Operator/Live reads only
+the active release's snapshot (`GET /api/sites/:id/active-release`) — never the WORKING payload and
+never live Building/Equipment/Point rows directly for site structure.
+
+- BUILD RELEASE (`siteVersion.service.js:buildRelease`) validates WORKING and creates a **brand-new**
+  RELEASED `SiteVersion` row (new id, new `versionNumber`, `parentVersionId` = the working version it
+  came from). It never mutates or deletes the WORKING row — Engineering keeps editing the same
+  working copy after a build.
+- DEPLOY (`deployRelease`) activates an already-built RELEASED version: it flips
+  `Site.activeReleaseVersionId` and stamps `deployedAt`/`deployedBy` inside one transaction, so a
+  failure leaves the previously active release untouched. It never edits the release's engineering
+  content (site/equipment/mappings/templates).
+- ROLLBACK (`rollbackToPreviousRelease` / `rollbackToVersion`) reactivates an existing RELEASED
+  version as-is — it must never duplicate, re-release, or edit that version's content.
+- `deployWorkingVersion` is a thin build+deploy convenience for the existing single-button UI; treat
+  it as composing the two primitives above, not as a separate code path to hand-maintain.
+- Never add a `deployedBy`/`builtBy` default that hardcodes a specific person's name — leave it
+  `null` when the caller doesn't supply one.
+- A RELEASED `SiteVersion` must stay immutable through every normal Engineering editing API
+  (`putWorkingVersion` only ever touches the WORKING row). Only the deploy/rollback path may update a
+  released row's `deployedAt`/`deployedBy` lifecycle stamps.
+- Known gap (not yet Phase 1): `ControllersMapped`/`PointsMapped`/`Point` runtime rows are live
+  relational tables edited directly by Site Builder / Point Mapping and polled directly by
+  `runtime.service.js` — they are not yet gated behind the active release the way site/equipment
+  structure is. Don't assume deploying/rolling back a release rewires runtime point bindings; that is
+  Phase 2 (Runtime Failure Boundary) territory.
+
 ### BAS Architecture Rules
 
 - Preserve existing functionality unless a task explicitly replaces it.
