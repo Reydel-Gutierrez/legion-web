@@ -153,6 +153,9 @@ function makeDb() {
 
 const { db, tables } = makeDb();
 stub('../src/lib/prisma', db);
+// LC-ARCH-004 Phase 2: avoid an incidental real network call to whatever LEGION_RUNTIME_URL happens
+// to resolve to in this shell — this suite is a hermetic, no-real-database/no-network unit test.
+stub('../src/modules/runtime/runtime.service', { resyncLiveSimBindings: async () => {} });
 
 const deploymentService = require('../src/modules/deployment/deployment.service');
 const { buildSitePackage } = require('../src/lib/lspkg/builder');

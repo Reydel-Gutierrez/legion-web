@@ -162,9 +162,14 @@ stub('../src/lib/prisma', db);
 stub('../src/lib/siteAccess', { ensureSeedOwnerSiteAccess: async () => {} });
 stub('../src/lib/simCatalogBindingSync', { syncSimCatalogBindingsForSiteId: async () => {} });
 stub('../src/modules/alarms/alarm.service', { evaluateForPointIds: async () => {} });
+// LC-ARCH-004 Phase 2: `runtime.service.js` is now an HTTP client to the standalone Runtime
+// process — this test proves the DB-level materialization boundary only (what deploy/build/rollback
+// actually write to LiveControllerBinding/LivePointBinding). Runtime's own resolution of that data
+// is proven in `../../runtime/scripts/test-sim-runtime.js` (unit-level, via runtimeCore.js
+// directly) and `test-phase2-process-separation.js` (real cross-process, via HTTP).
+stub('../src/modules/runtime/runtime.service', { resyncLiveSimBindings: async () => {} });
 
 const siteVersionService = require('../src/modules/siteVersions/siteVersion.service');
-const runtimeService = require('../src/modules/runtime/runtime.service');
 
 const SITE_ID = 'site-boundary';
 const EQUIPMENT_ID = 'eq-A';
@@ -208,13 +213,6 @@ async function main() {
     'release 1 freezes the current Engineering controller assignment (FCU-1)');
   await siteVersionService.deployRelease(SITE_ID, release1.id, { deployedBy: 'engineer-1' });
   assert.equal(liveBindingForEquipment()?.controllerCode, 'FCU-1', 'Live projection materialized FCU-1 for Equipment A');
-  await runtimeService.resyncLiveSimBindings();
-  assert.equal(runtimeService.getController(EQUIPMENT_ID)?.controllerCode, 'FCU-1', 'Runtime resolves Controller X (FCU-1) after deploy');
-
-  // A real poll round-trips through the Live projection: value changes, commState goes ONLINE.
-  await runtimeService.pollNow(EQUIPMENT_ID);
-  const spaceTempRow = tables.points.find((p) => p.id === 'pt-space-temp');
-  assert.equal(spaceTempRow.commState, 'ONLINE', 'a real SIM poll through the Live binding actually marks the point ONLINE');
 
   // ---------- B. Engineering Working changes Equipment A -> Controller Y (FCU-2) ----------
   // Also add a NEW point mapping (DISCHARGE_AIR_TEMP) — an Engineering-only change so far.
@@ -227,35 +225,26 @@ async function main() {
     fieldObjectInstance: 'DISCHARGE_AIR_TEMP', fieldDataType: 'number', readEnabled: true, writeEnabled: false, isBound: true, metadataJson: null,
   });
 
-  // ---------- C. Before deployment Runtime still resolves Controller X (and only SPACE_TEMP) ----------
+  // ---------- C. Before deployment the Live projection still reflects Controller X (and only SPACE_TEMP) ----------
   assert.equal(liveBindingForEquipment()?.controllerCode, 'FCU-1', 'Live projection is untouched by the raw Engineering edit');
   assert.deepEqual(livePointKeysForEquipment(), ['SPACE_TEMP'], 'the new point mapping has not reached Live either');
-  await runtimeService.resyncLiveSimBindings();
-  assert.equal(runtimeService.getController(EQUIPMENT_ID)?.controllerCode, 'FCU-1',
-    'Runtime still resolves Controller X — an unreleased Engineering assignment change never reaches it');
 
-  // ---------- D. Build alone still leaves Runtime on Controller X ----------
+  // ---------- D. Build alone still leaves the Live projection on Controller X ----------
   const release2 = await siteVersionService.buildRelease(SITE_ID, { builtBy: 'engineer-2', notes: 'reassign to FCU-2' });
   assert.deepEqual(release2.payload.payloadJson.controllerBindings.map((b) => b.controllerCode), ['FCU-2'],
     'release 2 freezes the NEW Engineering controller assignment (FCU-2)');
   assert.equal(liveBindingForEquipment()?.controllerCode, 'FCU-1', 'building release 2 does not touch the Live projection');
-  await runtimeService.resyncLiveSimBindings();
-  assert.equal(runtimeService.getController(EQUIPMENT_ID)?.controllerCode, 'FCU-1', 'Runtime still resolves Controller X after BUILD alone');
 
-  // ---------- E. Deploying the new release causes Runtime to resolve Controller Y ----------
+  // ---------- E. Deploying the new release materializes Controller Y into the Live projection ----------
   await siteVersionService.deployRelease(SITE_ID, release2.id, { deployedBy: 'engineer-2' });
   assert.equal(liveBindingForEquipment()?.controllerCode, 'FCU-2', 'Live projection now materializes FCU-2');
   assert.deepEqual(livePointKeysForEquipment(), ['DISCHARGE_AIR_TEMP', 'SPACE_TEMP'],
     'the new point mapping (DISCHARGE_AIR_TEMP) reached Live together with the controller reassignment');
-  await runtimeService.resyncLiveSimBindings();
-  assert.equal(runtimeService.getController(EQUIPMENT_ID)?.controllerCode, 'FCU-2', 'Runtime resolves Controller Y (FCU-2) after DEPLOY');
 
-  // ---------- F. Rollback causes Runtime to resolve Controller X again ----------
+  // ---------- F. Rollback restores the previous Live projection ----------
   await siteVersionService.rollbackToPreviousRelease(SITE_ID, { actor: 'engineer-3' });
   assert.equal(liveBindingForEquipment()?.controllerCode, 'FCU-1', 'rollback restores the FCU-1 Live projection (release 1s own frozen content)');
   assert.deepEqual(livePointKeysForEquipment(), ['SPACE_TEMP'], 'rollback also restores release 1s point-mapping set (no DISCHARGE_AIR_TEMP)');
-  await runtimeService.resyncLiveSimBindings();
-  assert.equal(runtimeService.getController(EQUIPMENT_ID)?.controllerCode, 'FCU-1', 'Runtime resolves Controller X again after ROLLBACK');
 
   // The Engineering row itself is never touched by any of this — it still says whatever Engineering
   // last set (FCU-2), proving Live/Runtime and Engineering are genuinely two separate projections.

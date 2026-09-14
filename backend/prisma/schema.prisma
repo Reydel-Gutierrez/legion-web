@@ -320,12 +320,67 @@ model LiveControllerBinding {
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 
-  site          Site               @relation(fields: [siteId], references: [id], onDelete: Cascade)
-  equipment     Equipment          @relation(fields: [equipmentId], references: [id], onDelete: Cascade)
+  site          Site                    @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  equipment     Equipment               @relation(fields: [equipmentId], references: [id], onDelete: Cascade)
   pointBindings LivePointBinding[]
+  runtimeState  ControllerRuntimeState?
 
   @@index([siteId])
   @@index([controllerCode])
+}
+
+// -------------------------------------------------------------------------------------------
+// LC-ARCH-004 Phase 2: runtime-state ownership. `LiveControllerBinding`/`Point` above remain
+// (deployed) CONFIGURATION — identity, mapping, engineering metadata. `ControllerRuntimeState`/
+// `PointRuntimeState` are what the standalone Runtime process actually owns and writes every poll:
+// communication health, present value, and explicit quality. Kept as separate 1:1 tables rather than
+// extra columns so Runtime's write path never touches a config row, and so a comms failure can never
+// make a point "disappear" — only its quality changes, never its configuration identity.
+//
+// Phase 2 compatibility note: Runtime still mirrors into the legacy `Point.presentValue/commState/
+// lastSeenAt` and `LiveControllerBinding.status/lastSeenAt` columns so existing consumers (alarm
+// evaluation, historian, Site Builder/Operator read paths) keep working unchanged. Migrating those
+// consumers onto these tables directly is deferred to Phase 3.
+// -------------------------------------------------------------------------------------------
+
+enum PointQuality {
+  GOOD
+  STALE
+  COMM_FAILURE
+  OUT_OF_SERVICE
+  OVERRIDDEN
+  UNRELIABLE
+  UNKNOWN
+}
+
+model ControllerRuntimeState {
+  id                      String       @id @default(uuid())
+  liveControllerBindingId String       @unique
+  status                  String?
+  quality                 PointQuality @default(UNKNOWN)
+  lastSeenAt              DateTime?
+  lastPollAt              DateTime?
+  failureCount            Int          @default(0)
+  updatedAt               DateTime     @updatedAt
+  createdAt               DateTime     @default(now())
+
+  liveControllerBinding LiveControllerBinding @relation(fields: [liveControllerBindingId], references: [id], onDelete: Cascade)
+}
+
+model PointRuntimeState {
+  id           String       @id @default(uuid())
+  pointId      String       @unique
+  presentValue String?
+  quality      PointQuality @default(UNKNOWN)
+  /// Protocol driver that produced this value (e.g. "SIM", "BACNET_IP") — LC-ARCH-004 protocol boundary.
+  source       String?
+  lastSeenAt   DateTime?
+  updatedAt    DateTime     @updatedAt
+  createdAt    DateTime     @default(now())
+
+  point Point @relation(fields: [pointId], references: [id], onDelete: Cascade)
+
+  @@index([pointId])
 }
 
 /// Maps a runtime/field point key to a Legion Point row, mirroring the active release's PointsMapped
@@ -421,6 +476,7 @@ model Point {
   pointsMapped             PointsMapped[]
   historySamples           PointHistorySample[]
   livePointBindings        LivePointBinding[]
+  runtimeState             PointRuntimeState?
 
   @@unique([equipmentId, pointCode])
 }

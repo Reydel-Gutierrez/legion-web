@@ -31,6 +31,11 @@ const JSON_BODY_LIMIT = process.env.JSON_BODY_LIMIT || '50mb';
 const BACNET_PORT = Number(process.env.BACNET_PORT) || 47808;
 const BACNET_APDU_TIMEOUT_MS = Number(process.env.BACNET_APDU_TIMEOUT_MS) || 6000;
 
+/** LC-ARCH-004 Phase 2: Legion Runtime is a separate process; this is its internal HTTP API. */
+const LEGION_RUNTIME_URL = process.env.LEGION_RUNTIME_URL || 'http://127.0.0.1:4200';
+const RUNTIME_INTERNAL_TOKEN = process.env.RUNTIME_INTERNAL_TOKEN || null;
+const RUNTIME_REQUEST_TIMEOUT_MS = Number(process.env.RUNTIME_REQUEST_TIMEOUT_MS) || 5000;
+
 module.exports = {
   LEGION_PROFILE,
   PORT,
@@ -40,4 +45,7 @@ module.exports = {
   BACNET_APDU_TIMEOUT_MS,
   BACNET_INTERFACE: process.env.BACNET_INTERFACE,
   BACNET_BROADCAST_ADDRESS: process.env.BACNET_BROADCAST_ADDRESS,
+  LEGION_RUNTIME_URL,
+  RUNTIME_INTERNAL_TOKEN,
+  RUNTIME_REQUEST_TIMEOUT_MS,
 };

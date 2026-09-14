@@ -61,6 +61,41 @@ The application is organized around:
 - Alarming
 - Trending/historian functionality
 
+### Legion Server / Legion Runtime Process Boundary (`runtime/`)
+
+Legion Runtime is a **separate OS process** from the Legion Server API (`backend/`) — a distinct
+failure domain, started with `npm run runtime` (repo root) or `cd runtime && npm start`. Server and
+Runtime talk ONLY over Runtime's internal HTTP API (loopback by default, `LEGION_RUNTIME_URL`); there
+are no shared function calls or in-memory objects across that boundary.
+
+- `runtime/src/core/runtimeCore.js` owns the poll loop, in-memory controller store, SIM/BACnet
+  driver access, and all writes to `PointRuntimeState`/`ControllerRuntimeState` (plus the legacy
+  `Point`/`LiveControllerBinding` mirror columns — see below). It reuses backend library code via
+  relative `require` (one implementation, two processes) — never duplicate this logic back into
+  `backend/`.
+- `backend/src/modules/runtime/runtime.service.js` is a thin HTTP **client** to Runtime (via
+  `backend/src/lib/runtimeClient.js`). It must never regain a direct/in-process implementation —
+  that would recreate the original coupling this phase removed. A Runtime outage must always surface
+  as `HttpError(503)`/`502`, never an uncaught exception.
+- The API process (`backend/src/server.js`) must never instantiate polling loops, BACnet sessions, or
+  SIM execution itself. Engineering-side self-heal that only touches `ControllersMapped`/
+  `PointsMapped` (e.g. `reconnectSimCatalogToExistingEquipment`) is fine to keep in Server.
+- Deploy/rollback (`siteVersion.service.js`, LS-100 `deployment.service.js`) call Runtime's
+  `POST /runtime/reload` **after** the DB transaction commits, and never let a reload failure roll
+  back or block the already-committed activation — see `resyncLiveSimBindings`.
+- `/live`, `/ready`, `/health` exist on both processes with distinct meanings (process up / can serve
+  its role / detailed dependency status). Server's `/health` reports Runtime reachability but never
+  throws because of it.
+- `PointRuntimeState` / `ControllerRuntimeState` are the authoritative runtime-state tables (value,
+  quality, timestamps) — `Point.presentValue/commState/lastSeenAt` and
+  `LiveControllerBinding.status/lastSeenAt` are compatibility mirrors Runtime also writes for now.
+  Do not add new consumers that read the legacy columns as ground truth; prefer the state tables.
+  Full migration of existing consumers (alarms, historian, Site Builder/Operator reads) off the
+  legacy columns is a Phase 3 item — don't assume it's already done.
+- Protocol access goes through `runtime/src/protocols/*Driver.js` (SIM, BACnet) — a thin interface
+  over existing, working code (`runtimeCore.js` for SIM, `backend/src/services/bacnet/*` for BACnet).
+  Don't hardcode new runtime logic directly against `node-bacnet`.
+
 ### Engineering / Release / Live Lifecycle (`backend/src/modules/siteVersions`)
 
 Every Site has a mutable Engineering **WORKING** `SiteVersion`, zero or more immutable **RELEASED**

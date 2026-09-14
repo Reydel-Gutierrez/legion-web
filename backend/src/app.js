@@ -22,6 +22,8 @@ const equipmentControllersRoutes = require('./modules/equipmentControllers/equip
 const pointMappingsRoutes = require('./modules/pointMappings/pointMappings.routes');
 const operatorDefinitionsRoutes = require('./modules/operatorDefinitions/operatorDefinitions.routes');
 const deploymentRoutes = require('./modules/deployment/deployment.routes');
+const prisma = require('./lib/prisma');
+const { getRuntimeHealth } = require('./modules/runtime/runtime.service');
 
 const app = express();
 
@@ -32,8 +34,42 @@ app.use(cors());
 app.use(morgan('dev'));
 app.use(express.json({ limit: JSON_BODY_LIMIT }));
 
-app.get('/health', (req, res) => {
+/** LIVE: this process is running. Never depends on the database or Runtime. */
+app.get('/live', (req, res) => {
   res.json({ ok: true });
+});
+
+/** READY: this process can perform its role (serve API requests backed by the database). */
+app.get('/ready', async (req, res) => {
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    res.json({ ok: true, dbReachable: true });
+  } catch (e) {
+    res.status(503).json({ ok: false, dbReachable: false, error: e?.message || String(e) });
+  }
+});
+
+/**
+ * HEALTH: detailed dependency status. Runtime unreachable is reported here, never thrown — the API
+ * itself stays healthy/available even when the separate Runtime process is down (LC-ARCH-004).
+ */
+app.get('/health', async (req, res) => {
+  let dbReachable = true;
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+  } catch (_) {
+    dbReachable = false;
+  }
+  const runtime = await getRuntimeHealth();
+  res.json({
+    ok: true,
+    dbReachable,
+    runtime: {
+      reachable: runtime.reachable,
+      status: runtime.reachable ? runtime.status : null,
+      detail: runtime.reachable ? runtime.body : null,
+    },
+  });
 });
 
 app.use('/api/geocode', geocodeRoutes);
