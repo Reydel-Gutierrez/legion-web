@@ -37,6 +37,7 @@ function model(rows) {
   };
 }
 const prisma = { equipment: model(equipment), controllersMapped: model(controllers), point: model(points), pointsMapped: model(mappings) };
+prisma.$transaction = async (operations) => Promise.all(operations);
 prisma.point.upsert = async ({ where, update, create }) => {
   const row = points.find((p) => matches(p, where.equipmentId_pointCode));
   if (row) { Object.assign(row, update); return row; }

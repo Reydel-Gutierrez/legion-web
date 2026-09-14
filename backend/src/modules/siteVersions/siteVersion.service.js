@@ -358,4 +358,5 @@ module.exports = {
   deployWorkingVersion,
   listVersionHistory,
   serializeVersionRow,
+  nextVersionNumber,
 };

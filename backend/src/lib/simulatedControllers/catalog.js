@@ -7,7 +7,16 @@
  * Does not create equipment rows — Engineering FCU-1 is bound at runtime when it exists.
  */
 
-const FCU_SIM_DEVICE_LABEL = 'LC-CGC';
+/**
+ * Simulated-device labels follow the Legion Controls Master Architecture (LC-ARCH-001)
+ * product naming standard (Section 3 / Decision Register D-003, D-004):
+ * - FCU/AHU/pump-class sim units are labeled with the general controller model, LPC0810.
+ * - VAV-class sim units are labeled with the LPCV family name only. The final LPCV
+ *   suffix is an explicit OPEN QUESTION (Section 3, Section 7) until the VAV I/O
+ *   schedule is frozen — do not invent a suffix here.
+ */
+const FCU_SIM_DEVICE_LABEL = 'LPC0810';
+const LPCV_SIM_DEVICE_LABEL = 'LPCV';
 const FCU_SIM_VENDOR = 'Legion Controls';
 const FCU_SIM_BACNET_DEVICE_INSTANCE = '10004';
 const FCU_SIM_DISCOVERY_NETWORK = 'SIM';
@@ -64,7 +73,7 @@ const SIMULATED_CONTROLLERS_CATALOG = [
     deviceType: 'FCU',
     deviceInstance: '10005',
     deviceAddress: '5',
-    deviceLabel: 'LC-CGC',
+    deviceLabel: FCU_SIM_DEVICE_LABEL,
     vendorName: FCU_SIM_VENDOR,
     discoveryNetwork: FCU_SIM_DISCOVERY_NETWORK,
     fieldPoints: FCU_SIM_POINT_DEFINITIONS,
@@ -76,7 +85,7 @@ const SIMULATED_CONTROLLERS_CATALOG = [
     deviceType: 'VAV',
     deviceInstance: '10100',
     deviceAddress: '100',
-    deviceLabel: 'LC-CVC',
+    deviceLabel: LPCV_SIM_DEVICE_LABEL,
     vendorName: FCU_SIM_VENDOR,
     discoveryNetwork: FCU_SIM_DISCOVERY_NETWORK,
     fieldPoints: [
@@ -172,6 +181,7 @@ module.exports = {
   SIMULATED_CONTROLLERS_CATALOG,
   FCU_SIM_POINT_DEFINITIONS,
   FCU_SIM_DEVICE_LABEL,
+  LPCV_SIM_DEVICE_LABEL,
   FCU_SIM_VENDOR,
   FCU_SIM_BACNET_DEVICE_INSTANCE,
   FCU_SIM_DISCOVERY_NETWORK,

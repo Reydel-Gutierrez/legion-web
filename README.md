@@ -28,13 +28,14 @@ Legion Web is the frontend application for Legion Controls’ Building Automatio
 
 - Identity and routing are Legion-focused; Operator and Engineering flows are active.
 - Data is served from a **canonical data-access layer** (`src/lib/data`) with a mock/API toggle. Pages use repository functions only; they do not import raw mock files directly.
-- Backend and database integration is **upcoming**. The app is structured to swap mock adapters for API adapters without changing page code.
+- Backend and database integration is **live**. Sites/buildings/floors/equipment/points, alarms, and BACnet discovery/read/write are served by the Express/Prisma/PostgreSQL API in `backend/`. Some operator surfaces still fall back to `adapters/api/operatorApi.js` stubs until their HTTP wiring is finished; check that adapter and `src/lib/data/config.js` (`USE_MOCK_DATA`, `USE_HIERARCHY_API`) before assuming a given page is mock or live.
+- A SIM controller catalog (`backend/src/lib/simulatedControllers/catalog.js` — FCU-1, FCU-2, VAV-1) currently exercises the full point/stale-status/alarm/trend pipeline end-to-end. The real BACnet/IP polling service (`backend/src/services/bacnet/`) exists, but its integration into that same persistent runtime pipeline is not yet verified or complete.
 
 ## Stack
 
-- React 16, React Router 5, React Bootstrap (Themesberg)
+- React 17, React Router 5, React Bootstrap (Themesberg)
 - SASS (Volt-derived theme under `src/scss/volt`)
-- No backend dependency for current runs
+- Express + Prisma + PostgreSQL backend (`backend/`); frontend runs against it via `REACT_APP_API_BASE_URL`
 
 ## Folder Structure (high level)
 
@@ -61,4 +62,6 @@ npm start
 
 ## Backend / Database
 
-Not integrated yet. The data layer uses mock adapters; placeholder API adapters exist under `src/lib/data/adapters/api/` for a future swap.
+Integrated. The backend lives in `backend/` (Express + Prisma + PostgreSQL) — see `backend/README` equivalents in `AGENTS.md` for commands (`npm run dev`, `npm run prisma:migrate`, `npm run smoke:bacnet`). Set `REACT_APP_API_BASE_URL` in `.env.local` to point the frontend at a running API (see `.env.example`); when unset, pages fall back to their mock adapters under `src/lib/data/adapters/mock/`.
+
+BACnet/IP discovery, read/write, polling, and device-health services live under `backend/src/services/bacnet/` using `node-bacnet`. BACnet MS/TP and the Sentry G1 edge gateway are not implemented yet — see the Legion Controls Master Architecture document for current architecture status.

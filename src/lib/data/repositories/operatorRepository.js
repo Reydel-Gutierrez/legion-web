@@ -3,6 +3,7 @@ import { isBackendSiteId } from "../siteIdUtils";
 import * as hierarchyRepository from "./hierarchyRepository";
 import * as alarmApi from "../adapters/api/alarmApiAdapter";
 import * as operatorApi from "../adapters/api/operatorApi";
+import * as pointHistoryApi from "../adapters/api/pointHistoryApiAdapter";
 import { getWorkspacePointsForEquipmentFromRelease } from "../workspacePointsFromRelease";
 import {
   loadSchedules,
@@ -200,6 +201,23 @@ export function getTrendPointCatalog(siteId, equipmentId) {
 /** Equipment groups for bulk assignment. */
 export function getTrendEquipmentGroups(siteId) {
   return operatorApi.getTrendEquipmentGroups(siteId);
+}
+
+/**
+ * Real persisted historian samples for the equipment-workspace trend card (the backend-integrated
+ * Trend Definition/Assignment system — distinct from the legacy `getTrendData` above, which the
+ * standalone `/legion/trends` page still uses). Never fabricates: an unrecognized site or an empty
+ * point list simply returns no samples.
+ * @param {string} siteId
+ * @param {string[]} pointIds - actual Point.id values
+ * @param {string} range - "1h" | "24h" | "7d" | "30d"
+ * @returns {Promise<Record<string, Array<{ timestamp: string, value: string|null, quality: string }>>>}
+ */
+export async function fetchTrendHistorySamples(siteId, pointIds, range) {
+  if (!siteId || !isBackendSiteId(siteId) || !Array.isArray(pointIds) || pointIds.length === 0) {
+    return {};
+  }
+  return pointHistoryApi.fetchPointHistory(pointIds, range);
 }
 
 /**

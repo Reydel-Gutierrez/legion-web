@@ -12,7 +12,14 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio",
     "db:seed": "prisma db seed",
-    "smoke:bacnet": "node scripts/smoke-bacnet-routes.js"
+    "smoke:bacnet": "node scripts/smoke-bacnet-routes.js",
+    "project:strip-plaza": "node scripts/project-strip-plaza.js",
+    "test:lspkg": "node scripts/test-lspkg-foundation.js",
+    "test:deployment": "node scripts/test-deployment-pipeline.js",
+    "test:direct-deploy": "node scripts/test-direct-deploy.js",
+    "test:historian": "node scripts/test-historian-interval-safety.js",
+    "test:sim-runtime": "node scripts/test-sim-runtime.js",
+    "test:all": "npm run test:lspkg && npm run test:deployment && npm run test:direct-deploy && npm run test:historian && npm run test:sim-runtime"
   },
   "engines": {
     "node": ">=16.0.0"

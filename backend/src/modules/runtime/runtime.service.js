@@ -1,7 +1,8 @@
 'use strict';
 
 const prisma = require('../../lib/prisma');
-const pointService = require('../points/point.service');
+const alarmService = require('../alarms/alarm.service');
+const historian = require('../../lib/historian');
 const { SIMULATED_CONTROLLERS_CATALOG, getCatalogEntryByRuntimeId } = require('../../lib/simulatedControllers/catalog');
 const { reconnectSimCatalogToExistingEquipment } = require('../../lib/simCatalogBindingSync');
 const { store, createDefaultController, DEFAULT_POLL_MS } = require('./runtime.store');
@@ -106,6 +107,20 @@ async function reconcileSimMappedStaleState() {
             where: { id: pt.id },
             data: { commState: 'OFFLINE' },
           });
+          // Write an explicit OFFLINE transition marker (value: null — never a fabricated
+          // number) at the moment the reconciler confirms the point unreachable. This gives the
+          // trend chart an authoritative "communication was lost here" row instead of only being
+          // able to infer loss from how old the last real sample looks relative to "now". Only
+          // written on the actual ONLINE/UNKNOWN -> OFFLINE transition above, never repeatedly
+          // while a point stays offline across reconcile cycles. `commState` itself always
+          // updates above regardless of trend coverage (it drives live status/graphics
+          // independent of history), but the historian row stays gated on coverage: a point with
+          // no enabled trend assignment must get zero PointHistorySample rows, transition markers
+          // included. This write deliberately bypasses shouldRecordSample's interval throttle (a
+          // transition marker is not subject to sampleInterval) — coverage is the only gate here.
+          if (historian.isPointCovered(pt.id)) {
+            await historian.recordSample({ pointId: pt.id, value: null, quality: historian.QUALITY.OFFLINE, timestamp: new Date(now) });
+          }
         } catch (_) {
           /* ignore */
         }
@@ -448,6 +463,7 @@ async function pollControllerOnce(storeKey) {
   }
 
   let successfulWrites = 0;
+  const pointUpdates = [];
   for (const m of writeMappings) {
     const row = points.find((p) => p.id === m.pointId);
     if (!row) {
@@ -495,17 +511,53 @@ async function pollControllerOnce(storeKey) {
         pollAtIso: pollAt.toISOString(),
       });
     }
+    pointUpdates.push({ id: row.id, key: key || m.pointId, data: payload, historyValue: value !== undefined ? String(value) : prev });
+  }
+
+  // Commit the complete poll as one database operation. The old path called
+  // pointService.updatePoint serially for every point, and each call performed
+  // its own lookup plus alarm evaluation. That made a healthy 20s SIM cycle
+  // exceed the 40s UI freshness window and moved the whole controller to STALE.
+  if (pointUpdates.length) {
     try {
-      await pointService.updatePoint(row.id, payload);
-      successfulWrites += 1;
+      // Every mapped point gets a Point row update every poll (that's the freshness heartbeat),
+      // but a historian sample is only recorded for points that pass the per-point sample-interval
+      // throttle (finest sampleInterval among that point's enabled trend assignments; points with
+      // no configured interval keep legacy behavior and record every poll). This is what stops a
+      // fast poll cycle from writing a history row on every tick regardless of trend configuration.
+      // The check is synchronous against an in-memory cache, so it cannot race a concurrent manual
+      // point.service.updatePoint call for the same point.
+      const dueForHistory = pointUpdates.filter((item) => historian.shouldRecordSample(item.id, pollAt.getTime()));
+      const historyOps = historian.sampleTransactionOps(
+        dueForHistory.map((item) => ({
+          pointId: item.id,
+          value: item.historyValue,
+          quality: historian.QUALITY.ONLINE,
+          timestamp: pollAt,
+        }))
+      );
+      await prisma.$transaction([
+        ...pointUpdates.map((item) => prisma.point.update({ where: { id: item.id }, data: item.data })),
+        ...historyOps,
+      ]);
+      successfulWrites = pointUpdates.length;
+      // A committed point batch is the communication heartbeat. Record it
+      // before alarm work so alarm latency cannot age a healthy controller.
+      recordSuccessfulPoll();
+      await persistMappedSimControllerOnline(ec, pollAt);
     } catch (e) {
       // eslint-disable-next-line no-console
-      console.warn(`[runtime] ${storeKey} failed updating ${key || m.pointId}:`, e?.message || e);
+      console.warn(`[runtime] ${storeKey} batch point update failed:`, e?.message || e);
     }
-  }
-  if (successfulWrites > 0) {
-    recordSuccessfulPoll();
-    await persistMappedSimControllerOnline(ec, pollAt);
+    if (successfulWrites > 0) {
+      try {
+        await alarmService.evaluateForPointIds(pointUpdates.map((item) => item.id));
+      } catch (e) {
+        // Alarm evaluation must not invalidate an otherwise successful
+        // communication heartbeat or point freshness update.
+        console.warn(`[runtime] ${storeKey} alarm evaluation failed:`, e?.message || e);
+      }
+    }
   }
 }
 
@@ -578,6 +630,11 @@ async function hydrateSimulatedControllersFromCatalog() {
 }
 
 async function initialize() {
+  // Historian background maintenance runs independently of whether any SIM controllers exist —
+  // manual/engineering point updates (point.service.updatePoint) also go through the same
+  // sample-interval throttle and need the retention sweep running.
+  historian.startIntervalCacheRefresh();
+  historian.startRetentionSweep();
   try {
     const reconnect = await reconnectSimCatalogToExistingEquipment();
     // eslint-disable-next-line no-console

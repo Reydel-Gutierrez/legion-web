@@ -1,5 +1,5 @@
 require('./config/env');
-const { PORT } = require('./config/env');
+const { PORT, LEGION_PROFILE } = require('./config/env');
 const app = require('./app');
 const runtimeService = require('./modules/runtime/runtime.service');
 const { runStartupChecks } = require('./lib/startupChecks');
@@ -22,7 +22,7 @@ runtimeService.initialize().catch((err) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`Legion API listening on http://localhost:${PORT}`);
+  console.log(`Legion API [profile=${LEGION_PROFILE}] listening on http://localhost:${PORT}`);
   console.log('  Address search: GET /api/geocode/suggest?q=…  (health: GET /api/geocode/health)');
   console.log('  BACnet: GET /api/runtime/bacnet/explorer/devices');
 });

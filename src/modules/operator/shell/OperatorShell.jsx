@@ -24,7 +24,7 @@ import { Routes } from "../../../routes";
 import FacilitySidebar from "./FacilitySidebar";
 import OperatorTopBar from "./OperatorTopBar";
 import OperatorWorkspace from "../workspace/OperatorWorkspace";
-import CommissioningPlaceholder from "../workspace/CommissioningPlaceholder";
+import Ls100ConsolePanel from "../workspace/Ls100ConsolePanel";
 
 const SIDEBAR_KEY = "legionOperatorSidebarContracted";
 
@@ -194,7 +194,7 @@ export default function OperatorShell({ children }) {
           />
           <div className="operator-shell__workspace">
             {showCommissioning ? (
-              <CommissioningPlaceholder onBack={() => setDashboardMode("operator")} />
+              <Ls100ConsolePanel onBack={() => setDashboardMode("operator")} />
             ) : hierarchyView ? (
               <OperatorWorkspace
                 key={`${selectedNode?.kind || "none"}-${selectedNode?.id || "none"}-${refreshNonce}`}

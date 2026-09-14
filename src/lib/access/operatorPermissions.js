@@ -51,7 +51,7 @@ export function isViewerRole(currentUser) {
 export function getDashboardModeOptions(currentUser) {
   const options = [{ id: "operator", label: "Operator Dashboard" }];
   if (canAccessCommissioningDashboard(currentUser)) {
-    options.push({ id: "commissioning", label: "Commissioning Dashboard" });
+    options.push({ id: "commissioning", label: "LS-100 Commissioning" });
   }
   if (canAccessEngineeringDashboard(currentUser)) {
     options.push({ id: "engineering", label: "Engineering Dashboard" });

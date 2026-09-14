@@ -15,6 +15,9 @@ import {
   faExclamationTriangle,
   faCheckCircle,
   faListAlt,
+  faBoxOpen,
+  faDownload,
+  faPaperPlane,
 } from "@fortawesome/free-solid-svg-icons";
 
 import LegionHeroHeader from "../../../components/legion/LegionHeroHeader";
@@ -216,6 +219,83 @@ export default function DeploymentPage() {
     [useApiDeploy, site, applyApiDeploySuccess, actions]
   );
 
+  // ---- Legion Site Package (.lspkg) — LC-ARCH-002: Validate Project, Build Site Package,
+  // Export Site Package, Deploy to LS-100 (direct). Distinct from the legacy same-database
+  // "Deploy version" above, which the package pipeline evolves toward but does not replace here. ----
+  const [packageBusy, setPackageBusy] = useState(false);
+  const [packageError, setPackageError] = useState("");
+  const [projectValidation, setProjectValidation] = useState(null);
+  const [builtPackage, setBuiltPackage] = useState(null);
+  const [targetUrl, setTargetUrl] = useState("");
+  const [directDeployResult, setDirectDeployResult] = useState(null);
+
+  const handleValidateProject = useCallback(async () => {
+    if (!useApiDeploy) return;
+    setPackageBusy(true);
+    setPackageError("");
+    try {
+      const result = await deploymentRepository.validateProjectForPackage(site);
+      setProjectValidation(result);
+    } catch (e) {
+      setPackageError(e.message || "Validation failed");
+    } finally {
+      setPackageBusy(false);
+    }
+  }, [useApiDeploy, site]);
+
+  const handleBuildPackage = useCallback(async () => {
+    if (!useApiDeploy) return;
+    setPackageBusy(true);
+    setPackageError("");
+    setDirectDeployResult(null);
+    try {
+      const result = await deploymentRepository.buildSitePackage(site, { author: getDeployerDisplayName() });
+      setBuiltPackage(result);
+      setProjectValidation(result.validation);
+    } catch (e) {
+      setPackageError(e.message || "Build failed");
+      setBuiltPackage(null);
+    } finally {
+      setPackageBusy(false);
+    }
+  }, [useApiDeploy, site]);
+
+  const handleExportPackage = useCallback(async () => {
+    if (!builtPackage) return;
+    setPackageBusy(true);
+    setPackageError("");
+    try {
+      const { blob, fileName } = await deploymentRepository.exportSitePackage(site, builtPackage.packageRecord.id);
+      deploymentRepository.saveBlob(blob, fileName || builtPackage.fileName);
+    } catch (e) {
+      setPackageError(e.message || "Export failed");
+    } finally {
+      setPackageBusy(false);
+    }
+  }, [builtPackage, site]);
+
+  const handleDeployDirect = useCallback(async () => {
+    if (!targetUrl.trim()) {
+      setPackageError("Enter the target LS-100 URL first (e.g. http://ls100-sim.local:4100)");
+      return;
+    }
+    setPackageBusy(true);
+    setPackageError("");
+    setDirectDeployResult(null);
+    try {
+      const result = await deploymentRepository.deployPackageDirect(site, {
+        targetUrl: targetUrl.trim(),
+        author: getDeployerDisplayName(),
+      });
+      setDirectDeployResult(result);
+      appNotify.success(`Package transferred to ${targetUrl.trim()}`);
+    } catch (e) {
+      setPackageError(e.message || "Direct deploy failed");
+    } finally {
+      setPackageBusy(false);
+    }
+  }, [targetUrl, site]);
+
   const apiDeployBlocked =
     useApiDeploy && (!hasPending || apiVersionSummary?.workingVersionNumber == null);
   const primaryDeployDisabled = errors > 0 || apiDeployLoading || apiDeployBlocked;
@@ -395,6 +475,84 @@ export default function DeploymentPage() {
             </div>
           </Card.Body>
         </Card>
+
+        {/* Section 4b — Legion Site Package (.lspkg) */}
+        {useApiDeploy && (
+          <Card className="legion-operator-log-card bg-primary border border-light border-opacity-10 shadow-sm mb-3">
+            <Card.Header className="legion-operator-log-card-header">
+              <span className="text-white fw-bold text-uppercase">Legion Site Package</span>
+            </Card.Header>
+            <Card.Body>
+              <p className="text-white-50 small mb-3">
+                Validate the offline project, build an immutable, checksummed <code>.lspkg</code>, then
+                export it for offline transport or send it directly to a configured LS-100. Building
+                never overwrites this database's live configuration — only an LS-100 activates a package.
+              </p>
+              {packageError && <div className="text-danger small mb-2">{packageError}</div>}
+              <div className="d-flex flex-wrap gap-2 mb-3">
+                <Button size="sm" className="legion-hero-btn legion-hero-btn--secondary" disabled={packageBusy} onClick={handleValidateProject}>
+                  <FontAwesomeIcon icon={faListAlt} className="me-1" /> Validate Project
+                </Button>
+                <Button size="sm" className="legion-hero-btn legion-hero-btn--primary" disabled={packageBusy} onClick={handleBuildPackage}>
+                  <FontAwesomeIcon icon={faBoxOpen} className="me-1" /> Build Site Package
+                </Button>
+                <Button size="sm" className="legion-hero-btn legion-hero-btn--secondary" disabled={packageBusy || !builtPackage} onClick={handleExportPackage}>
+                  <FontAwesomeIcon icon={faDownload} className="me-1" /> Export Site Package
+                </Button>
+              </div>
+
+              {projectValidation && (
+                <div className="mb-3">
+                  <span className={`badge bg-${projectValidation.ok ? "success" : "danger"} me-2`}>
+                    {projectValidation.ok ? "Valid" : "Blocked"}
+                  </span>
+                  {projectValidation.errors?.map((e, i) => (
+                    <div key={`err-${i}`} className="text-danger small">{e}</div>
+                  ))}
+                  {projectValidation.warnings?.map((w, i) => (
+                    <div key={`warn-${i}`} className="text-warning small">{w}</div>
+                  ))}
+                </div>
+              )}
+
+              {builtPackage && (
+                <div className="border border-light border-opacity-10 rounded p-2 bg-dark bg-opacity-25 mb-3">
+                  <div className="text-white small">
+                    Built <strong>{builtPackage.fileName}</strong> (unsigned development package — checksum-verified,
+                    not cryptographically signed)
+                  </div>
+                </div>
+              )}
+
+              <div className="border-top border-light border-opacity-10 pt-3">
+                <div className="text-white-50 small mb-2">
+                  Deploy to LS-100 (direct) — builds a fresh package and transfers it over HTTP to the
+                  same import pipeline offline import uses.
+                </div>
+                <div className="d-flex flex-wrap gap-2 align-items-center">
+                  <input
+                    type="text"
+                    className="form-control form-control-sm"
+                    style={{ maxWidth: 340 }}
+                    placeholder="http://ls100-sim.local:4100"
+                    value={targetUrl}
+                    onChange={(e) => setTargetUrl(e.target.value)}
+                  />
+                  <Button size="sm" className="legion-hero-btn legion-hero-btn--primary" disabled={packageBusy} onClick={handleDeployDirect}>
+                    <FontAwesomeIcon icon={faPaperPlane} className="me-1" /> Deploy to LS-100
+                  </Button>
+                </div>
+                {directDeployResult && (
+                  <div className="text-success small mt-2">
+                    Staged on {directDeployResult.targetUrl} as {directDeployResult.remoteRecord?.status} (package{" "}
+                    {directDeployResult.remoteRecord?.packageVersion}). Validate and activate it from that LS-100's
+                    Commissioning console.
+                  </div>
+                )}
+              </div>
+            </Card.Body>
+          </Card>
+        )}
 
         {/* Section 5 — Deployment History */}
         <Card className="legion-operator-log-card bg-primary border border-light border-opacity-10 shadow-sm">

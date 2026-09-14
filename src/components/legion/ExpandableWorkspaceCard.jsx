@@ -1,7 +1,47 @@
 import React from "react";
 
+/**
+ * A render error inside one workspace card (e.g. a malformed trend/point payload) must never take
+ * down its siblings — most importantly the equipment graphic, which has to stay visible through
+ * comm loss (LC-ARCH-001: communication loss changes status indicators, it does not remove the
+ * graphic). Each card gets its own boundary so a fault is contained to that card's body.
+ */
+class WorkspaceCardErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { error: null };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { error };
+  }
+
+  componentDidCatch(error, info) {
+    // eslint-disable-next-line no-console
+    console.error(`[operator-card] "${this.props.title}" body failed to render`, error, info?.componentStack);
+  }
+
+  componentDidUpdate(prevProps) {
+    if (this.state.error && prevProps.resetKey !== this.props.resetKey) {
+      this.setState({ error: null });
+    }
+  }
+
+  render() {
+    if (this.state.error) {
+      return (
+        <div className="operator-empty-graphic operator-card__error">
+          <p>This card could not be displayed. Other cards are unaffected.</p>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 export default function ExpandableWorkspaceCard({
   title,
+  titleExtra = null,
   cardId,
   expandedId,
   onToggleExpand,
@@ -20,7 +60,10 @@ export default function ExpandableWorkspaceCard({
       } ${className}`.trim()}
     >
       <header className="operator-card__header">
-        <h2 className="operator-card__title">{title}</h2>
+        <div className="operator-card__title-group">
+          <h2 className="operator-card__title">{title}</h2>
+          {titleExtra}
+        </div>
         <div className="operator-card__header-right">
           {headerExtra}
           <button
@@ -48,7 +91,11 @@ export default function ExpandableWorkspaceCard({
           </button>
         </div>
       </header>
-      <div className="operator-card__body">{children}</div>
+      <div className="operator-card__body">
+        <WorkspaceCardErrorBoundary title={title} resetKey={cardId}>
+          {children}
+        </WorkspaceCardErrorBoundary>
+      </div>
       {footer ? <div className="operator-card__footer">{footer}</div> : null}
     </section>
   );

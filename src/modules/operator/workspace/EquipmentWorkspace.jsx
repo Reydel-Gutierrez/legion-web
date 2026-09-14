@@ -293,6 +293,8 @@ export default function EquipmentWorkspace({
           siteKey={siteKey}
           equipmentId={equipment.id}
           displayPoints={live.displayPoints}
+          now={live.nowTick}
+          pollRateMs={live.pollMs}
           expandedId={expandedId}
           onToggleExpand={setExpandedId}
         />

@@ -58,8 +58,11 @@ export function useEquipmentLivePoints({ equipment, releaseData, siteId }) {
       return undefined;
     }
     let cancelled = false;
+    let refreshInFlight = false;
 
     async function refreshLive() {
+      if (cancelled || refreshInFlight) return;
+      refreshInFlight = true;
       try {
         const controllers = await runtimeApi.listRuntimeControllers().catch(() => []);
         const ctrlList = Array.isArray(controllers) ? controllers : [];
@@ -85,6 +88,8 @@ export function useEquipmentLivePoints({ equipment, releaseData, siteId }) {
       } catch {
         // Retain the last real sample and let the ticking freshness rules age it.
         // Falling back to release rows here can restore outdated values/status.
+      } finally {
+        refreshInFlight = false;
       }
     }
 

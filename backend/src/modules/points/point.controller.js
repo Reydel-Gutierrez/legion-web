@@ -65,8 +65,22 @@ async function update(req, res) {
   res.json(point);
 }
 
+/**
+ * GET /api/points/history?ids=<id1,id2,...>&range=1h|24h|7d|30d
+ * Returns persisted historian samples per point id for the requested window.
+ * Used by the operator trend chart; never fabricates missing data.
+ */
+async function history(req, res) {
+  const idsParam = String(req.query.ids || '').trim();
+  const pointIds = idsParam ? idsParam.split(',').map((s) => s.trim()).filter(Boolean) : [];
+  const range = String(req.query.range || '1h').trim();
+  const samples = await pointService.getHistoryForPointIds(pointIds, range);
+  res.json({ range, samples });
+}
+
 module.exports = {
   listByEquipment,
   createForEquipment,
   update,
+  history,
 };

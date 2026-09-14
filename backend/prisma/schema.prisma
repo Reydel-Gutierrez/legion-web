@@ -297,8 +297,31 @@ model Point {
   alarmDefinitionsAsTarget AlarmDefinition[] @relation("AlarmDefinitionTargetPoint")
   alarmEvents              AlarmEvent[]      @relation("AlarmEventPoint")
   pointsMapped PointsMapped[]
+  historySamples PointHistorySample[]
 
   @@unique([equipmentId, pointCode])
+}
+
+/// Point-level historian sample (LC-ARCH-001 D-010: stale/offline points remain represented in
+/// trends; history is never fabricated). Written by any runtime write path (SIM poll today,
+/// real BACnet/IP and MS/TP polling later) via the shared historian helper, so trends, and any
+/// future analytics, read from one persisted timeline per point rather than a per-trend copy.
+model PointHistorySample {
+  id        String   @id @default(uuid())
+  pointId   String
+  timestamp DateTime @default(now())
+  /// Raw presentValue string at sample time; null only if a write explicitly records "no value"
+  /// (never used to fabricate a reading — absence of a row IS the gap).
+  value     String?
+  /// Communication quality at sample time: ONLINE | OFFLINE | STALE. Independent of alarm state.
+  quality   String   @default("ONLINE")
+
+  point Point @relation(fields: [pointId], references: [id], onDelete: Cascade)
+
+  @@index([pointId, timestamp])
+  /// Retention cleanup sweeps by timestamp alone across all points; the composite index above
+  /// doesn't serve that scan pattern (pointId is its leading column).
+  @@index([timestamp])
 }
 
 /// Durable site-scoped trend definition. Point requirements are semantic JSON so templates
@@ -311,6 +334,9 @@ model TrendDefinition {
   isTemplate     Boolean  @default(false)
   equipmentType  String?
   sampleInterval Int?
+  /// Historian retention window for this trend's points, in days. Additive/nullable so existing
+  /// rows default without a backfill; a cleanup job can read it once one exists.
+  retentionDays  Int?     @default(30)
   pointRequirements Json
   version        Int      @default(1)
   createdAt      DateTime @default(now())
@@ -514,6 +540,152 @@ model GlobalGraphicTemplate {
 
   @@index([appliesToEquipmentType])
   @@index([status])
+}
+
+// -------------------------------------------------------------------------------------------
+// LC-ARCH-002: Legion Site Package deployment (.lspkg). These models exist in the shared Prisma
+// schema so one codebase serves both the `engineering` and `ls100-*` profiles (DATABASE_URL alone
+// selects which physical database a process talks to — see backend/docs/deployment-profiles.md).
+// They are meaningful (enforced) only when a backend process runs as an LS-100 profile; under the
+// `engineering` profile they simply sit unused. This deliberately evolves/reuses SiteVersion as the
+// activated-configuration ledger (see deployment.service.js) rather than inventing a second,
+// competing version system.
+// -------------------------------------------------------------------------------------------
+
+enum LsCommissionState {
+  UNCOMMISSIONED
+  STAGED
+  VALIDATED
+  ACTIVATING
+  ACTIVE
+  FAILED
+  ROLLBACK
+}
+
+enum DeploymentPackageStatus {
+  STAGED
+  VALIDATED
+  ACTIVATING
+  ACTIVE
+  FAILED
+  SUPERSEDED
+  DISCARDED
+}
+
+enum DeploymentSource {
+  DIRECT
+  OFFLINE_IMPORT
+}
+
+enum DeploymentAuditResult {
+  SUCCESS
+  FAILURE
+}
+
+enum ControllerAppDeployStatus {
+  PENDING
+  TRANSFERRED
+  VERIFIED
+  FAILED
+  NOT_APPLICABLE
+}
+
+/// Singleton row (fixed id "ls100") tracking this LS-100 instance's commissioning state (LC-ARCH-002
+/// §5 state machine) and the one active Site it enforces (DEP-001). `activeSiteId` is set only after
+/// a successful activation; recommissioning (archiving the current Site) clears it back to null.
+model LsCommissioning {
+  id                    String            @id @default("ls100")
+  state                 LsCommissionState @default(UNCOMMISSIONED)
+  activeSiteId          String?
+  activePackageRecordId String?
+  updatedAt             DateTime          @updatedAt
+}
+
+/// One row per .lspkg staged/imported on an LS-100 (DEP-005). The package bytes/manifest are
+/// stored on disk under LSPKG_STAGING_DIR (see deployment.service.js); this row is the tracked
+/// lifecycle/status record used by staging, validation, preview, activation and rollback.
+model DeploymentPackageRecord {
+  id                   String                  @id @default(uuid())
+  packageId            String
+  siteId               String
+  siteName             String
+  packageVersion       String
+  schemaVersion        Int
+  status               DeploymentPackageStatus @default(STAGED)
+  source               DeploymentSource
+  filePath             String
+  checksumSha256       String
+  manifestJson         Json
+  changePreviewJson    Json?
+  validationErrorsJson Json?
+  receivedAt           DateTime  @default(now())
+  validatedAt          DateTime?
+  activatedAt          DateTime?
+  supersededAt         DateTime?
+  failureReason        String?
+  /// SiteVersion created on successful activation (see deployment.service.js) — the pointer that
+  /// makes SiteVersion.activeReleaseVersionId the actual Operator-visible "active configuration".
+  createdSiteVersionId String?
+
+  auditEntries DeploymentAuditEntry[]
+  backups      DeploymentBackupRecord[]
+
+  @@index([siteId])
+  @@index([status])
+}
+
+/// Pre-deployment recoverable snapshot (DEP-005/DEP-006). Captures the previously active
+/// SiteVersion payload plus a manifest of relational definition ids, so a failed or unwanted
+/// activation can be rolled back without depending on anything in the new package.
+model DeploymentBackupRecord {
+  id              String   @id @default(uuid())
+  siteId          String
+  packageRecordId String?
+  reason          String
+  snapshotJson    Json
+  createdAt       DateTime @default(now())
+
+  packageRecord DeploymentPackageRecord? @relation(fields: [packageRecordId], references: [id], onDelete: SetNull)
+
+  @@index([siteId])
+}
+
+/// Audit trail for build/transfer/import/validate/preview/backup/activate/rollback (LC-ARCH-002 §11).
+model DeploymentAuditEntry {
+  id              String                @id @default(uuid())
+  siteId          String?
+  packageRecordId String?
+  action          String
+  result          DeploymentAuditResult
+  actor           String?
+  detailsJson     Json?
+  createdAt       DateTime              @default(now())
+
+  packageRecord DeploymentPackageRecord? @relation(fields: [packageRecordId], references: [id], onDelete: SetNull)
+
+  @@index([siteId])
+  @@index([packageRecordId])
+}
+
+/// Tracks LPC controller-application deployment status separately from site-package activation
+/// (DEP-007 — LCPE owns controller applications; activating a site package never claims a physical
+/// controller received a program). Defaults to NOT_APPLICABLE because this repo has no LCPE
+/// integration yet.
+model ControllerApplicationDeployment {
+  id                 String                    @id @default(uuid())
+  siteId             String
+  equipmentId        String?
+  controllerCode     String
+  applicationRef     String?
+  applicationVersion String?
+  status             ControllerAppDeployStatus @default(NOT_APPLICABLE)
+  packageRecordId    String?
+  notes              String?
+  updatedAt          DateTime                  @updatedAt
+  createdAt          DateTime                  @default(now())
+
+  @@unique([siteId, controllerCode])
+  @@index([siteId])
 }
 
 /// Staging cache for BACnet device discovery (not yet mapped to ControllersMapped).
