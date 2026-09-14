@@ -143,6 +143,15 @@ const routes = [
     },
   },
   {
+    // The only path a write reaches a real device through: Server -> here -> BacnetDriver -> device.
+    method: 'POST',
+    pattern: '/runtime/controllers/:code/write',
+    handler: async ({ params, body }) => {
+      const result = await runtimeCore.writePoint(params.code, body?.fieldPointKey, body?.value, { priority: body?.priority });
+      return { status: result.status, body: result.ok ? result.result : { error: result.error } };
+    },
+  },
+  {
     method: 'GET',
     pattern: '/runtime/discovery-devices',
     handler: async ({ query }) => ({

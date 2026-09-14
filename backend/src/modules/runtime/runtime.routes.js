@@ -18,6 +18,7 @@ router.post('/controllers/:code/offline', asyncHandler((req, res) => runtimeCont
 router.post('/controllers/:code/start', asyncHandler((req, res) => runtimeController.start(req, res)));
 router.post('/controllers/:code/stop', asyncHandler((req, res) => runtimeController.stop(req, res)));
 router.post('/controllers/:code/poll-now', asyncHandler((req, res) => runtimeController.pollNow(req, res)));
+router.post('/controllers/:code/write', asyncHandler((req, res) => runtimeController.writePoint(req, res)));
 
 router.get('/discovery-devices', asyncHandler((req, res) => runtimeController.discoveryDevices(req, res)));
 

@@ -32,7 +32,7 @@ function createDefaultController(code, opts = {}) {
     catalogRuntimeId: opts.catalogRuntimeId ?? opts.runtimeId ?? null,
     siteId: opts.siteId ?? null,
     controllerCode: code,
-    protocol: 'SIM',
+    protocol: opts.protocol || 'SIM',
     deviceType: opts.deviceType ?? null,
     deviceInstance: opts.deviceInstance ?? null,
     deviceAddress: opts.deviceAddress ?? null,

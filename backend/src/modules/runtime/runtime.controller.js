@@ -69,6 +69,21 @@ async function pollNow(req, res) {
   res.json(row);
 }
 
+/**
+ * LC-ARCH-004: the only path a live field write reaches a device through — this call goes to
+ * Runtime's internal API, which dispatches through BacnetDriver. This backend process never talks
+ * to BACnet directly for a normal live write.
+ */
+async function writePoint(req, res) {
+  const { fieldPointKey, value, priority } = req.body || {};
+  const result = await runtimeService.writePoint(req.params.code, fieldPointKey, value, { priority });
+  if (!result) {
+    res.status(404).json({ error: 'Controller or point mapping not found' });
+    return;
+  }
+  res.json(result);
+}
+
 async function discoveryDevices(req, res) {
   const siteId = req.query.siteId ? String(req.query.siteId) : undefined;
   const devices = await runtimeService.listDiscoveryDevices(siteId);
@@ -84,5 +99,6 @@ module.exports = {
   start,
   stop,
   pollNow,
+  writePoint,
   discoveryDevices,
 };

@@ -44,6 +44,21 @@ async function pollNow(code) {
   return runtimePost(`/runtime/controllers/${encodeURIComponent(code)}/poll-now`, {}, { notFoundValue: null });
 }
 
+/**
+ * WRITE: the only path a live field write reaches a real device through — Server (here) -> Runtime
+ * internal API -> BacnetDriver -> device. The backend process never talks to BACnet directly for a
+ * normal live write (Engineering commissioning tooling under `/api/runtime/bacnet/*` is separate —
+ * see `bacnet.controller.js` — and intentionally still calls the BACnet client directly for
+ * pre-deployment testing of arbitrary/undeployed addresses).
+ */
+async function writePoint(code, fieldPointKey, value, options = {}) {
+  return runtimePost(
+    `/runtime/controllers/${encodeURIComponent(code)}/write`,
+    { fieldPointKey, value, priority: options.priority },
+    { notFoundValue: null }
+  );
+}
+
 async function listDiscoveryDevices(siteId) {
   const qs = siteId ? `?siteId=${encodeURIComponent(siteId)}` : '';
   const body = await runtimeGet(`/runtime/discovery-devices${qs}`);
@@ -81,6 +96,7 @@ module.exports = {
   setOnline,
   setSimEnabled,
   pollNow,
+  writePoint,
   listDiscoveryDevices,
   listFieldPointsForController,
   resyncLiveSimBindings,

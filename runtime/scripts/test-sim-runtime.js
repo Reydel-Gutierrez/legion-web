@@ -177,7 +177,7 @@ async function main() {
   assert.equal(runtime.getController(ctrl.runtimeId).online, false);
   ctrl.lastSeenAt = new Date(Date.now() - 100000).toISOString();
   for (const p of first) p.lastSeenAt = new Date(Date.now() - 100000);
-  await runtime.reconcileSimMappedStaleState();
+  await runtime.reconcileMappedStaleState();
   assert(first.every((p) => p.commState === 'OFFLINE'), 'stale/offline transition preserves the point row (never deleted), only commState changes');
   assert(first.every((p) => p.presentValue != null), 'last known value is preserved through the OFFLINE transition');
   assert.equal(liveControllerBindings.find((r) => r.equipmentId === 'eq-0').status, 'OFFLINE',

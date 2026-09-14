@@ -8,7 +8,8 @@
     "start": "node src/server.js",
     "dev": "node src/server.js",
     "test:sim-runtime": "node scripts/test-sim-runtime.js",
-    "test:all": "npm run test:sim-runtime"
+    "test:bacnet-runtime": "node scripts/test-bacnet-runtime.js",
+    "test:all": "npm run test:sim-runtime && npm run test:bacnet-runtime"
   },
   "engines": {
     "node": ">=16.0.0"

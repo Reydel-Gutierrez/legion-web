@@ -28,6 +28,12 @@ const { SIMULATED_CONTROLLERS_CATALOG, getCatalogEntryByRuntimeId } = require(pa
   'catalog'
 ));
 const { store, createDefaultController, DEFAULT_POLL_MS } = require('./runtime.store');
+const bacnetDriver = require('../protocols/bacnetDriver');
+
+/** True for any BACnet/IP-flavored LiveControllerBinding.protocol string. */
+function isBacnetProtocol(protocol) {
+  return String(protocol || '').toUpperCase().includes('BACNET');
+}
 
 /** Verbose SIM poll → DB writes (mapped equipment only). */
 const DEV_RUNTIME_SIM_POLL_LOG = process.env.NODE_ENV === 'development';
@@ -110,16 +116,11 @@ async function bumpControllerFailureCount(liveControllerBindingId) {
  * @param {string} equipmentId
  * @returns {object|null}
  */
-function simStoreControllerForMappedEquipment(equipmentId) {
+function storeControllerForMappedEquipment(equipmentId) {
   const eid = String(equipmentId || '').trim();
   if (!eid) return null;
   return (
-    Object.values(store.controllers).find(
-      (c) =>
-        c &&
-        String(c.protocol || '').toUpperCase() === 'SIM' &&
-        String(c.mappedEquipmentId || '').trim() === eid
-    ) || null
+    Object.values(store.controllers).find((c) => c && String(c.mappedEquipmentId || '').trim() === eid) || null
   );
 }
 
@@ -127,7 +128,7 @@ function simStoreControllerForMappedEquipment(equipmentId) {
  * @param {object} ec - LiveControllerBinding row (the deployed projection, never ControllersMapped)
  * @param {Date} nowDate
  */
-async function persistMappedSimControllerOnline(ec, nowDate) {
+async function persistControllerOnline(ec, nowDate) {
   if (!ec?.id) return;
   try {
     // Phase 2 compatibility mirror: existing consumers (Site Builder assignment display, discovery)
@@ -151,21 +152,21 @@ async function persistMappedSimControllerOnline(ec, nowDate) {
 }
 
 /**
- * Mark mapped SIM controllers/points STALE/COMM_FAILURE when the in-memory poll heartbeat ages out.
- * Reads/writes only the deployed Live projection and runtime-state tables — never
- * ControllersMapped/PointsMapped. Preserves the last known value; only quality/commState changes.
+ * Mark mapped controllers/points (any protocol) STALE/COMM_FAILURE when the in-memory poll
+ * heartbeat ages out. Reads/writes only the deployed Live projection and runtime-state tables —
+ * never ControllersMapped/PointsMapped. Preserves the last known value; only quality/commState
+ * changes. The same aging model that already worked for SIM applies unchanged to BACnet: a
+ * temporarily unreachable device degrades GOOD -> STALE -> COMM_FAILURE and recovers automatically
+ * on the next successful poll (via `persistControllerOnline`), with no protocol-specific logic here.
  */
-async function reconcileSimMappedStaleState() {
+async function reconcileMappedStaleState() {
   const ecs = await prisma.liveControllerBinding.findMany({
-    where: {
-      isEnabled: true,
-      protocol: { equals: 'SIM', mode: 'insensitive' },
-    },
+    where: { isEnabled: true },
   });
   const now = Date.now();
 
   for (const ec of ecs) {
-    const storeCtrl = simStoreControllerForMappedEquipment(ec.equipmentId);
+    const storeCtrl = storeControllerForMappedEquipment(ec.equipmentId);
     const memIso = storeCtrl?.lastSeenAt || storeCtrl?.stats?.lastPollAt;
     const memT = memIso ? new Date(memIso).getTime() : NaN;
     const age = Number.isFinite(memT) ? now - memT : Infinity;
@@ -233,10 +234,11 @@ async function reconcileSimMappedStaleState() {
 }
 
 /**
- * In-memory SIM row is "reachable" only when enabled and recently updated (poll loop wrote lastSeenAt).
+ * In-memory controller row (any protocol) is "reachable" only when enabled and recently updated
+ * (poll loop wrote lastSeenAt within the staleness window).
  * @param {object} c - store controller
  */
-function isSimControllerActivelyUpdating(c) {
+function isControllerActivelyUpdating(c) {
   if (!c || !c.online || !c.simEnabled) return false;
   const raw = c.lastSeenAt || c.stats?.lastPollAt;
   if (!raw) return false;
@@ -333,12 +335,16 @@ async function loadPersistedBindingForEquipment(equipmentId) {
 
 /**
  * RELOAD: called by Legion Server (via the internal HTTP API) after a deploy/rollback activates a
- * new release. Re-resolves every site's LiveControllerBinding rows against the catalog so the
- * in-memory SIM store matches whatever is now deployed. Never triggered by an Engineering-side
+ * new release. Re-resolves every site's LiveControllerBinding rows (both SIM and BACnet/IP) so the
+ * in-memory controller store matches whatever is now deployed — reconciling by desired-set diff
+ * (see `applyPersistedAssignmentsToSimControllers`/`applyPersistedBacnetControllers`), so an
+ * unchanged controller keeps its existing store entry (and poll history) untouched, a removed one
+ * stops being polled, and nothing is ever duplicated. Never triggered by an Engineering-side
  * ControllersMapped/PointsMapped edit — only by an actual activation.
  */
 async function reload() {
   await applyPersistedAssignmentsToSimControllers();
+  await applyPersistedBacnetControllers();
   return getStatus();
 }
 
@@ -430,7 +436,8 @@ function computeSimValues(pointsByCode, prevScratch) {
 }
 
 /**
- * Resolve a runtime SIM controller by catalog `runtimeId`, persisted equipment UUID, or `controllerCode` when unambiguous.
+ * Resolve a runtime controller (any protocol) by catalog `runtimeId`, persisted equipment UUID, or
+ * `controllerCode` when unambiguous.
  * @param {string} codeOrEquipmentId
  */
 function resolveStoreController(codeOrEquipmentId) {
@@ -438,18 +445,18 @@ function resolveStoreController(codeOrEquipmentId) {
   if (!k) return null;
   if (store.controllers[k]) return store.controllers[k];
 
-  const sims = Object.values(store.controllers).filter((c) => c && c.protocol === 'SIM');
+  const all = Object.values(store.controllers).filter(Boolean);
 
-  const byMapped = sims.find((c) => c.mappedEquipmentId && String(c.mappedEquipmentId) === k);
+  const byMapped = all.find((c) => c.mappedEquipmentId && String(c.mappedEquipmentId) === k);
   if (byMapped) return byMapped;
 
-  const byRuntime = sims.find((c) => c.runtimeId && String(c.runtimeId) === k);
+  const byRuntime = all.find((c) => c.runtimeId && String(c.runtimeId) === k);
   if (byRuntime) return byRuntime;
-  const byCatalog = sims.filter((c) => c.catalogRuntimeId === k);
+  const byCatalog = all.filter((c) => c.catalogRuntimeId === k);
   if (byCatalog.length === 1) return byCatalog[0];
 
   const lower = k.toLowerCase();
-  const byCode = sims.filter((c) => String(c.controllerCode || '').toLowerCase() === lower);
+  const byCode = all.filter((c) => String(c.controllerCode || '').toLowerCase() === lower);
   return byCode.length === 1 ? byCode[0] : null;
 }
 
@@ -457,7 +464,7 @@ function publicControllerDto(c) {
   if (!c) return null;
   const storeKey = String(c.runtimeId || '').trim() || null;
   const mapped = String(c.mappedEquipmentId || '').trim() || null;
-  const activelyUpdating = c.protocol === 'SIM' ? isSimControllerActivelyUpdating(c) : Boolean(c.online);
+  const activelyUpdating = isControllerActivelyUpdating(c);
   return {
     controllerCode: c.controllerCode,
     runtimeId: c.runtimeId,
@@ -494,6 +501,55 @@ function pollController(storeKey) {
   return task;
 }
 
+/**
+ * Commit one poll cycle's successfully-read points as a single DB transaction (Point mirror +
+ * PointRuntimeState + historian, all atomically) and record the controller heartbeat — shared by
+ * every protocol so there is exactly one "how a successful poll gets persisted" code path. A
+ * healthy fast poll cycle must not exceed the UI freshness window.
+ * @returns {Promise<number>} number of points actually committed (0 on total failure)
+ */
+async function commitPointBatch(pointUpdates, ec, pollAt, source, storeKey) {
+  if (!pointUpdates.length) return 0;
+  try {
+    const dueForHistory = pointUpdates.filter((item) => historian.shouldRecordSample(item.id, pollAt.getTime()));
+    const historyOps = historian.sampleTransactionOps(
+      dueForHistory.map((item) => ({
+        pointId: item.id,
+        value: item.historyValue,
+        quality: historian.QUALITY.ONLINE,
+        timestamp: pollAt,
+      }))
+    );
+    await prisma.$transaction([
+      ...pointUpdates.map((item) => prisma.point.update({ where: { id: item.id }, data: item.data })),
+      ...pointUpdates.map((item) =>
+        pointRuntimeStateUpsertOp(item.id, {
+          presentValue: item.data.presentValue,
+          quality: QUALITY.GOOD,
+          lastSeenAt: pollAt,
+          source,
+        })
+      ),
+      ...historyOps,
+    ]);
+    // A committed point batch is the communication heartbeat. Record it before alarm work so
+    // alarm latency cannot age a healthy controller.
+    await persistControllerOnline(ec, pollAt);
+    try {
+      await alarmService.evaluateForPointIds(pointUpdates.map((item) => item.id));
+    } catch (e) {
+      // Alarm evaluation must not invalidate an otherwise successful communication heartbeat.
+      console.warn(`[runtime] ${storeKey} alarm evaluation failed:`, e?.message || e);
+    }
+    return pointUpdates.length;
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.warn(`[runtime] ${storeKey} batch point update failed:`, e?.message || e);
+    await bumpControllerFailureCount(ec?.id);
+    return 0;
+  }
+}
+
 async function pollControllerOnce(storeKey) {
   const ctrl = store.controllers[storeKey];
   if (!ctrl) return;
@@ -504,6 +560,13 @@ async function pollControllerOnce(storeKey) {
     return;
   }
 
+  if (isBacnetProtocol(ctrl.protocol)) {
+    return pollBacnetControllerOnce(ctrl, storeKey);
+  }
+  return pollSimControllerOnce(ctrl, storeKey);
+}
+
+async function pollSimControllerOnce(ctrl, storeKey) {
   const mappedId = String(ctrl.mappedEquipmentId || '').trim() || null;
   let ec = null;
   let mappings = [];
@@ -569,7 +632,6 @@ async function pollControllerOnce(storeKey) {
     return;
   }
 
-  let successfulWrites = 0;
   const pointUpdates = [];
   for (const m of writeMappings) {
     const row = points.find((p) => p.id === m.pointId);
@@ -621,50 +683,88 @@ async function pollControllerOnce(storeKey) {
     pointUpdates.push({ id: row.id, key: key || m.pointId, data: payload, historyValue: value !== undefined ? String(value) : prev });
   }
 
-  // Commit the complete poll as one database operation (Point mirror + PointRuntimeState +
-  // historian, all atomically). A healthy fast poll cycle must not exceed the UI freshness window.
-  if (pointUpdates.length) {
+  const successfulWrites = await commitPointBatch(pointUpdates, ec, pollAt, 'SIM', storeKey);
+  if (successfulWrites > 0) recordSuccessfulPoll();
+}
+
+/**
+ * BACnet/IP poll: reads every bound+read-enabled LivePointBinding through `bacnetDriver` (never
+ * `node-bacnet` directly — the protocol-driver boundary). A per-point read failure is recorded as a
+ * warning and simply excluded from this cycle's batch — it never fabricates a value, and the
+ * point's own quality only degrades once `reconcileMappedStaleState` observes it has aged past the
+ * staleness thresholds (same mechanism SIM already relies on). One slow/offline device therefore
+ * cannot block or crash polling for any other controller.
+ */
+async function pollBacnetControllerOnce(ctrl, storeKey) {
+  const mappedId = String(ctrl.mappedEquipmentId || '').trim() || null;
+  if (!mappedId) {
+    ctrl.pollWarnings.push('BACnet controller has no mapped equipment.');
+    return;
+  }
+
+  const loaded = await loadPersistedBindingForEquipment(mappedId);
+  const ec = loaded.ec;
+  if (!ec || !isBacnetProtocol(ec.protocol)) {
+    ctrl.pollWarnings.push('BACnet assignment is disabled, removed, or changed.');
+    return;
+  }
+  ctrl.pollRateMs = Math.max(DEFAULT_POLL_MS, Number(ec.pollRateMs) || DEFAULT_POLL_MS);
+  ctrl.controllerCode = ec.controllerCode;
+  ctrl.deviceInstance = ec.deviceInstance;
+  ctrl.deviceAddress = ec.ipAddress || ec.networkAddress || ctrl.deviceAddress;
+
+  if (!ec.ipAddress) {
+    ctrl.pollWarnings.push('LiveControllerBinding has no ipAddress; cannot poll BACnet/IP.');
+    return;
+  }
+
+  const mappings = (loaded.mappings || []).filter((m) => m.isBound && m.readEnabled);
+  if (!mappings.length) {
+    ctrl.pollWarnings.push('No read-enabled point mappings; skipping reads.');
+    return;
+  }
+
+  const pollAt = new Date();
+  const pointUpdates = [];
+  for (const m of mappings) {
+    if (!m.fieldObjectType || m.fieldObjectInstance == null) {
+      ctrl.pollWarnings.push(`${m.fieldPointKey}: missing BACnet object type/instance`);
+      continue;
+    }
     try {
-      const dueForHistory = pointUpdates.filter((item) => historian.shouldRecordSample(item.id, pollAt.getTime()));
-      const historyOps = historian.sampleTransactionOps(
-        dueForHistory.map((item) => ({
-          pointId: item.id,
-          value: item.historyValue,
-          quality: historian.QUALITY.ONLINE,
-          timestamp: pollAt,
-        }))
-      );
-      await prisma.$transaction([
-        ...pointUpdates.map((item) => prisma.point.update({ where: { id: item.id }, data: item.data })),
-        ...pointUpdates.map((item) =>
-          pointRuntimeStateUpsertOp(item.id, {
-            presentValue: item.data.presentValue,
-            quality: QUALITY.GOOD,
-            lastSeenAt: pollAt,
-            source: 'SIM',
-          })
-        ),
-        ...historyOps,
-      ]);
-      successfulWrites = pointUpdates.length;
-      // A committed point batch is the communication heartbeat. Record it
-      // before alarm work so alarm latency cannot age a healthy controller.
-      recordSuccessfulPoll();
-      await persistMappedSimControllerOnline(ec, pollAt);
-    } catch (e) {
-      // eslint-disable-next-line no-console
-      console.warn(`[runtime] ${storeKey} batch point update failed:`, e?.message || e);
-      await bumpControllerFailureCount(ec?.id);
-    }
-    if (successfulWrites > 0) {
-      try {
-        await alarmService.evaluateForPointIds(pointUpdates.map((item) => item.id));
-      } catch (e) {
-        // Alarm evaluation must not invalidate an otherwise successful
-        // communication heartbeat or point freshness update.
-        console.warn(`[runtime] ${storeKey} alarm evaluation failed:`, e?.message || e);
+      const result = await bacnetDriver.readPoints({
+        address: ec.ipAddress,
+        deviceInstance: ec.deviceInstance,
+        objectType: m.fieldObjectType,
+        objectInstance: m.fieldObjectInstance,
+      });
+      const value = result?.presentValue != null ? String(result.presentValue) : null;
+      if (value == null) {
+        ctrl.pollWarnings.push(`${m.fieldPointKey}: read returned no value`);
+        continue;
       }
+      pointUpdates.push({
+        id: m.pointId,
+        key: m.fieldPointKey,
+        data: { presentValue: value, lastSeenAt: pollAt, commState: 'ONLINE' },
+        historyValue: value,
+      });
+    } catch (e) {
+      // Never fabricate success — do not mark communication OK when the read actually failed.
+      ctrl.pollWarnings.push(`${m.fieldPointKey}: ${e?.message || e}`);
     }
+  }
+
+  const successfulWrites = await commitPointBatch(pointUpdates, ec, pollAt, 'BACNET_IP', storeKey);
+  if (successfulWrites > 0) {
+    ctrl.lastSeenAt = pollAt.toISOString();
+    ctrl.stats.pollCount += 1;
+    ctrl.stats.lastPollAt = ctrl.lastSeenAt;
+  } else if (mappings.length > 0) {
+    // Every configured point failed this cycle (all reads threw, or the commit itself failed) —
+    // count it as a controller-level communication failure. reconcileMappedStaleState progresses
+    // GOOD -> STALE -> COMM_FAILURE as the outage continues, exactly as it already does for SIM.
+    await bumpControllerFailureCount(ec.id);
   }
 }
 
@@ -680,7 +780,7 @@ function startPollLoop() {
         )
       )
     ).then(() =>
-      reconcileSimMappedStaleState().catch((e) =>
+      reconcileMappedStaleState().catch((e) =>
         // eslint-disable-next-line no-console
         console.warn('[runtime] stale reconcile', e?.message || e)
       )
@@ -736,20 +836,60 @@ async function applyPersistedAssignmentsToSimControllers() {
 }
 
 /**
- * SIM devices always exist from the catalog (runtime ids). LiveControllerBinding rows only attach
- * `mappedEquipmentId` once a release deploying that assignment has been activated.
+ * Load every deployed BACnet/IP `LiveControllerBinding` (across all sites) into the store, keyed by
+ * equipment id (each is a real device, not a shared catalog entry like SIM). Desired-set diffing —
+ * remove entries no longer deployed/enabled, create newly-deployed ones, update config-in-place for
+ * ones that still exist — is what makes `reload()` safe to call on every deploy/rollback without
+ * ever duplicating or leaking a poller for a removed controller.
  */
-async function hydrateSimulatedControllersFromCatalog() {
+async function applyPersistedBacnetControllers() {
+  const bindings = await prisma.liveControllerBinding.findMany({ where: { isEnabled: true } });
+  const desired = new Set();
+  for (const ec of bindings) {
+    if (!isBacnetProtocol(ec.protocol)) continue;
+    const runtimeId = String(ec.equipmentId);
+    desired.add(runtimeId);
+    if (!store.controllers[runtimeId]) {
+      store.controllers[runtimeId] = createDefaultController(ec.controllerCode, {
+        runtimeId,
+        catalogRuntimeId: runtimeId,
+        protocol: 'BACNET_IP',
+        siteId: ec.siteId,
+        deviceInstance: ec.deviceInstance,
+        deviceAddress: ec.ipAddress || ec.networkAddress || null,
+        mappedEquipmentId: ec.equipmentId,
+      });
+    }
+    const rt = store.controllers[runtimeId];
+    rt.controllerCode = ec.controllerCode;
+    rt.pollRateMs = Math.max(DEFAULT_POLL_MS, Number(ec.pollRateMs) || DEFAULT_POLL_MS);
+    rt.deviceInstance = ec.deviceInstance;
+    rt.deviceAddress = ec.ipAddress || ec.networkAddress || rt.deviceAddress;
+  }
+  for (const key of Object.keys(store.controllers)) {
+    const c = store.controllers[key];
+    if (isBacnetProtocol(c.protocol) && !desired.has(key)) delete store.controllers[key];
+  }
+}
+
+/**
+ * SIM devices always exist from the catalog (runtime ids); BACnet devices exist only once deployed.
+ * `LiveControllerBinding` rows only attach `mappedEquipmentId` once a release deploying that
+ * assignment has been activated.
+ */
+async function hydratePersistedControllers() {
   await applyPersistedAssignmentsToSimControllers();
+  await applyPersistedBacnetControllers();
+  const bacnetCount = Object.values(store.controllers).filter((c) => isBacnetProtocol(c.protocol)).length;
   // eslint-disable-next-line no-console
-  console.log(`[runtime] SIM catalog loaded (${SIMULATED_CONTROLLERS_CATALOG.length} simulated device(s))`);
+  console.log(`[runtime] SIM catalog loaded (${SIMULATED_CONTROLLERS_CATALOG.length} simulated device(s)); ${bacnetCount} BACnet/IP controller(s) from Live configuration`);
 }
 
 let initialized = false;
 let dbReachable = false;
 
 async function initialize() {
-  // Historian background maintenance runs independently of whether any SIM controllers exist.
+  // Historian background maintenance runs independently of whether any controllers exist.
   historian.startIntervalCacheRefresh();
   historian.startRetentionSweep();
   try {
@@ -760,21 +900,26 @@ async function initialize() {
     // eslint-disable-next-line no-console
     console.error('[runtime] database unreachable at startup:', e?.message || e);
   }
-  await hydrateSimulatedControllersFromCatalog();
+  await hydratePersistedControllers();
   const keys = Object.keys(store.controllers);
   initialized = true;
   if (keys.length === 0) {
     // eslint-disable-next-line no-console
-    console.log('[runtime] No SIM catalog devices; poll loop not started');
+    console.log('[runtime] No controllers configured; poll loop not started');
     return;
   }
   startPollLoop();
   await Promise.all(keys.map((k) => pollController(k).catch(() => {})));
-  await reconcileSimMappedStaleState().catch(() => {});
+  await reconcileMappedStaleState().catch(() => {});
 }
 
 async function shutdown() {
   stopPollLoop();
+  try {
+    await bacnetDriver.shutdown();
+  } catch (_) {
+    /* ignore */
+  }
   try {
     await prisma.$disconnect();
   } catch (_) {
@@ -861,7 +1006,7 @@ async function listDiscoveryDevices(siteId) {
     const deviceAddress =
       addressFromDb ?? (c.deviceAddress != null ? String(c.deviceAddress) : cat?.deviceAddress ?? null);
 
-    const discoveryOnline = c.protocol === 'SIM' ? isSimControllerActivelyUpdating(c) : Boolean(c.online);
+    const discoveryOnline = isControllerActivelyUpdating(c);
 
     out.push({
       code: c.runtimeId,
@@ -914,6 +1059,50 @@ async function listFieldPointsForController(code) {
   return [];
 }
 
+/**
+ * WRITE: resolves the deployed binding/mapping for one controller + field point and dispatches
+ * through the appropriate protocol driver (BacnetDriver for BACnet/IP; SIM has no external write
+ * path, matching existing behavior — SIM commands are advanced by the simulator itself). This is
+ * the only way a write reaches a real device: Server -> this function -> BacnetDriver -> device.
+ * Never fabricates success — a driver failure is reported back, not swallowed.
+ * @param {string} code - controller runtimeId / mapped equipment id / controllerCode
+ * @param {string} fieldPointKey
+ * @param {unknown} value
+ * @param {{ priority?: number }} [options]
+ */
+async function writePoint(code, fieldPointKey, value, options = {}) {
+  const ctrl = resolveStoreController(code);
+  if (!ctrl) return { ok: false, status: 404, error: 'Controller not found' };
+  const mappedId = String(ctrl.mappedEquipmentId || '').trim() || null;
+  if (!mappedId) return { ok: false, status: 400, error: 'Controller has no mapped equipment' };
+
+  const loaded = await loadPersistedBindingForEquipment(mappedId);
+  const ec = loaded.ec;
+  if (!ec) return { ok: false, status: 404, error: 'Live controller binding not found' };
+  const key = String(fieldPointKey || '').trim().toUpperCase();
+  const mapping = (loaded.mappings || []).find((m) => String(m.fieldPointKey || '').trim().toUpperCase() === key);
+  if (!mapping) return { ok: false, status: 404, error: 'Point mapping not found' };
+  if (!mapping.writeEnabled) return { ok: false, status: 400, error: 'Point mapping is not write-enabled' };
+
+  if (!isBacnetProtocol(ec.protocol)) {
+    return { ok: false, status: 400, error: 'SIM points have no external write path — values are advanced by the simulator' };
+  }
+  if (!mapping.fieldObjectType || mapping.fieldObjectInstance == null) {
+    return { ok: false, status: 400, error: 'Point mapping is missing BACnet object type/instance' };
+  }
+
+  try {
+    const result = await bacnetDriver.writePoint(
+      { address: ec.ipAddress, deviceInstance: ec.deviceInstance, objectType: mapping.fieldObjectType, objectInstance: mapping.fieldObjectInstance },
+      value,
+      options
+    );
+    return { ok: true, status: 200, result };
+  } catch (e) {
+    return { ok: false, status: 502, error: e?.message || String(e) };
+  }
+}
+
 /** Summary used by GET /health and GET /runtime/status. */
 async function getStatus() {
   const controllers = listControllers();
@@ -924,6 +1113,9 @@ async function getStatus() {
   } catch (_) {
     dbOk = false;
   }
+  const byProtocol = (pred) => controllers.filter(pred);
+  const sim = byProtocol((c) => c.protocol === 'SIM');
+  const bacnetIp = byProtocol((c) => isBacnetProtocol(c.protocol));
   return {
     initialized,
     dbReachable: dbOk,
@@ -932,6 +1124,15 @@ async function getStatus() {
     onlineControllerCount: controllers.filter((c) => c.online).length,
     offlineControllerCount: controllers.filter((c) => !c.online).length,
     sites: Array.from(new Set(controllers.map((c) => c.siteId).filter(Boolean))),
+    protocols: {
+      SIM: { configured: sim.length, online: sim.filter((c) => c.online).length, offline: sim.filter((c) => !c.online).length },
+      BACNET_IP: {
+        configured: bacnetIp.length,
+        online: bacnetIp.filter((c) => c.online).length,
+        offline: bacnetIp.filter((c) => !c.online).length,
+        driver: bacnetDriver.getHealth(),
+      },
+    },
   };
 }
 
@@ -945,9 +1146,10 @@ module.exports = {
   setSimEnabled,
   pollNow,
   pollController,
+  writePoint,
   listDiscoveryDevices,
   listFieldPointsForController,
-  reconcileSimMappedStaleState,
+  reconcileMappedStaleState,
   getStatus,
   FCU_CONTROLLER_CODE,
   staleThresholdMs,
