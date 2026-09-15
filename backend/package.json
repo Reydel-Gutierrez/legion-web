@@ -8,6 +8,7 @@
     "postinstall": "prisma generate",
     "dev": "node src/server.js",
     "start": "node src/server.js",
+    "start:bacnet-commissioning": "node src/bacnetCommissioningServer.js",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio",

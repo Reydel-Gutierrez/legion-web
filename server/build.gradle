@@ -1,0 +1,98 @@
+plugins {
+	id 'java'
+	id 'org.springframework.boot' version '4.1.1'
+	id 'io.spring.dependency-management' version '1.1.7'
+	id 'org.jooq.jooq-codegen-gradle' version '3.21.7'
+}
+
+group = 'com.legioncontrols'
+version = '0.0.1-SNAPSHOT'
+description = 'Legion Controls BAS Server'
+
+java {
+	toolchain {
+		languageVersion = JavaLanguageVersion.of(25)
+	}
+}
+
+repositories {
+	mavenCentral()
+}
+
+dependencies {
+	implementation 'org.springframework.boot:spring-boot-starter-actuator'
+	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+	implementation 'org.springframework.boot:spring-boot-starter-flyway'
+	implementation 'org.springframework.boot:spring-boot-starter-jooq'
+	implementation 'org.springframework.boot:spring-boot-starter-security'
+	implementation 'org.springframework.boot:spring-boot-starter-validation'
+	implementation 'org.springframework.boot:spring-boot-starter-webmvc'
+	implementation 'org.flywaydb:flyway-database-postgresql'
+	compileOnly 'org.projectlombok:lombok'
+	runtimeOnly 'org.postgresql:postgresql'
+	annotationProcessor 'org.projectlombok:lombok'
+	annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
+	testImplementation 'org.springframework.boot:spring-boot-starter-actuator-test'
+	testImplementation 'org.springframework.boot:spring-boot-starter-data-jpa-test'
+	testImplementation 'org.springframework.boot:spring-boot-starter-flyway-test'
+	testImplementation 'org.springframework.boot:spring-boot-starter-jooq-test'
+	testImplementation 'org.springframework.boot:spring-boot-starter-security-test'
+	testImplementation 'org.springframework.boot:spring-boot-starter-validation-test'
+	testImplementation 'org.springframework.boot:spring-boot-starter-webmvc-test'
+	testImplementation 'org.springframework.boot:spring-boot-testcontainers'
+	testImplementation 'org.testcontainers:testcontainers-junit-jupiter'
+	testImplementation 'org.testcontainers:testcontainers-postgresql'
+	testCompileOnly 'org.projectlombok:lombok'
+	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+	testAnnotationProcessor 'org.projectlombok:lombok'
+
+	jooqCodegen 'org.postgresql:postgresql'
+}
+
+tasks.named('test') {
+	useJUnitPlatform()
+}
+
+// jOOQ code generation introspects the EXISTING PostgreSQL schema (managed by Prisma migrations in
+// backend/prisma) and generates typed Java table/record classes from it. This never creates or
+// alters schema — it only reads. Point it at a real Postgres instance with the current schema
+// applied (same DATABASE_URL the Node backend uses) before running `./gradlew jooqCodegen`. DB
+// credentials come from gradle.properties (git-ignored; see gradle.properties.example) or the
+// DB_URL/DB_USER/DB_PASSWORD env vars — never hardcode them here.
+jooq {
+	configuration {
+		jdbc {
+			driver = 'org.postgresql.Driver'
+			url = findProperty('db.url') ?: System.getenv('DB_URL') ?: 'jdbc:postgresql://localhost:5432/legion_db'
+			user = findProperty('db.user') ?: System.getenv('DB_USER') ?: 'postgres'
+			password = findProperty('db.password') ?: System.getenv('DB_PASSWORD') ?: ''
+		}
+		generator {
+			database {
+				name = 'org.jooq.meta.postgres.PostgresDatabase'
+				inputSchema = 'public'
+				excludes = '_prisma_migrations|flyway_schema_history'
+			}
+			generate {
+				pojos = false
+				fluentSetters = true
+				javaTimeTypes = true
+			}
+			target {
+				packageName = 'com.legioncontrols.server.jooq.generated'
+				directory = 'build/generated-sources/jooq'
+			}
+		}
+	}
+}
+
+sourceSets {
+	main {
+		java {
+			srcDirs += ['build/generated-sources/jooq']
+		}
+	}
+}
+
+compileJava.dependsOn tasks.named('jooqCodegen')
+
