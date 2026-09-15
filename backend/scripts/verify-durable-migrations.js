@@ -1,5 +1,5 @@
 // Read-only recovery audit. Does not apply migrations or modify site data.
-require('../src/config/env');
+require('../src/config/env.ts');
 const assert = require('assert');
 const fs = require('fs');
 const path = require('path');

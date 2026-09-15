@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { useHistory } from "react-router-dom";
-import { Form, Modal, Button } from "@themesberg/react-bootstrap";
+import { useNavigate } from "react-router-dom";
+import { Form, Modal, Button } from "react-bootstrap";
 import { getEquipmentFromRelease, resolveEquipmentLocationInRelease } from "../../../lib/activeReleaseUtils";
 import {
   EQUIPMENT_OOS_LABEL,
@@ -39,7 +39,7 @@ export default function EquipmentWorkspace({
   onSelectNode,
   siteAlarms = [],
 }) {
-  const history = useHistory();
+  const navigate = useNavigate();
   const equipment = useMemo(
     () => (releaseData && selectedNode?.id ? getEquipmentFromRelease(releaseData, selectedNode.id) : null),
     [releaseData, selectedNode]
@@ -226,7 +226,7 @@ export default function EquipmentWorkspace({
     } else if (linkTarget.type === "url" && linkTarget.url) {
       window.open(linkTarget.url, "_blank", "noopener,noreferrer");
     } else if (linkTarget.type === "route" && linkTarget.path) {
-      history.push(linkTarget.path);
+      navigate(linkTarget.path);
     }
   };
 
@@ -252,7 +252,7 @@ export default function EquipmentWorkspace({
         <button
           type="button"
           className="operator-btn"
-          onClick={() => history.push(locationForFacilityNode({ kind: "site", id: tree?.id }))}
+          onClick={() => navigate(locationForFacilityNode({ kind: "site", id: tree?.id }))}
         >
           Back to site
         </button>

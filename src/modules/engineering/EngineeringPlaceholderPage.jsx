@@ -1,5 +1,5 @@
 import React from "react";
-import { Container, Card } from "@themesberg/react-bootstrap";
+import { Container, Card } from "react-bootstrap";
 import LegionHeroHeader from "../../components/legion/LegionHeroHeader";
 
 /**

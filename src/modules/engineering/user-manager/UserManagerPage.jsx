@@ -10,7 +10,7 @@ import {
   InputGroup,
   Table,
   Badge,
-} from "@themesberg/react-bootstrap";
+} from "react-bootstrap";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faUserCog,

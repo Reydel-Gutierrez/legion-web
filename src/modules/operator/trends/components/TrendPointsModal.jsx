@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo } from "react";
-import { Modal, Form, Button, ListGroup } from "@themesberg/react-bootstrap";
+import { Modal, Form, Button, ListGroup } from "react-bootstrap";
 
 /**
  * Pick points for the **open equipment** catalog. Use Apply to update plotted points only — recording is started from the panel.

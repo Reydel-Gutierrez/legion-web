@@ -12,7 +12,7 @@ const { buildWorkingSiteEquipmentFromDb } = require('../siteHierarchy/siteHierar
 const { ensureSeedOwnerSiteAccess } = require('../../lib/siteAccess');
 const { syncSimCatalogBindingsForSiteId } = require('../../lib/simCatalogBindingSync');
 const { captureLiveConfigForSite, materializeLiveConfigForSite } = require('../runtime/liveConfig.service');
-const { resyncLiveSimBindings } = require('../runtime/runtime.service');
+const { resyncLiveSimBindings } = require('../runtime/runtime.service.ts');
 
 /**
  * Operator / active-release snapshot uses a slightly flatter site tree than engineering working state.

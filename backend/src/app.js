@@ -5,7 +5,7 @@ const morgan = require('morgan');
 const { notFound } = require('./middleware/notFound');
 const { errorHandler } = require('./middleware/errorHandler');
 const { asyncHandler } = require('./middleware/asyncHandler');
-const { JSON_BODY_LIMIT } = require('./config/env');
+const { JSON_BODY_LIMIT } = require('./config/env.ts');
 
 const siteRoutes = require('./modules/sites/site.routes');
 const floorRoutes = require('./modules/floors/floor.routes');
@@ -23,7 +23,7 @@ const pointMappingsRoutes = require('./modules/pointMappings/pointMappings.route
 const operatorDefinitionsRoutes = require('./modules/operatorDefinitions/operatorDefinitions.routes');
 const deploymentRoutes = require('./modules/deployment/deployment.routes');
 const prisma = require('./lib/prisma');
-const { getRuntimeHealth } = require('./modules/runtime/runtime.service');
+const { getRuntimeHealth } = require('./modules/runtime/runtime.service.ts');
 
 const app = express();
 

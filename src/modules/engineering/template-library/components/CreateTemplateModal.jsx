@@ -1,5 +1,5 @@
 import React from "react";
-import { Modal, Button } from "@themesberg/react-bootstrap";
+import { Modal, Button } from "react-bootstrap";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faBoxOpen, faObjectGroup } from "@fortawesome/free-solid-svg-icons";
 

@@ -167,7 +167,7 @@ stub('../src/modules/alarms/alarm.service', { evaluateForPointIds: async () => {
 // actually write to LiveControllerBinding/LivePointBinding). Runtime's own resolution of that data
 // is proven in `../../runtime/scripts/test-sim-runtime.js` (unit-level, via runtimeCore.js
 // directly) and `test-phase2-process-separation.js` (real cross-process, via HTTP).
-stub('../src/modules/runtime/runtime.service', { resyncLiveSimBindings: async () => {} });
+stub('../src/modules/runtime/runtime.service.ts', { resyncLiveSimBindings: async () => {} });
 
 const siteVersionService = require('../src/modules/siteVersions/siteVersion.service');
 

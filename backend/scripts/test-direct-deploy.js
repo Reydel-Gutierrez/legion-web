@@ -36,7 +36,7 @@ const serverPrisma = {
 stub('../src/lib/prisma', serverPrisma);
 // LC-ARCH-004 Phase 2: avoid an incidental real network call to whatever LEGION_RUNTIME_URL happens
 // to resolve to in this shell — this suite is a hermetic, no-real-database/no-network unit test.
-stub('../src/modules/runtime/runtime.service', { resyncLiveSimBindings: async () => {} });
+stub('../src/modules/runtime/runtime.service.ts', { resyncLiveSimBindings: async () => {} });
 stub('../src/lib/lspkg/storage', {
   writeStagedPackage: (id, buf) => `/tmp/${id}.lspkg`,
   readStagedPackage: () => { throw new Error('not needed for this test'); },

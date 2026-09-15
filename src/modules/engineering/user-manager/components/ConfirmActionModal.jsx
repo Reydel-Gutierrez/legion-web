@@ -1,5 +1,5 @@
 import React from "react";
-import { Modal, Button } from "@themesberg/react-bootstrap";
+import { Modal, Button } from "react-bootstrap";
 
 export default function ConfirmActionModal({ show, onHide, onConfirm, title, body, confirmLabel = "Confirm", confirmVariant = "danger" }) {
   return (

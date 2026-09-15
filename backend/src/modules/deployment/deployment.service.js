@@ -15,7 +15,7 @@ const { buildZip } = require('../../lib/lspkg/zip');
 const { canonicalStringify, sha256Hex } = require('../../lib/lspkg/checksum');
 const { writeStagedPackage, readStagedPackage, deleteStagedPackage } = require('../../lib/lspkg/storage');
 const { applyPackageFiles } = require('./activation.service');
-const { resyncLiveSimBindings } = require('../runtime/runtime.service');
+const { resyncLiveSimBindings } = require('../runtime/runtime.service.ts');
 
 const COMMISSIONING_ID = 'ls100';
 

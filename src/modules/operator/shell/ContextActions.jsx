@@ -1,12 +1,12 @@
 import React, { useMemo, useState } from "react";
-import { useHistory } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faChevronRight, faCog } from "@fortawesome/free-solid-svg-icons";
 import { Routes } from "../../../routes";
 import { canCommandPoints, canConfigureAlarms } from "../../../lib/access/operatorPermissions";
 
 export default function ContextActions({ selectedNode, currentUser, onRefresh, onCommandPoints }) {
-  const history = useHistory();
+  const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const kind = selectedNode?.kind || "site";
   const canCommand = canCommandPoints(currentUser);
@@ -41,12 +41,12 @@ export default function ContextActions({ selectedNode, currentUser, onRefresh, o
 
   const run = (id) => {
     setOpen(false);
-    if (id === "trends") history.push(Routes.LegionTrends.path);
-    else if (id === "schedules") history.push(Routes.LegionSchedules.path);
-    else if (id === "alarms") history.push(Routes.LegionAlarms.path);
-    else if (id === "events") history.push(Routes.LegionEvents.path);
-    else if (id === "insights") history.push(Routes.LegionDashboard.path);
-    else if (id === "workspace") history.push(Routes.LegionEquipment.path);
+    if (id === "trends") navigate(Routes.LegionTrends.path);
+    else if (id === "schedules") navigate(Routes.LegionSchedules.path);
+    else if (id === "alarms") navigate(Routes.LegionAlarms.path);
+    else if (id === "events") navigate(Routes.LegionEvents.path);
+    else if (id === "insights") navigate(Routes.LegionDashboard.path);
+    else if (id === "workspace") navigate(Routes.LegionEquipment.path);
     else if (id === "refresh") {
       if (onRefresh) onRefresh();
     } else if (id === "command" || id === "alarm") {

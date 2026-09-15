@@ -1,5 +1,5 @@
 import React from "react";
-import { ReactComponent as LccLogo } from "../../assets/svgs/LCC-logo.svg";
+import LccLogo from "../../assets/svgs/LCC-logo.svg?react";
 
 /**
  * Operator sidebar brand: original LCC mark + LEGION CONTROLS wordmark.

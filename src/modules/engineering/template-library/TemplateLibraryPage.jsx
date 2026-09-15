@@ -5,7 +5,7 @@ import {
   Card,
   Button,
   Dropdown,
-} from "@themesberg/react-bootstrap";
+} from "react-bootstrap";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faBook,
@@ -17,7 +17,7 @@ import {
   faCloudUploadAlt,
 } from "@fortawesome/free-solid-svg-icons";
 
-import { useHistory } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { useSite } from "../../../app/providers/SiteProvider";
 import { useWorkingVersion } from "../../../hooks/useWorkingVersion";
 import LegionHeroHeader from "../../../components/legion/LegionHeroHeader";
@@ -97,7 +97,7 @@ function globalGraphicToSite(globalRow, equipmentTemplates, importedGlobalEquipm
 // TemplateLibraryPage
 // ---------------------------------------------------------------------------
 export default function TemplateLibraryPage() {
-  const history = useHistory();
+  const navigate = useNavigate();
   const { site } = useSite();
   const { workingState, actions, backendWorkingVersionSynced } = useWorkingVersion();
   const [activeTab, setActiveTab] = useState("equipment");
@@ -316,7 +316,7 @@ export default function TemplateLibraryPage() {
   const handleViewGraphic = useCallback(
     (row) => {
       if (row._origin === "template") {
-        history.push(
+        navigate(
           `${Routes.EngineeringGraphicsManager.path}?graphicTemplateId=${encodeURIComponent(row.id)}`
         );
         return;
@@ -328,11 +328,11 @@ export default function TemplateLibraryPage() {
               (e) => e.graphicTemplateId === row.id || (workingState?.graphics?.[e.id]?.graphicTemplateId === row.id)
             )?.id;
       if (equipmentId) {
-        history.push(`${Routes.EngineeringGraphicsManager.path}?equipmentId=${encodeURIComponent(equipmentId)}`);
+        navigate(`${Routes.EngineeringGraphicsManager.path}?equipmentId=${encodeURIComponent(equipmentId)}`);
       } else if (row._origin === "equipment") {
-        history.push(`${Routes.EngineeringGraphicsManager.path}?equipmentId=${encodeURIComponent(row.equipmentId)}`);
+        navigate(`${Routes.EngineeringGraphicsManager.path}?equipmentId=${encodeURIComponent(row.equipmentId)}`);
       } else {
-        history.push(Routes.EngineeringGraphicsManager.path);
+        navigate(Routes.EngineeringGraphicsManager.path);
       }
     },
     [workingState?.equipment, workingState?.graphics, history]
@@ -341,7 +341,7 @@ export default function TemplateLibraryPage() {
   const handleEditGraphic = useCallback(
     (row) => {
       if (row._origin === "template") {
-        history.push(
+        navigate(
           `${Routes.EngineeringGraphicsManager.path}?graphicTemplateId=${encodeURIComponent(row.id)}`
         );
         return;
@@ -353,11 +353,11 @@ export default function TemplateLibraryPage() {
               (e) => e.graphicTemplateId === row.id || (workingState?.graphics?.[e.id]?.graphicTemplateId === row.id)
             )?.id;
       if (equipmentId) {
-        history.push(`${Routes.EngineeringGraphicsManager.path}?equipmentId=${encodeURIComponent(equipmentId)}`);
+        navigate(`${Routes.EngineeringGraphicsManager.path}?equipmentId=${encodeURIComponent(equipmentId)}`);
       } else if (row._origin === "equipment") {
-        history.push(`${Routes.EngineeringGraphicsManager.path}?equipmentId=${encodeURIComponent(row.equipmentId)}`);
+        navigate(`${Routes.EngineeringGraphicsManager.path}?equipmentId=${encodeURIComponent(row.equipmentId)}`);
       } else {
-        history.push(Routes.EngineeringGraphicsManager.path);
+        navigate(Routes.EngineeringGraphicsManager.path);
       }
     },
     [workingState?.equipment, workingState?.graphics, history]

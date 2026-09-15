@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo } from "react";
-import { Modal, Form, Button } from "@themesberg/react-bootstrap";
+import { Modal, Form, Button } from "react-bootstrap";
 
 const PRESETS = [7, 14, 30, 60, 90];
 

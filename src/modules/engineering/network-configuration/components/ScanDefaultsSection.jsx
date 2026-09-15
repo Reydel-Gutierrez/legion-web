@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Col, Form, Row } from "@themesberg/react-bootstrap";
+import { Col, Form, Row } from "react-bootstrap";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faChevronDown, faChevronRight } from "@fortawesome/free-solid-svg-icons";
 

@@ -1,5 +1,5 @@
 import React from "react";
-import { Form } from "@themesberg/react-bootstrap";
+import { Form } from "react-bootstrap";
 
 export const NETWORK_FIELD_CLASS = "legion-operator-log-field";
 

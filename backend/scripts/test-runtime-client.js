@@ -9,7 +9,7 @@ process.env.RUNTIME_REQUEST_TIMEOUT_MS = '1000';
 
 const assert = require('assert').strict;
 
-const runtimeService = require('../src/modules/runtime/runtime.service');
+const runtimeService = require('../src/modules/runtime/runtime.service.ts');
 const { HttpError } = require('../src/lib/httpError');
 
 async function main() {

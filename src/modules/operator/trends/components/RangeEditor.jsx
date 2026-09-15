@@ -1,5 +1,5 @@
 import React from "react";
-import { Form, Button } from "@themesberg/react-bootstrap";
+import { Form, Button } from "react-bootstrap";
 import { newBandId } from "../trendDomain";
 
 /**

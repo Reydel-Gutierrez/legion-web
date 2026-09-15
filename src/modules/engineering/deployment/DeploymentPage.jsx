@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useMemo, useEffect } from "react";
-import { useHistory } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import {
   Container,
   Card,
@@ -8,7 +8,7 @@ import {
   Col,
   Table,
   Badge,
-} from "@themesberg/react-bootstrap";
+} from "react-bootstrap";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faRocket,
@@ -43,7 +43,7 @@ function getDeployerDisplayName() {
 }
 
 export default function DeploymentPage() {
-  const history = useHistory();
+  const navigate = useNavigate();
   const { site } = useSite();
   const { validationSnapshot } = useValidation();
   const { workingState, actions, dispatch } = useWorkingVersion();
@@ -481,7 +481,7 @@ export default function DeploymentPage() {
               size="sm"
               variant="outline-light"
               className="legion-hero-btn legion-hero-btn--secondary"
-              onClick={() => history.push(Routes.EngineeringValidationCenter.path)}
+              onClick={() => navigate(Routes.EngineeringValidationCenter.path)}
             >
               <FontAwesomeIcon icon={faListAlt} className="me-1" /> View Validation Issues
             </Button>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Card, Button, Table, Form } from "@themesberg/react-bootstrap";
+import { Card, Button, Table, Form } from "react-bootstrap";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faTimes, faSearch, faSyncAlt } from "@fortawesome/free-solid-svg-icons";
 

@@ -1,5 +1,5 @@
 // Exercises real PostgreSQL writes inside a transaction that is always rolled back.
-require('../src/config/env');
+require('../src/config/env.ts');
 const assert = require('assert');
 const prisma = require('../src/lib/prisma');
 const rollback = new Error('ROLLBACK_TEST_FIXTURES');

@@ -1,5 +1,5 @@
 import React from "react";
-import { Button, Form } from "@themesberg/react-bootstrap";
+import { Button, Form } from "react-bootstrap";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faPlus, faTrashAlt } from "@fortawesome/free-solid-svg-icons";
 

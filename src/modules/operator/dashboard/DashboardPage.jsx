@@ -21,7 +21,7 @@ import {
   Button,
   Modal,
   Form,
-} from "@themesberg/react-bootstrap";
+} from "react-bootstrap";
 import { Link } from "react-router-dom";
 import LegionHeroHeader from "../../../components/legion/LegionHeroHeader";
 import { Routes } from "../../../routes";

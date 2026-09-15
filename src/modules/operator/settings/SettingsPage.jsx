@@ -8,7 +8,7 @@ import {
   Form,
   Button,
   ButtonGroup,
-} from "@themesberg/react-bootstrap";
+} from "react-bootstrap";
 import LegionHeroHeader from "../../../components/legion/LegionHeroHeader";
 
 export default function SettingsPage() {

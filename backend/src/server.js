@@ -1,5 +1,5 @@
-require('./config/env');
-const { PORT, LEGION_PROFILE } = require('./config/env');
+require('./config/env.ts');
+const { PORT, LEGION_PROFILE } = require('./config/env.ts');
 const app = require('./app');
 const prisma = require('./lib/prisma');
 const { reconnectSimCatalogToExistingEquipment } = require('./lib/simCatalogBindingSync');

@@ -1,6 +1,6 @@
 'use strict';
 
-const runtimeService = require('./runtime.service');
+const runtimeService = require('./runtime.service.ts');
 
 async function listControllers(_req, res) {
   res.json(await runtimeService.listControllers());

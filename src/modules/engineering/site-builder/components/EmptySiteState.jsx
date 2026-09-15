@@ -1,5 +1,5 @@
 import React from "react";
-import { Card } from "@themesberg/react-bootstrap";
+import { Card } from "react-bootstrap";
 
 /**
  * Empty state when no site exists (e.g. after choosing New Site).

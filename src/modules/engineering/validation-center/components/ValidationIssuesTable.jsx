@@ -1,5 +1,5 @@
 import React from "react";
-import { Form } from "@themesberg/react-bootstrap";
+import { Form } from "react-bootstrap";
 import { SEVERITY } from "../../../../lib/data/repositories/engineeringRepository";
 
 function SeverityBadge({ severity }) {

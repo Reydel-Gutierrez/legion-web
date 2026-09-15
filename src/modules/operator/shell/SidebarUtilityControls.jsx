@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faArrowsAltV, faMinus, faPlus } from "@fortawesome/free-solid-svg-icons";
-import { useHistory } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { Routes } from "../../../routes";
 import { USE_HIERARCHY_API } from "../../../lib/data/config";
 import { hierarchyRepository } from "../../../lib/data";
@@ -28,7 +28,7 @@ export default function SidebarUtilityControls({
   tree,
   onRefresh,
 }) {
-  const history = useHistory();
+  const navigate = useNavigate();
   const canMutate = canMutateFacilityHierarchy(currentUser);
   const [plusOpen, setPlusOpen] = useState(false);
   const [organizeOpen, setOrganizeOpen] = useState(false);
@@ -55,10 +55,10 @@ export default function SidebarUtilityControls({
 
   const runPlus = (id) => {
     setPlusOpen(false);
-    if (id === "site-builder") history.push(Routes.EngineeringSiteBuilder.path);
-    else if (id === "discovery") history.push(Routes.EngineeringNetworkDiscovery.path);
-    else if (id === "workspace") history.push(Routes.LegionEquipment.path);
-    else if (id === "trends") history.push(Routes.LegionTrends.path);
+    if (id === "site-builder") navigate(Routes.EngineeringSiteBuilder.path);
+    else if (id === "discovery") navigate(Routes.EngineeringNetworkDiscovery.path);
+    else if (id === "workspace") navigate(Routes.LegionEquipment.path);
+    else if (id === "trends") navigate(Routes.LegionTrends.path);
   };
 
   const handleDelete = async () => {
@@ -191,7 +191,7 @@ export default function SidebarUtilityControls({
               </li>
             ))}
           </ul>
-          <button type="button" onClick={() => history.push(Routes.EngineeringSiteBuilder.path)}>
+          <button type="button" onClick={() => navigate(Routes.EngineeringSiteBuilder.path)}>
             Open Site Builder
           </button>
         </div>

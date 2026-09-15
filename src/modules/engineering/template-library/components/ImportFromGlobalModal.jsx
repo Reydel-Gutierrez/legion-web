@@ -7,7 +7,7 @@ import {
   Table,
   Nav,
   Spinner,
-} from "@themesberg/react-bootstrap";
+} from "react-bootstrap";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faSearch, faFileImport, faPen, faTrashAlt } from "@fortawesome/free-solid-svg-icons";
 import { engineeringRepository } from "../../../../lib/data";

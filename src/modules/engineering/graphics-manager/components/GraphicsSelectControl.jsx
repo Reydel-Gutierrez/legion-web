@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo } from "react";
-import { Card, Dropdown, Form, InputGroup, Button } from "@themesberg/react-bootstrap";
+import { Card, Dropdown, Form, InputGroup, Button } from "react-bootstrap";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faSearch, faSitemap } from "@fortawesome/free-solid-svg-icons";
 

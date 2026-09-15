@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Modal, Button, Form } from "@themesberg/react-bootstrap";
+import { Modal, Button, Form } from "react-bootstrap";
 
 /**
  * Modal for creating a new site.

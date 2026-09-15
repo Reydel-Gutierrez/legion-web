@@ -24,10 +24,11 @@
     "test:live-config-boundary": "node scripts/test-live-config-boundary.js",
     "test:runtime-client": "node scripts/test-runtime-client.js",
     "test:all": "npm run test:lspkg && npm run test:deployment && npm run test:direct-deploy && npm run test:historian && npm run test:sim-runtime && npm run test:bacnet-runtime && npm run test:site-version-lifecycle && npm run test:live-config-boundary && npm run test:runtime-client",
-    "test:phase2-process-separation": "node scripts/test-phase2-process-separation.js"
+    "test:phase2-process-separation": "node scripts/test-phase2-process-separation.js",
+    "typecheck": "tsc --noEmit"
   },
   "engines": {
-    "node": ">=16.0.0"
+    "node": ">=20.0.0"
   },
   "prisma": {
     "seed": "node prisma/seed.js"
@@ -42,6 +43,8 @@
     "node-bacnet": "^0.2.4"
   },
   "devDependencies": {
-    "prisma": "4.16.2"
+    "@types/node": "^20.17.9",
+    "prisma": "4.16.2",
+    "typescript": "^5.7.2"
   }
 }

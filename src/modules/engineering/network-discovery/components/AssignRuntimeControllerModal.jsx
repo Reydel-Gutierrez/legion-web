@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from "react";
-import { Modal, Button, Form, Alert } from "@themesberg/react-bootstrap";
+import { Modal, Button, Form, Alert } from "react-bootstrap";
 import { listEquipmentBySite } from "../../../../lib/data/adapters/api/hierarchyApiAdapter";
 import { assignEquipmentController } from "../../../../lib/data/adapters/api/equipmentControllerApiAdapter";
 

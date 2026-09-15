@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useEffect } from "react";
-import { Form, Spinner } from "@themesberg/react-bootstrap";
+import { Form, Spinner } from "react-bootstrap";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faChevronDown, faChevronRight, faSitemap } from "@fortawesome/free-solid-svg-icons";
 

@@ -1,5 +1,5 @@
 import React, { useMemo } from "react";
-import { Card } from "@themesberg/react-bootstrap";
+import { Card } from "react-bootstrap";
 
 /**
  * @param {{

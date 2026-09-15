@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { useHistory } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import ExpandableWorkspaceCard from "../../../components/legion/ExpandableWorkspaceCard";
 import { operatorRepository, operatorDefinitionsRepository } from "../../../lib/data";
@@ -71,7 +71,7 @@ function TrendTooltip({ active, label, payload, series }) {
 }
 
 export default function EquipmentTrendsCard({ siteKey, equipmentId, displayPoints = [], now = Date.now(), pollRateMs, expandedId, onToggleExpand, onConfigure }) {
-  const history = useHistory();
+  const navigate = useNavigate();
   const [range, setRange] = useState("1h");
   const [selectedTrendId, setSelectedTrendId] = useState("");
   const [trendStore, setTrendStore] = useState({ definitions: [], assignments: [] });
@@ -144,14 +144,14 @@ export default function EquipmentTrendsCard({ siteKey, equipmentId, displayPoint
     body = (
       <div className="operator-empty-graphic">
         <p>{error || "No active trends configured for this equipment."}</p>
-        <button type="button" className="operator-text-link" onClick={() => (onConfigure ? onConfigure() : history.push(Routes.LegionTrends.path))}>Configure Trends</button>
+        <button type="button" className="operator-text-link" onClick={() => (onConfigure ? onConfigure() : navigate(Routes.LegionTrends.path))}>Configure Trends</button>
       </div>
     );
   } else if (historyState.status === "unresolved") {
     body = (
       <div className="operator-empty-graphic">
         <p>This trend&rsquo;s configured points were not found on this equipment. Open Configure Trends to fix the point mapping.</p>
-        <button type="button" className="operator-text-link" onClick={() => (onConfigure ? onConfigure() : history.push(Routes.LegionTrends.path))}>Configure Trends</button>
+        <button type="button" className="operator-text-link" onClick={() => (onConfigure ? onConfigure() : navigate(Routes.LegionTrends.path))}>Configure Trends</button>
       </div>
     );
   } else if (historyState.status === "loading") {

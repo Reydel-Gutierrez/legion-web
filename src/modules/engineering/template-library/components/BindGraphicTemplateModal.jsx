@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Modal, Button, Form } from "@themesberg/react-bootstrap";
+import { Modal, Button, Form } from "react-bootstrap";
 
 /**
  * Set or change which equipment template a graphic template is bound to (for point bindings).

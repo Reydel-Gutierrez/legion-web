@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { Link } from "react-router-dom";
-import { Card, Form, Button } from "@themesberg/react-bootstrap";
+import { Card, Form, Button } from "react-bootstrap";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faTrashAlt, faMapMarkerAlt, faCopy, faArrowUp, faArrowDown } from "@fortawesome/free-solid-svg-icons";
 import LegionFormSelect from "../../../../components/legion/LegionFormSelect";

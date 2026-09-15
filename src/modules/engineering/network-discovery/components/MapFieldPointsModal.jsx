@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from "react";
-import { Modal, Button, Form, Alert, Table, Row, Col } from "@themesberg/react-bootstrap";
+import { Modal, Button, Form, Alert, Table, Row, Col } from "react-bootstrap";
 import { fetchRuntimeFieldPoints } from "../../../../lib/data/adapters/api/runtimeApiAdapter";
 import { listPointsByEquipment } from "../../../../lib/data/adapters/api/hierarchyApiAdapter";
 import {

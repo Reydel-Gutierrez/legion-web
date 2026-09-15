@@ -1,5 +1,5 @@
 import React from "react";
-import { Card, Form } from "@themesberg/react-bootstrap";
+import { Card, Form } from "react-bootstrap";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faObjectGroup } from "@fortawesome/free-solid-svg-icons";
 import SearchableEquipmentSelect from "../../point-mapping/components/SearchableEquipmentSelect";

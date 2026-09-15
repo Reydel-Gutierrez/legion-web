@@ -1,5 +1,5 @@
 import React, { useMemo } from "react";
-import { Button } from "@themesberg/react-bootstrap";
+import { Button } from "react-bootstrap";
 import {
   LineChart,
   Line,

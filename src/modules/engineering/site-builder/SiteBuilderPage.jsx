@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect, useMemo } from "react";
-import { Container, Row, Col, Card, Button, Dropdown, Modal, Form } from "@themesberg/react-bootstrap";
+import { Container, Row, Col, Card, Button, Dropdown, Modal, Form } from "react-bootstrap";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faPlus,

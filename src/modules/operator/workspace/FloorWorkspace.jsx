@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from "react";
-import { useHistory } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faMinus, faPlus } from "@fortawesome/free-solid-svg-icons";
 import FacilityKindIcon from "../../../components/legion/FacilityKindIcon";
@@ -24,7 +24,7 @@ const LEGEND_ITEMS = [
 ];
 
 export default function FloorWorkspace({ releaseData, tree, selectedNode, siteKey, onSelectNode }) {
-  const history = useHistory();
+  const navigate = useNavigate();
   const [viewZoom, setViewZoom] = useState(1);
   const graphic = (releaseData?.siteLayoutGraphics || {})[selectedNode.id];
   const hasGraphic = graphic && (graphic.objects?.length > 0 || graphic.backgroundImage?.dataUrl);
@@ -48,7 +48,7 @@ export default function FloorWorkspace({ releaseData, tree, selectedNode, siteKe
         siteId: selectedNode.siteId || "",
       };
       if (onSelectNode) onSelectNode(node);
-      else history.push(locationForFacilityNode(node));
+      else navigate(locationForFacilityNode(node));
     },
     [releaseData, onSelectNode, history, selectedNode.siteId]
   );
@@ -61,7 +61,7 @@ export default function FloorWorkspace({ releaseData, tree, selectedNode, siteKe
     } else if (linkTarget.type === "url" && linkTarget.url) {
       window.open(linkTarget.url, "_blank", "noopener,noreferrer");
     } else if (linkTarget.type === "route" && linkTarget.path) {
-      history.push(linkTarget.path);
+      navigate(linkTarget.path);
     }
   };
 

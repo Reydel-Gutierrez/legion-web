@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { Modal, Button, Form, Nav } from "@themesberg/react-bootstrap";
+import { Modal, Button, Form, Nav } from "react-bootstrap";
 import SearchablePointSelect from "./SearchablePointSelect";
 import * as engineeringRepository from "../../../../lib/data/repositories/engineeringRepository";
 import {

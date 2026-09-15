@@ -1,7 +1,7 @@
 import React from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faExclamationTriangle } from "@fortawesome/free-solid-svg-icons";
-import { Button, Dropdown } from "@themesberg/react-bootstrap";
+import { Button, Dropdown } from "react-bootstrap";
 
 /**
  * Top informational banner for Network Discovery.

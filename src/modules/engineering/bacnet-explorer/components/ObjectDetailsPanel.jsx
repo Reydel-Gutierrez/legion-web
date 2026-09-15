@@ -5,7 +5,7 @@ import {
   Form,
   Nav,
   Spinner,
-} from "@themesberg/react-bootstrap";
+} from "react-bootstrap";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faInfoCircle,

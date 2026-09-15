@@ -12,7 +12,9 @@
     "test:all": "npm run test:sim-runtime && npm run test:bacnet-runtime"
   },
   "engines": {
-    "node": ">=16.0.0"
+    "node": ">=20.0.0"
   },
-  "dependencies": {}
+  "dependencies": {
+    "dotenv": "^16.4.7"
+  }
 }

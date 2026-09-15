@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { Button, Form } from "@themesberg/react-bootstrap";
+import { Button, Form } from "react-bootstrap";
 import { operatorRepository } from "../../../lib/data";
 import { isBackendSiteId } from "../../../lib/data/siteIdUtils";
 import { classifyOperatorPointKind } from "../../../lib/operator/pointKind";

@@ -1,5 +1,5 @@
 import React from "react";
-import { Table, Dropdown } from "@themesberg/react-bootstrap";
+import { Table, Dropdown } from "react-bootstrap";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faEye,

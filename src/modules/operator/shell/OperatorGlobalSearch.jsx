@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { useHistory } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faSearch } from "@fortawesome/free-solid-svg-icons";
 import { Routes } from "../../../routes";
@@ -25,7 +25,7 @@ function haystack(parts) {
 }
 
 export default function OperatorGlobalSearch({ tree, releaseData }) {
-  const history = useHistory();
+  const navigate = useNavigate();
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
   const wrapRef = useRef(null);
@@ -93,10 +93,10 @@ export default function OperatorGlobalSearch({ tree, releaseData }) {
     setOpen(false);
     setQuery("");
     if (item.kind === "page") {
-      history.push(item.path);
+      navigate(item.path);
       return;
     }
-    history.push(locationForFacilityNode(item.node));
+    navigate(locationForFacilityNode(item.node));
   };
 
   return (

@@ -1,5 +1,5 @@
 import React from "react";
-import { Button, Spinner } from "@themesberg/react-bootstrap";
+import { Button, Spinner } from "react-bootstrap";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faSyncAlt,

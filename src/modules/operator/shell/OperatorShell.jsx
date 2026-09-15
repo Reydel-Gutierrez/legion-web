@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { useHistory, useLocation } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useSite } from "../../../app/providers/SiteProvider";
 import { OperatorChromeProvider } from "../../../app/providers/OperatorChromeProvider";
 import { useWorkspaceMode } from "../../../app/providers/WorkspaceModeProvider";
@@ -37,7 +37,7 @@ function readContracted() {
 }
 
 export default function OperatorShell({ children }) {
-  const history = useHistory();
+  const navigate = useNavigate();
   const location = useLocation();
   const { site, setSite, apiSites } = useSite();
   const { setCurrentMode } = useWorkspaceMode();
@@ -123,7 +123,7 @@ export default function OperatorShell({ children }) {
     if (location.search) return;
     if (!tree || !selectedNode) return;
     if (String(selectedNode.id) === String(tree.id) && selectedNode.kind === "site") return;
-    history.replace(locationForFacilityNode(selectedNode));
+    navigate(locationForFacilityNode(selectedNode), { replace: true });
   }, [location.pathname, location.search, selectedNode, tree, history]);
 
   useEffect(() => {
@@ -135,7 +135,7 @@ export default function OperatorShell({ children }) {
   const onSelect = useCallback(
     (node) => {
       if (node && node.siteId) setSite(node.siteId);
-      history.push(locationForFacilityNode(node));
+      navigate(locationForFacilityNode(node));
     },
     [history, setSite]
   );
@@ -159,7 +159,7 @@ export default function OperatorShell({ children }) {
       }
       setDashboardMode(mode);
       if (mode === "operator" && !isOperatorHierarchyPath(location.pathname)) {
-        history.push(Routes.LegionSite.path);
+        navigate(Routes.LegionSite.path);
       }
     },
     [currentUser, setCurrentMode, history, location.pathname]

@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useMemo, useEffect } from "react";
-import { useHistory, useLocation } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import {
   Container,
   Card,
@@ -10,7 +10,7 @@ import {
   InputGroup,
   Row,
   Col,
-} from "@themesberg/react-bootstrap";
+} from "react-bootstrap";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faCheckCircle,
@@ -57,7 +57,7 @@ const CATEGORY_TABS = [
 ];
 
 export default function ValidationCenterPage() {
-  const history = useHistory();
+  const navigate = useNavigate();
   const location = useLocation();
   const { setValidationState: syncValidationToContext } = useValidation();
   const { workingState, actions } = useWorkingVersion();
@@ -121,7 +121,7 @@ export default function ValidationCenterPage() {
 
   const handleDeployConfiguration = useCallback(() => {
     if ((summary?.errors ?? 0) > 0) return;
-    history.push(ROUTE_PATHS.deployment);
+    navigate(ROUTE_PATHS.deployment);
   }, [summary?.errors, history]);
 
   const handleConfirmDeployOverride = useCallback(
@@ -130,7 +130,7 @@ export default function ValidationCenterPage() {
       actions.deployWorkingVersion({ notes: reason || "Override activation" });
       setToastMessage("Deployment successful.");
       setTimeout(() => setToastMessage(null), 3000);
-      history.push(ROUTE_PATHS.deployment);
+      navigate(ROUTE_PATHS.deployment);
     },
     [actions, history]
   );
@@ -138,7 +138,7 @@ export default function ValidationCenterPage() {
   const handleOpenTarget = useCallback(
     (target) => {
       const path = ROUTE_PATHS[target];
-      if (path) history.push(path);
+      if (path) navigate(path);
     },
     [history]
   );

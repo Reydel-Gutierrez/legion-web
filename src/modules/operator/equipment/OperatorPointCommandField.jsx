@@ -1,5 +1,5 @@
 import React from "react";
-import { Form } from "@themesberg/react-bootstrap";
+import { Form } from "react-bootstrap";
 
 function parseNumericForOperator(raw) {
   if (raw === null || raw === undefined || raw === "—") return "";

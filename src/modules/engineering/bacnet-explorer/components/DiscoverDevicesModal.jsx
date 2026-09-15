@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect } from "react";
-import { Modal, Button, Spinner } from "@themesberg/react-bootstrap";
+import { Modal, Button, Spinner } from "react-bootstrap";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faBroadcastTower, faDownload, faSyncAlt } from "@fortawesome/free-solid-svg-icons";
 

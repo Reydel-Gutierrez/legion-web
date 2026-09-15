@@ -1,10 +1,10 @@
 import React from "react";
 import { locationForFacilityNode } from "../../../lib/operator/operatorSelection";
-import { useHistory } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { getFacilityBreadcrumb } from "../../../lib/operator/facilityTree";
 
 export default function OperatorBreadcrumbs({ tree, selectedNode }) {
-  const history = useHistory();
+  const navigate = useNavigate();
   const crumbs = getFacilityBreadcrumb(tree, selectedNode?.id);
   if (!crumbs.length) return null;
 
@@ -19,7 +19,7 @@ export default function OperatorBreadcrumbs({ tree, selectedNode }) {
             <button
               type="button"
               className="operator-breadcrumb__link"
-              onClick={() => history.push(locationForFacilityNode(c))}
+              onClick={() => navigate(locationForFacilityNode(c))}
             >
               {c.label}
             </button>

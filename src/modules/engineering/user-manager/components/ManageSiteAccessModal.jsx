@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Modal, Button, Form } from "@themesberg/react-bootstrap";
+import { Modal, Button, Form } from "react-bootstrap";
 import { ROLES } from "../../../../lib/access/roles";
 
 export default function ManageSiteAccessModal({

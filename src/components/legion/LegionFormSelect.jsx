@@ -4,7 +4,7 @@
  * cannot be styled in most browsers.
  */
 import React, { useState, useRef, useEffect } from "react";
-import { Dropdown } from "@themesberg/react-bootstrap";
+import { Dropdown } from "react-bootstrap";
 
 export default function LegionFormSelect({
   value,

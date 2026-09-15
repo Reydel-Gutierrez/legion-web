@@ -167,7 +167,7 @@ stub('../src/lib/simCatalogBindingSync', { syncSimCatalogBindingsForSiteId: asyn
 // This suite is scoped to the SiteVersion lifecycle itself; the Engineering/Live controller+point
 // binding boundary (what `resyncLiveSimBindings` would actually reconcile) has its own dedicated
 // coverage in test-live-config-boundary.js.
-stub('../src/modules/runtime/runtime.service', { resyncLiveSimBindings: async () => {} });
+stub('../src/modules/runtime/runtime.service.ts', { resyncLiveSimBindings: async () => {} });
 
 const siteVersionService = require('../src/modules/siteVersions/siteVersion.service');
 

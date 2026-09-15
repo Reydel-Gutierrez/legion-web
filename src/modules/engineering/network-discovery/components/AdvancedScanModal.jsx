@@ -1,5 +1,5 @@
 import React from "react";
-import { Modal, Button } from "@themesberg/react-bootstrap";
+import { Modal, Button } from "react-bootstrap";
 
 /** Placeholder for future multi-subnet / BBMD / directed who-is workflows */
 export default function AdvancedScanModal({ show, onHide }) {

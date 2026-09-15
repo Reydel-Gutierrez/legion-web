@@ -1,5 +1,5 @@
 import React from "react";
-import { Button, ButtonGroup } from "@themesberg/react-bootstrap";
+import { Button, ButtonGroup } from "react-bootstrap";
 
 const PAGE_WINDOW = 2;
 

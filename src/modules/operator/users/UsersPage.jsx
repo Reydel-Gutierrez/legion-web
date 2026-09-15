@@ -10,7 +10,7 @@ import {
   Form,
   Button,
   ButtonGroup,
-} from "@themesberg/react-bootstrap";
+} from "react-bootstrap";
 import LegionHeroHeader from "../../../components/legion/LegionHeroHeader";
 import LegionTablePagination from "../../../components/legion/LegionTablePagination";
 import StatusDotLabel from "../../../components/legion/StatusDotLabel";
