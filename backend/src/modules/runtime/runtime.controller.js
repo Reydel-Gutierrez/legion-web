@@ -1,13 +1,13 @@
 'use strict';
 
-const runtimeService = require('./runtime.service');
+const runtimeService = require('./runtime.service.ts');
 
-function listControllers(_req, res) {
-  res.json(runtimeService.listControllers());
+async function listControllers(_req, res) {
+  res.json(await runtimeService.listControllers());
 }
 
-function getController(req, res) {
-  const row = runtimeService.getController(req.params.code);
+async function getController(req, res) {
+  const row = await runtimeService.getController(req.params.code);
   if (!row) {
     res.status(404).json({ error: 'Controller not found' });
     return;
@@ -17,15 +17,15 @@ function getController(req, res) {
 
 async function fieldPoints(req, res) {
   const list = await runtimeService.listFieldPointsForController(req.params.code);
-  if (list === null) {
+  if (list === null || list === undefined) {
     res.status(404).json({ error: 'Controller not found' });
     return;
   }
   res.json({ points: list });
 }
 
-function setOnline(req, res) {
-  const row = runtimeService.setOnline(req.params.code, true);
+async function setOnline(req, res) {
+  const row = await runtimeService.setOnline(req.params.code, true);
   if (!row) {
     res.status(404).json({ error: 'Controller not found' });
     return;
@@ -33,8 +33,8 @@ function setOnline(req, res) {
   res.json(row);
 }
 
-function setOffline(req, res) {
-  const row = runtimeService.setOnline(req.params.code, false);
+async function setOffline(req, res) {
+  const row = await runtimeService.setOnline(req.params.code, false);
   if (!row) {
     res.status(404).json({ error: 'Controller not found' });
     return;
@@ -42,8 +42,8 @@ function setOffline(req, res) {
   res.json(row);
 }
 
-function start(req, res) {
-  const row = runtimeService.setSimEnabled(req.params.code, true);
+async function start(req, res) {
+  const row = await runtimeService.setSimEnabled(req.params.code, true);
   if (!row) {
     res.status(404).json({ error: 'Controller not found' });
     return;
@@ -51,8 +51,8 @@ function start(req, res) {
   res.json(row);
 }
 
-function stop(req, res) {
-  const row = runtimeService.setSimEnabled(req.params.code, false);
+async function stop(req, res) {
+  const row = await runtimeService.setSimEnabled(req.params.code, false);
   if (!row) {
     res.status(404).json({ error: 'Controller not found' });
     return;
@@ -67,6 +67,21 @@ async function pollNow(req, res) {
     return;
   }
   res.json(row);
+}
+
+/**
+ * LC-ARCH-004: the only path a live field write reaches a device through — this call goes to
+ * Runtime's internal API, which dispatches through BacnetDriver. This backend process never talks
+ * to BACnet directly for a normal live write.
+ */
+async function writePoint(req, res) {
+  const { fieldPointKey, value, priority } = req.body || {};
+  const result = await runtimeService.writePoint(req.params.code, fieldPointKey, value, { priority });
+  if (!result) {
+    res.status(404).json({ error: 'Controller or point mapping not found' });
+    return;
+  }
+  res.json(result);
 }
 
 async function discoveryDevices(req, res) {
@@ -84,5 +99,6 @@ module.exports = {
   start,
   stop,
   pollNow,
+  writePoint,
   discoveryDevices,
 };

@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect } from "react";
-import { Modal, Button, Spinner } from "@themesberg/react-bootstrap";
+import { Modal, Button, Spinner } from "react-bootstrap";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faBroadcastTower, faDownload, faSyncAlt } from "@fortawesome/free-solid-svg-icons";
 
@@ -95,10 +95,9 @@ export default function DiscoverDevicesModal({
   const devices = discoverResult?.devices || [];
 
   return (
-    <Modal show={show} onHide={onHide} size="lg" centered className="bacnet-discover-modal">
+    <Modal show={show} onHide={onHide} size="lg" centered className="bacnet-discover-modal engineering-light-form">
       <Modal.Header
         closeButton
-        closeVariant="white"
         className="bacnet-discover-modal__header legion-operator-log-card-header"
       >
         <Modal.Title className="text-white fw-bold text-uppercase mb-0">

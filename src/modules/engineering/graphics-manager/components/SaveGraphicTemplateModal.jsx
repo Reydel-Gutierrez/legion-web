@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Modal, Button, Form } from "@themesberg/react-bootstrap";
+import { Modal, Button, Form } from "react-bootstrap";
 
 /**
  * Minimal fields to store a graphic in the site Template Library.
@@ -32,7 +32,7 @@ export default function SaveGraphicTemplateModal({
   const hasTemplates = Array.isArray(equipmentTemplates) && equipmentTemplates.length > 0;
 
   return (
-    <Modal show={show} onHide={onHide} centered>
+    <Modal show={show} onHide={onHide} centered className="engineering-light-form">
       <Modal.Header closeButton className="bg-primary border-light border-opacity-10">
         <Modal.Title className="text-white">
           {isUpdate ? "Update graphic template" : "Save as template"}

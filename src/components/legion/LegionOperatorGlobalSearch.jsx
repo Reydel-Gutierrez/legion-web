@@ -1,8 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useHistory } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faSearch } from "@fortawesome/free-solid-svg-icons";
-import { Form, InputGroup } from "@themesberg/react-bootstrap";
+import { Form, InputGroup } from "react-bootstrap";
 
 import { useActiveDeployment } from "../../hooks/useWorkingVersion";
 import { resolveEquipmentLocationInRelease } from "../../lib/activeReleaseUtils";
@@ -53,7 +53,7 @@ function equipmentMatchRank(eq, needle) {
  * Header search (operator mode): filter active deployment equipment, open detail on pick.
  */
 export default function LegionOperatorGlobalSearch() {
-  const history = useHistory();
+  const navigate = useNavigate();
   const { deployment, loading } = useActiveDeployment();
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
@@ -87,7 +87,7 @@ export default function LegionOperatorGlobalSearch() {
   const goToEquipment = useCallback(
     (equipmentId) => {
       const path = Routes.LegionEquipmentDetail.path.replace(":equipmentId", encodeURIComponent(equipmentId));
-      history.push(path);
+      navigate(path);
       setQuery("");
       setOpen(false);
     },

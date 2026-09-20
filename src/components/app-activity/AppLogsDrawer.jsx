@@ -1,5 +1,5 @@
 import React from "react";
-import { Button } from "@themesberg/react-bootstrap";
+import { Button } from "react-bootstrap";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faClipboardList } from "@fortawesome/free-solid-svg-icons";
 import LegionDrawer from "../legion/LegionDrawer";

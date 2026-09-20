@@ -1,7 +1,8 @@
-require('./config/env');
-const { PORT } = require('./config/env');
+require('./config/env.ts');
+const { PORT, LEGION_PROFILE } = require('./config/env.ts');
 const app = require('./app');
-const runtimeService = require('./modules/runtime/runtime.service');
+const prisma = require('./lib/prisma');
+const { reconnectSimCatalogToExistingEquipment } = require('./lib/simCatalogBindingSync');
 const { runStartupChecks } = require('./lib/startupChecks');
 
 try {
@@ -16,13 +17,38 @@ try {
   process.exit(1);
 }
 
-runtimeService.initialize().catch((err) => {
-  // eslint-disable-next-line no-console
-  console.warn('[runtime] initialize failed (API will still start):', err?.message || err);
-});
+// LC-ARCH-004 Phase 2: the API process no longer owns polling/runtime execution — that is Legion
+// Runtime's job now (see `runtime/`), a separate OS process reached only over HTTP (see
+// `src/lib/runtimeClient.js`). This Engineering-side self-heal (auto-binding SIM catalog demo
+// equipment to ControllersMapped rows) stays here because it only ever touches Engineering tables,
+// never Live/runtime state.
+reconnectSimCatalogToExistingEquipment()
+  .then((result) => console.log('[startup] SIM catalog reconnect', result))
+  .catch((err) => console.warn('[startup] SIM catalog reconnect failed:', err?.message || err));
 
-app.listen(PORT, () => {
-  console.log(`Legion API listening on http://localhost:${PORT}`);
+const server = app.listen(PORT, () => {
+  console.log(`Legion API [profile=${LEGION_PROFILE}] listening on http://localhost:${PORT}`);
   console.log('  Address search: GET /api/geocode/suggest?q=…  (health: GET /api/geocode/health)');
   console.log('  BACnet: GET /api/runtime/bacnet/explorer/devices');
+  console.log('  Runtime: proxied via /api/runtime/* — see LEGION_RUNTIME_URL');
 });
+
+let shuttingDown = false;
+async function shutdown(signal) {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  // eslint-disable-next-line no-console
+  console.log(`[server] ${signal} received — shutting down gracefully`);
+  await new Promise((resolve) => {
+    server.close(() => resolve());
+    setTimeout(resolve, 5000).unref();
+  });
+  try {
+    await prisma.$disconnect();
+  } catch (_) {
+    /* ignore */
+  }
+  process.exit(0);
+}
+process.on('SIGINT', () => shutdown('SIGINT'));
+process.on('SIGTERM', () => shutdown('SIGTERM'));

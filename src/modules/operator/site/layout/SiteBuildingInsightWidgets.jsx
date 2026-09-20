@@ -1,5 +1,5 @@
 import React, { useMemo } from "react";
-import { useHistory } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faUsers,
@@ -7,7 +7,7 @@ import {
   faDoorOpen,
   faChevronRight,
 } from "@fortawesome/free-solid-svg-icons";
-import { Button } from "@themesberg/react-bootstrap";
+import { Button } from "react-bootstrap";
 import { useSite } from "../../../../app/providers/SiteProvider";
 import { operatorRepository } from "../../../../lib/data";
 import { Routes } from "../../../../routes";
@@ -32,7 +32,7 @@ function MetricCell({ icon, label, children, footer, action }) {
 }
 
 export default function SiteBuildingInsightWidgets({ buildingId, buildingEquipment }) {
-  const history = useHistory();
+  const navigate = useNavigate();
   const { site } = useSite();
 
   const siteUsers = useMemo(() => {
@@ -52,8 +52,8 @@ export default function SiteBuildingInsightWidgets({ buildingId, buildingEquipme
 
   const occPct = occ.total === 0 ? 0 : Math.round((100 * occ.occupiedCount) / occ.total);
 
-  const goSchedules = () => history.push(Routes.LegionSchedules.path);
-  const goUsers = () => history.push(Routes.LegionUsers.path);
+  const goSchedules = () => navigate(Routes.LegionSchedules.path);
+  const goUsers = () => navigate(Routes.LegionUsers.path);
 
   return (
     <footer className="site-building-view__footer" aria-label="Building insights">

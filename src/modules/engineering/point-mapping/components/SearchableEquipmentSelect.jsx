@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import { Dropdown, Form, InputGroup } from "@themesberg/react-bootstrap";
+import { Dropdown, Form, InputGroup } from "react-bootstrap";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faSearch } from "@fortawesome/free-solid-svg-icons";
 

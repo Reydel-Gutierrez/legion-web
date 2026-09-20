@@ -1,8 +1,8 @@
 import React, { useCallback, useMemo, useState, useEffect, useRef } from "react";
 import { useActiveDeployment } from "../../../hooks/useWorkingVersion";
 import { activeReleaseDataToEquipmentTree } from "../../../lib/activeReleaseUtils";
-import { Container, Button, Form, Table, Modal, Toast, Dropdown } from "@themesberg/react-bootstrap";
-import { useHistory, Link } from "react-router-dom";
+import { Container, Button, Form, Table, Modal, Toast, Dropdown } from "react-bootstrap";
+import { useNavigate, Link } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faChevronDown,
@@ -1590,7 +1590,7 @@ function WorkspacePanel({
 }
 
 export default function EquipmentPage() {
-  const history = useHistory();
+  const navigate = useNavigate();
   const { siteId, apiSites } = useSite();
   const [nowTick, setNowTick] = useState(() => Date.now());
 
@@ -1606,7 +1606,7 @@ export default function EquipmentPage() {
   const { deployment, loading: releaseLoading, error: releaseError } = useActiveDeployment();
   const activeReleaseData = deployment;
   const goToEquipment = (node) =>
-    history.push(`/legion/equipment/${node.instanceNumber ? encodeURIComponent(node.instanceNumber) : node.id}`);
+    navigate(`/legion/equipment/${node.instanceNumber ? encodeURIComponent(node.instanceNumber) : node.id}`);
 
   const [runtimeByEquipmentId, setRuntimeByEquipmentId] = useState(() => new Map());
   const [runtimeControllersList, setRuntimeControllersList] = useState([]);

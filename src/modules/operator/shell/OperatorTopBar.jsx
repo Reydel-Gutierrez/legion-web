@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Link, useHistory } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faChevronDown, faFileAlt } from "@fortawesome/free-solid-svg-icons";
 import { Routes } from "../../../routes";
@@ -26,7 +26,7 @@ export default function OperatorTopBar({
   releaseData,
   hasActiveAlarms = false,
 }) {
-  const history = useHistory();
+  const navigate = useNavigate();
   const { siteStatus, siteStatusLabel, lastSyncLabel } = useSiteRuntimeStatus();
   const [notifications, setNotifications] = useState(NOTIFICATIONS_DATA);
   const [userOpen, setUserOpen] = useState(false);
@@ -60,7 +60,7 @@ export default function OperatorTopBar({
         <button
           type="button"
           className="operator-topbar__text-btn"
-          onClick={() => history.push(Routes.LegionEvents.path)}
+          onClick={() => navigate(Routes.LegionEvents.path)}
         >
           <FontAwesomeIcon icon={faFileAlt} />
           Logs
@@ -94,7 +94,7 @@ export default function OperatorTopBar({
                   key={n.id}
                   type="button"
                   className={`operator-menu__item${n.read ? "" : " is-unread"}`}
-                  onClick={() => history.push(Routes.LegionAlarms.path)}
+                  onClick={() => navigate(Routes.LegionAlarms.path)}
                 >
                   <span className="operator-menu__item-title">{n.sender}</span>
                   <span className="operator-menu__item-body">{n.message}</span>
@@ -105,7 +105,7 @@ export default function OperatorTopBar({
                 className="operator-menu__footer"
                 onClick={() => {
                   setBellOpen(false);
-                  history.push(Routes.LegionAlarms.path);
+                  navigate(Routes.LegionAlarms.path);
                 }}
               >
                 View alarms
@@ -141,7 +141,7 @@ export default function OperatorTopBar({
               <button
                 type="button"
                 className="operator-menu__item operator-menu__item--danger"
-                onClick={() => history.push("/login")}
+                onClick={() => navigate("/login")}
               >
                 Logout
               </button>

@@ -2,7 +2,6 @@
 
 const prisma = require('../../lib/prisma');
 const { HttpError } = require('../../lib/httpError');
-const runtimeService = require('../runtime/runtime.service');
 const { syncSimCatalogBindingsForEquipmentId } = require('../../lib/simCatalogBindingSync');
 const {
   getCatalogEntryByControllerCode,
@@ -220,13 +219,10 @@ async function assign(body) {
     protocol: saved.protocol,
   });
 
-  try {
-    await runtimeService.refreshInMemoryBindingForEquipmentId(saved.equipmentId);
-  } catch (e) {
-    // eslint-disable-next-line no-console
-    console.warn('[equipment-controllers] runtime store sync skipped:', e?.message || e);
-  }
-
+  // Intentionally does NOT touch Runtime here (LC-ARCH-003 Phase 1.1): this row is Engineering's
+  // mutable working assignment. Runtime only ever resolves LiveControllerBinding, which is
+  // (re)materialized solely by `siteVersion.service.js`'s deploy/rollback path — an assignment
+  // change here must stay invisible to Runtime until an engineer explicitly deploys a release.
   try {
     await syncSimCatalogBindingsForEquipmentId(saved.equipmentId);
   } catch (e) {
@@ -245,15 +241,11 @@ async function getByEquipmentId(equipmentId) {
   if (!row) return null;
   const patch = simCatalogRepairPatchForNumericControllerCode(row);
   if (patch) {
+    // Engineering-side data repair only — must not touch Runtime (see `assign()` above).
     row = await prisma.controllersMapped.update({
       where: { id: row.id },
       data: patch,
     });
-    try {
-      await runtimeService.refreshInMemoryBindingForEquipmentId(row.equipmentId);
-    } catch (_) {
-      /* ignore */
-    }
   }
   return toDto(row);
 }
@@ -330,17 +322,12 @@ async function remove(id) {
   // eslint-disable-next-line no-console
   console.log('[equipment-controllers] unassigned (row deleted; point mappings cascaded)', {
     id: existing.id,
-    equipmentId: existing.equipmentId,
+    equipmentId: eqId,
     controllerCode: existing.controllerCode,
   });
 
-  try {
-    await runtimeService.refreshInMemoryBindingForEquipmentId(eqId);
-  } catch (e) {
-    // eslint-disable-next-line no-console
-    console.warn('[equipment-controllers] runtime store sync after delete skipped:', e?.message || e);
-  }
-
+  // Removing the Engineering assignment does not touch Runtime either — the equipment keeps
+  // whatever LiveControllerBinding the active release deployed until the next deploy/rollback.
   return { ok: true };
 }
 

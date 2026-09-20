@@ -1,5 +1,5 @@
 import React from "react";
-import { Modal, Button } from "@themesberg/react-bootstrap";
+import { Modal, Button } from "react-bootstrap";
 
 export default function ConfirmActionModal({ show, onHide, onConfirm, title, body, confirmLabel = "Confirm", confirmVariant = "danger" }) {
   return (
@@ -7,12 +7,12 @@ export default function ConfirmActionModal({ show, onHide, onConfirm, title, bod
       show={show}
       onHide={onHide}
       centered
-      className="legion-modal-dark"
+      className="legion-modal-dark engineering-light-form"
       contentClassName="bg-primary border border-light border-opacity-10"
     >
       <Modal.Header className="border-light border-opacity-10">
         <Modal.Title className="text-white">{title}</Modal.Title>
-        <button type="button" className="btn-close btn-close-white" aria-label="Close" onClick={onHide} />
+        <button type="button" className="btn-close" aria-label="Close" onClick={onHide} />
       </Modal.Header>
       <Modal.Body className="text-white-50">{body}</Modal.Body>
       <Modal.Footer className="border-light border-opacity-10">

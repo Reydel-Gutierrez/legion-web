@@ -1,0 +1,20 @@
+{
+  "name": "legion-runtime",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Legion Runtime — standalone field-communication process (SIM/BACnet polling), separate failure domain from Legion Server.",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node src/server.js",
+    "test:sim-runtime": "node scripts/test-sim-runtime.js",
+    "test:bacnet-runtime": "node scripts/test-bacnet-runtime.js",
+    "test:all": "npm run test:sim-runtime && npm run test:bacnet-runtime"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.7"
+  }
+}

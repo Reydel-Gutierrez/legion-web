@@ -1,5 +1,5 @@
 import React from "react";
-import { Modal, Button } from "@themesberg/react-bootstrap";
+import { Modal, Button } from "react-bootstrap";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faBoxOpen, faObjectGroup } from "@fortawesome/free-solid-svg-icons";
 
@@ -34,6 +34,7 @@ export default function CreateTemplateModal({
       show={show}
       onHide={onHide}
       centered
+      className="engineering-light-form"
       contentClassName="bg-primary border border-light border-opacity-10 text-white"
     >
       <Modal.Header className="border-light border-opacity-10">

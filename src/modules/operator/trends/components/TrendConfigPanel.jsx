@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from "react";
-import { Row, Col, Form, Button, Badge } from "@themesberg/react-bootstrap";
+import { Row, Col, Form, Button, Badge } from "react-bootstrap";
 import RangeEditor from "./RangeEditor";
 import TrendPointsModal from "./TrendPointsModal";
 import TrendStartModal from "./TrendStartModal";

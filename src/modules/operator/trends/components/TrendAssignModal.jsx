@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useEffect } from "react";
-import { Modal, Form, Button, ListGroup } from "@themesberg/react-bootstrap";
+import { Modal, Form, Button, ListGroup } from "react-bootstrap";
 
 /**
  * Assign template to the **current** asset by default; optional bulk section for more equipment.

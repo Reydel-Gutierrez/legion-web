@@ -1,5 +1,5 @@
 import React from "react";
-import { Form, Button, ButtonGroup, Dropdown } from "@themesberg/react-bootstrap";
+import { Form, Button, ButtonGroup, Dropdown } from "react-bootstrap";
 
 /**
  * @param {{

@@ -1,5 +1,5 @@
 import React from "react";
-import { Form } from "@themesberg/react-bootstrap";
+import { Form } from "react-bootstrap";
 
 import NetworkConfigField, { NETWORK_FIELD_CLASS } from "./NetworkConfigField";
 

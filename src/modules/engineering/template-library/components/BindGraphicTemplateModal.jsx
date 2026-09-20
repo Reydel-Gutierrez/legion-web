@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Modal, Button, Form } from "@themesberg/react-bootstrap";
+import { Modal, Button, Form } from "react-bootstrap";
 
 /**
  * Set or change which equipment template a graphic template is bound to (for point bindings).
@@ -28,7 +28,7 @@ export default function BindGraphicTemplateModal({
   };
 
   return (
-    <Modal show={show} onHide={onHide} centered>
+    <Modal show={show} onHide={onHide} centered className="engineering-light-form">
       <Modal.Header closeButton className="bg-primary border-light border-opacity-10">
         <Modal.Title className="text-white">Bind to equipment template</Modal.Title>
       </Modal.Header>

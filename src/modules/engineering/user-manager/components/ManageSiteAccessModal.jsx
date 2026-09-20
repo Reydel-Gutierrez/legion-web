@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Modal, Button, Form } from "@themesberg/react-bootstrap";
+import { Modal, Button, Form } from "react-bootstrap";
 import { ROLES } from "../../../../lib/access/roles";
 
 export default function ManageSiteAccessModal({
@@ -70,7 +70,7 @@ export default function ManageSiteAccessModal({
       show={show}
       onHide={onHide}
       centered
-      className="legion-modal-dark"
+      className="legion-modal-dark engineering-light-form"
       contentClassName="bg-primary border border-light border-opacity-10"
     >
       <Modal.Header className="border-light border-opacity-10">

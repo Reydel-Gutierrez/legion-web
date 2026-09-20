@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo, useState } from "react";
-import { Card, Row, Col } from "@themesberg/react-bootstrap";
+import { Card, Row, Col } from "react-bootstrap";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faEthernet, faCheckCircle, faExclamationTriangle } from "@fortawesome/free-solid-svg-icons";
 

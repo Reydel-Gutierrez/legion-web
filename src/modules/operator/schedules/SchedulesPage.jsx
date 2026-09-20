@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from "react";
 import { useSite } from "../../../app/providers/SiteProvider";
-import { Container, Row, Col, Card, Table, Form, Button, ButtonGroup, Modal } from "@themesberg/react-bootstrap";
+import { Container, Row, Col, Card, Table, Form, Button, ButtonGroup, Modal } from "react-bootstrap";
 import LegionHeroHeader from "../../../components/legion/LegionHeroHeader";
 import LegionTablePagination from "../../../components/legion/LegionTablePagination";
 import StatusDotLabel from "../../../components/legion/StatusDotLabel";

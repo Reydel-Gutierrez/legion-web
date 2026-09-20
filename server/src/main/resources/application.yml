@@ -1,0 +1,86 @@
+spring:
+  application:
+    name: legion-server
+
+  mvc:
+    throw-exception-if-no-handler-found: true
+  web:
+    resources:
+      add-mappings: false
+
+  # Same PostgreSQL database the Node backend (backend/.env DATABASE_URL) already uses. Spring
+  # does not own schema creation — see flyway config below.
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/legion_db}
+    username: ${DB_USER:postgres}
+    password: ${DB_PASSWORD:}
+
+  # jOOQ (see build.gradle jooq{} codegen block) is the primary data-access layer for hierarchy
+  # reads, deployment materialization, and historian queries. JPA is available for genuinely
+  # simple CRUD only, and must NEVER manage schema — ddl-auto is "none" and stays that way.
+  jpa:
+    hibernate:
+      ddl-auto: none
+    open-in-view: false
+
+  # The schema is (and remains, for now) managed by Prisma migrations in backend/prisma/migrations
+  # — Flyway is introduced as the ONE authoritative migration tool for schema changes going
+  # forward, baselined against the current schema rather than replaying Prisma's history. See
+  # src/main/resources/db/migration/README.md for the transition strategy. baseline-on-migrate
+  # lets Flyway attach to a database that already has this schema without trying to recreate it;
+  # it never runs against an empty/fresh database destructively.
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    baseline-version: "0"
+    baseline-description: "Baseline: schema as of Phase 4 start, managed by Prisma through backend/prisma/migrations"
+    locations: classpath:db/migration
+
+server:
+  # Deliberately NOT 4000 (the Node Legion Server's port) while Spring and Express run side by side
+  # during the strangler migration — see AGENTS.md / Phase 4 completion report for current
+  # endpoint ownership. Flip the frontend's REACT_APP_API_BASE_URL and retire this offset once
+  # Spring is authoritative and Express is decommissioned.
+  port: ${SERVER_PORT:4100}
+  tomcat:
+    # LS-100 `.lspkg` import/direct-deploy posts the raw package as one octet-stream body (see
+    # DeploymentController#importPackage) — matches Express's `express.raw({ limit: '150mb' })`.
+    max-swallow-size: 200MB
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always
+      probes:
+        enabled: true
+  health:
+    livenessstate:
+      enabled: true
+    readinessstate:
+      enabled: true
+
+# Legion Server -> Legion Runtime internal HTTP contract (see runtime/ — a separate OS process,
+# Phase 2's independent failure domain). Mirrors backend/src/config/env.ts's
+# LEGION_RUNTIME_URL/RUNTIME_INTERNAL_TOKEN/RUNTIME_REQUEST_TIMEOUT_MS exactly, so both Server
+# implementations can point at the same running Runtime process unchanged.
+legion:
+  runtime:
+    base-url: ${LEGION_RUNTIME_URL:http://127.0.0.1:4200}
+    internal-token: ${RUNTIME_INTERNAL_TOKEN:}
+    connect-timeout-ms: ${RUNTIME_CONNECT_TIMEOUT_MS:2000}
+    request-timeout-ms: ${RUNTIME_REQUEST_TIMEOUT_MS:5000}
+  # The isolated Node BACnet commissioning process (backend/src/bacnetCommissioningServer.js) — a
+  # separate OS process/port from both this Server and the Legion Runtime process. See
+  # com.legioncontrols.server.bacnet.BacnetCommissioningClient.
+  bacnet-commissioning:
+    base-url: ${BACNET_COMMISSIONING_URL:http://127.0.0.1:4300}
+    connect-timeout-ms: ${BACNET_COMMISSIONING_CONNECT_TIMEOUT_MS:2000}
+    request-timeout-ms: ${BACNET_COMMISSIONING_REQUEST_TIMEOUT_MS:15000}
+
+logging:
+  level:
+    com.legioncontrols.server: INFO

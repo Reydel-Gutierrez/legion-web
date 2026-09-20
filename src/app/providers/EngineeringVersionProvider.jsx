@@ -20,6 +20,7 @@ import { toWorkingVersion } from "../../modules/engineering/working-version/work
 import { SITE_IDS } from "../../lib/sites";
 import { isBackendSiteId } from "../../lib/data/siteIdUtils";
 import { coerceSiteKeyToApiId } from "../../lib/data/siteApiResolution";
+import { isLocalArchiveSiteKey } from "../../lib/data/archiveConstants";
 import {
   loadAllActiveReleases,
   saveWorkingVersionForSite,
@@ -118,6 +119,34 @@ export function EngineeringVersionProvider({ children }) {
       dispatch({
         type: WORKING_VERSION_ACTIONS.RESET_WORKING_VERSION,
         payload: normalizeWorkingVersionNetworkConfig(raw, site),
+      });
+    } else if (isLocalArchiveSiteKey(site)) {
+      // The local Archive Library (New/Save/Import/Open/Close Archive) is never a backend site,
+      // even when USE_HIERARCHY_API is on — always read/write its draft locally, same as plain
+      // local mode, instead of the hierarchy-API "not a real site, always empty" branch below.
+      const stored = loadWorkingVersionForSite(site);
+      const currentSiteName = workingState?.site?.name;
+      const hasContent = workingState?.site || (Array.isArray(workingState?.equipment) && workingState.equipment.length > 0);
+      if (currentSiteName === site && hasContent) {
+        return;
+      }
+      const emptyPayload = {
+        site: null,
+        templates: { equipmentTemplates: [], graphicTemplates: [] },
+        equipment: [],
+        discoveredDevices: [],
+        discoveredObjects: {},
+        mappings: {},
+        graphics: {},
+        siteLayoutGraphics: {},
+        networkConfig: createEmptyNetworkConfig(),
+        validation: null,
+        deploymentHistory: [],
+        activeDeploymentSnapshot: null,
+      };
+      dispatch({
+        type: WORKING_VERSION_ACTIONS.RESET_WORKING_VERSION,
+        payload: normalizeWorkingVersionNetworkConfig(stored || emptyPayload, site),
       });
     } else if (siteKeyForApi && USE_HIERARCHY_API) {
       const emptyPayload = {
@@ -253,7 +282,8 @@ export function EngineeringVersionProvider({ children }) {
     if (
       USE_HIERARCHY_API &&
       site !== SITE_IDS.NEW_SITE &&
-      site !== "New Building"
+      site !== "New Building" &&
+      !isLocalArchiveSiteKey(site)
     ) {
       return;
     }

@@ -10,8 +10,6 @@ export default function OperatorWorkspace({
   tree,
   selectedNode,
   siteKey,
-  commandIntent,
-  onCommandIntentHandled,
   onSelectNode,
   siteAlarms = [],
 }) {
@@ -27,12 +25,7 @@ export default function OperatorWorkspace({
     );
   }
   if (!tree || !selectedNode) {
-    return (
-      <div className="operator-placeholder">
-        <h1>No facility deployed</h1>
-        <p>Deploy a site version from Engineering to populate the facility tree.</p>
-      </div>
-    );
+    return null;
   }
 
   if (selectedNode.kind === "equipment") {
@@ -42,8 +35,6 @@ export default function OperatorWorkspace({
         tree={tree}
         selectedNode={selectedNode}
         siteKey={siteKey}
-        commandIntent={commandIntent}
-        onCommandIntentHandled={onCommandIntentHandled}
         onSelectNode={onSelectNode}
         siteAlarms={siteAlarms}
       />

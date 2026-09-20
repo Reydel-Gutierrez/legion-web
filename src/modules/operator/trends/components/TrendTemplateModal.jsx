@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Modal, Form, Button } from "@themesberg/react-bootstrap";
+import { Modal, Form, Button } from "react-bootstrap";
 
 /**
  * @param {{

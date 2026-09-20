@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from "react";
-import { Modal, Button, Form, Alert, Table, Row, Col } from "@themesberg/react-bootstrap";
+import { Modal, Button, Form, Alert, Table, Row, Col } from "react-bootstrap";
 import { fetchRuntimeFieldPoints } from "../../../../lib/data/adapters/api/runtimeApiAdapter";
 import { listPointsByEquipment } from "../../../../lib/data/adapters/api/hierarchyApiAdapter";
 import {
@@ -90,8 +90,8 @@ export default function MapFieldPointsModal({
   ]);
 
   return (
-    <Modal show={show} onHide={onHide} size="lg" centered className="text-white">
-      <Modal.Header closeButton closeVariant="white" className="bg-primary border-secondary">
+    <Modal show={show} onHide={onHide} size="lg" centered className="engineering-light-form">
+      <Modal.Header closeButton className="bg-primary border-secondary">
         <Modal.Title>Map field points to Legion points</Modal.Title>
       </Modal.Header>
       <Modal.Body className="bg-primary">

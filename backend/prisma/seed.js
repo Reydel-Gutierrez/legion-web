@@ -4,6 +4,18 @@ const { removeLegacySimDemoData } = require('../src/lib/seedFcuSimEquipment');
 
 const prisma = new PrismaClient();
 
+/**
+ * LC-ARCH-002 §10/§12: "No production behavior depends on SEED_DEMO_SITES" — enforced here as a
+ * hard refusal, not just a default. A production LS-100's commissioned Site must come only from a
+ * deployed `.lspkg` (see backend/src/modules/deployment); this script has no business running
+ * against one at all, so it refuses outright rather than trusting every future call site to set
+ * SEED_DEMO_SITES=false correctly.
+ */
+if ((process.env.LEGION_PROFILE || 'engineering') === 'ls100-production') {
+  console.error('[seed] Refusing to run: LEGION_PROFILE=ls100-production. Seeding is never permitted on a production LS-100 — commission it with a Legion Site Package instead.');
+  process.exit(1);
+}
+
 /** Stable id so frontend mocks / User Manager can match API site selection (UUID). */
 const DEMO_CAMPUS_SITE_ID =
   process.env.DEMO_CAMPUS_SITE_ID || 'cafe0000-0000-4000-8000-00000000babe';
@@ -19,7 +31,11 @@ const SEED_OWNER_EMAIL = (
 const SEED_OWNER_NAME = process.env.SEED_OWNER_NAME || 'Reydel Gutierrez';
 
 /** Set to `false` to skip Demo Campus + Sunset Strip Plaza demo data (roles, templates, owner user still run). */
-const SEED_DEMO_SITES = String(process.env.SEED_DEMO_SITES ?? 'true').toLowerCase() !== 'false';
+/** An ls100-sim database still commissions Sites only through package deployment/import (never
+ * this seed script) — forced off regardless of the env var, matching the `npm run project:strip-plaza`
+ * guard in scripts/project-strip-plaza.js. */
+const IS_LS100_PROFILE = (process.env.LEGION_PROFILE || 'engineering').startsWith('ls100');
+const SEED_DEMO_SITES = !IS_LS100_PROFILE && String(process.env.SEED_DEMO_SITES ?? 'true').toLowerCase() !== 'false';
 
 function pointToWorkspaceRow(equipmentId, equipmentName, pt) {
   const units = pt.unit || '';

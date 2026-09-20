@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Modal, Button, Form } from "@themesberg/react-bootstrap";
+import { Modal, Button, Form } from "react-bootstrap";
 import LegionFormSelect from "../../../../components/legion/LegionFormSelect";
 import { USE_HIERARCHY_API } from "../../../../lib/data/config";
 
@@ -123,6 +123,7 @@ export default function AddEquipmentModal({
       centered
       show={show}
       onHide={handleClose}
+      className="engineering-light-form"
       contentClassName="bg-primary border border-light border-opacity-10 text-white"
     >
       <Modal.Header className="border-light border-opacity-10">

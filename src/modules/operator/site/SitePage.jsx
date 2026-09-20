@@ -1,12 +1,12 @@
 import React, { useMemo, useState, useEffect, useCallback, useRef } from "react";
-import { useHistory, useLocation } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useSite } from "../../../app/providers/SiteProvider";
 import { useSiteDisplayLabel } from "../../../hooks/useSiteDisplayLabel";
 import { useActiveDeployment } from "../../../hooks/useWorkingVersion";
 import { useSiteLayoutLivePoints } from "../../../hooks/useSiteLayoutLivePoints";
 import { coerceSiteKeyToApiId } from "../../../lib/data/siteApiResolution";
 import { isBackendSiteId } from "../../../lib/data/siteIdUtils";
-import { Container, Card, Button } from "@themesberg/react-bootstrap";
+import { Container, Card, Button } from "react-bootstrap";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faExclamationTriangle } from "@fortawesome/free-solid-svg-icons";
 import LegionHeroHeader from "../../../components/legion/LegionHeroHeader";
@@ -101,7 +101,7 @@ function writeSiteLayoutStorage(key, { layoutLevelId, selectedBuildingId }) {
 
 export default function SitePage() {
   const siteLabel = useSiteDisplayLabel();
-  const history = useHistory();
+  const navigate = useNavigate();
   const location = useLocation();
   const { siteId, apiSites } = useSite();
   const { deployment, loading: releaseLoading, error: releaseError } = useActiveDeployment();
@@ -164,7 +164,7 @@ export default function SitePage() {
     const targetId = location.state?.selectLayoutLevelId;
     if (targetId) {
       applyLayoutLevelId(targetId);
-      history.replace(location.pathname, {});
+      navigate(location.pathname, { replace: true });
     } else if (!restoredLayoutRef.current && siteStorageKey) {
       const stored = readSiteLayoutStorage(siteStorageKey);
       if (stored?.layoutLevelId) applyLayoutLevelId(stored.layoutLevelId);
@@ -323,7 +323,7 @@ export default function SitePage() {
 
   const goToEquipmentDetail = (equipmentId) => {
     const path = Routes.LegionEquipmentDetail.path.replace(":equipmentId", encodeURIComponent(equipmentId));
-    history.push(path);
+    navigate(path);
   };
 
   const resolveEquipmentLabelForLayout = useCallback(
@@ -340,7 +340,7 @@ export default function SitePage() {
     if (linkTarget.type === "layout" && linkTarget.id) goToLevelByPathId(linkTarget.id);
     else if (linkTarget.type === "equipment" && linkTarget.id) goToEquipmentDetail(linkTarget.id);
     else if (linkTarget.type === "url" && linkTarget.url) window.open(linkTarget.url, "_blank", "noopener,noreferrer");
-    else if (linkTarget.type === "route" && linkTarget.path) history.push(linkTarget.path);
+    else if (linkTarget.type === "route" && linkTarget.path) navigate(linkTarget.path);
   };
 
   return (
@@ -392,7 +392,7 @@ export default function SitePage() {
                     size="sm"
                     variant="outline-danger"
                     className="ms-2 border-danger border-opacity-50 text-danger"
-                    onClick={() => history.push(Routes.LegionAlarms.path)}
+                    onClick={() => navigate(Routes.LegionAlarms.path)}
                   >
                     View Alarms
                   </Button>
@@ -473,7 +473,7 @@ export default function SitePage() {
                         size="sm"
                         variant="outline-danger"
                         className="ms-2 border-danger border-opacity-50 text-danger"
-                        onClick={() => history.push(Routes.LegionAlarms.path)}
+                        onClick={() => navigate(Routes.LegionAlarms.path)}
                       >
                         View Alarms
                       </Button>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Modal, Button, Form } from "@themesberg/react-bootstrap";
+import { Modal, Button, Form } from "react-bootstrap";
 import { ROLES, ROLE_KEYS } from "../../../../lib/access/roles";
 import { USER_STATUS } from "../../../../lib/access/types";
 
@@ -41,12 +41,12 @@ export default function AddEditUserModal({ show, onHide, user, onSave }) {
       show={show}
       onHide={onHide}
       centered
-      className="legion-modal-dark"
+      className="legion-modal-dark engineering-light-form"
       contentClassName="bg-primary border border-light border-opacity-10"
     >
       <Modal.Header className="border-light border-opacity-10">
         <Modal.Title className="text-white">{isEdit ? "Edit User" : "Add User"}</Modal.Title>
-        <button type="button" className="btn-close btn-close-white" aria-label="Close" onClick={onHide} />
+        <button type="button" className="btn-close" aria-label="Close" onClick={onHide} />
       </Modal.Header>
       <Form onSubmit={handleSubmit}>
         <Modal.Body className="text-white-50">

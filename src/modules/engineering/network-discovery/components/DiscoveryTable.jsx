@@ -7,7 +7,7 @@ import {
   faCog,
   faExternalLinkAlt,
 } from "@fortawesome/free-solid-svg-icons";
-import { Form, Button } from "@themesberg/react-bootstrap";
+import { Form, Button } from "react-bootstrap";
 
 const DEVICE_ICONS = {
   router: faNetworkWired,

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { Form, Spinner } from "@themesberg/react-bootstrap";
+import { Form, Spinner } from "react-bootstrap";
 import { ApiError } from "../../../../lib/api/apiClient";
 import { fetchAddressSuggestions } from "../../../../lib/data/repositories/geocodeRepository";
 

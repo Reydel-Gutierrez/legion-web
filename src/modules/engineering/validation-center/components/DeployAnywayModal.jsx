@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Modal, Button, Form } from "@themesberg/react-bootstrap";
+import { Modal, Button, Form } from "react-bootstrap";
 
 /**
  * Confirmation modal for Deploy Anyway when there are blocking errors.
@@ -27,14 +27,14 @@ export default function DeployAnywayModal({
       show={show}
       onHide={handleClose}
       centered
-      className="legion-modal-dark"
+      className="legion-modal-dark engineering-light-form"
       contentClassName="bg-primary border border-light border-opacity-10"
     >
       <Modal.Header className="border-light border-opacity-10">
         <Modal.Title className="text-white">Override deployment</Modal.Title>
         <button
           type="button"
-          className="btn-close btn-close-white"
+          className="btn-close"
           aria-label="Close"
           onClick={handleClose}
         />

@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useMemo, useEffect } from "react";
-import { useHistory, useLocation } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import {
   Container,
   Card,
@@ -10,7 +10,7 @@ import {
   InputGroup,
   Row,
   Col,
-} from "@themesberg/react-bootstrap";
+} from "react-bootstrap";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faCheckCircle,
@@ -22,7 +22,6 @@ import {
   faCheck,
 } from "@fortawesome/free-solid-svg-icons";
 
-import LegionHeroHeader from "../../../components/legion/LegionHeroHeader";
 import LegionDrawer from "../../../components/legion/LegionDrawer";
 import { engineeringRepository } from "../../../lib/data";
 import { CATEGORY, SEVERITY, READINESS_STATUS } from "../../../lib/data/repositories/engineeringRepository";
@@ -57,7 +56,7 @@ const CATEGORY_TABS = [
 ];
 
 export default function ValidationCenterPage() {
-  const history = useHistory();
+  const navigate = useNavigate();
   const location = useLocation();
   const { setValidationState: syncValidationToContext } = useValidation();
   const { workingState, actions } = useWorkingVersion();
@@ -121,7 +120,7 @@ export default function ValidationCenterPage() {
 
   const handleDeployConfiguration = useCallback(() => {
     if ((summary?.errors ?? 0) > 0) return;
-    history.push(ROUTE_PATHS.deployment);
+    navigate(ROUTE_PATHS.deployment);
   }, [summary?.errors, history]);
 
   const handleConfirmDeployOverride = useCallback(
@@ -130,7 +129,7 @@ export default function ValidationCenterPage() {
       actions.deployWorkingVersion({ notes: reason || "Override activation" });
       setToastMessage("Deployment successful.");
       setTimeout(() => setToastMessage(null), 3000);
-      history.push(ROUTE_PATHS.deployment);
+      navigate(ROUTE_PATHS.deployment);
     },
     [actions, history]
   );
@@ -138,7 +137,7 @@ export default function ValidationCenterPage() {
   const handleOpenTarget = useCallback(
     (target) => {
       const path = ROUTE_PATHS[target];
-      if (path) history.push(path);
+      if (path) navigate(path);
     },
     [history]
   );
@@ -177,11 +176,6 @@ export default function ValidationCenterPage() {
 
   return (
     <Container fluid className="px-0">
-      <div className="px-3 px-md-4 pt-3">
-        <LegionHeroHeader />
-        <hr className="border-light border-opacity-25 my-3" />
-      </div>
-
       <div className="px-3 px-md-4 pb-4">
         <Card className="legion-operator-log-card bg-primary border border-light border-opacity-10 shadow-sm">
           <Card.Header className="legion-operator-log-card-header d-flex align-items-center justify-content-between flex-wrap gap-2">

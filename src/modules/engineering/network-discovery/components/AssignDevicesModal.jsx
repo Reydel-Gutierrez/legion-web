@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Modal, Button, Form } from "@themesberg/react-bootstrap";
+import { Modal, Button, Form } from "react-bootstrap";
 import LegionFormSelect from "../../../../components/legion/LegionFormSelect";
 import { engineeringRepository } from "../../../../lib/data";
 
@@ -51,6 +51,7 @@ export default function AssignDevicesModal({
       centered
       show={show}
       onHide={onHide}
+      className="engineering-light-form"
       contentClassName="bg-primary border border-light border-opacity-10 text-white assign-devices-modal"
     >
       <Modal.Header className="border-light border-opacity-10">

@@ -1,0 +1,39 @@
+export const Routes = {
+  // LEGION WEB
+  LegionDashboard: { path: "/legion/dashboard" },
+
+  LegionSite: { path: "/legion/site" },
+
+  LegionEquipment: { path: "/legion/equipment" },
+  LegionEquipmentDetail: { path: "/legion/equipment/:equipmentId" },
+
+  LegionAlarms: { path: "/legion/alarms" },
+
+  LegionTrends: { path: "/legion/trends" },
+
+  LegionSchedules: { path: "/legion/schedules" },
+
+  LegionEvents: { path: "/legion/events" },
+
+  LegionUsers: { path: "/legion/users" },
+
+  LegionSettings: { path: "/legion/settings" },
+
+
+  // Engineering mode routes
+  /** Bare Engineering entry point — shows the shell with no archive open until one is created/imported/opened. */
+  EngineeringHome: { path: "/legion/engineering" },
+  EngineeringSiteBuilder: { path: "/legion/engineering/site-builder" },
+  EngineeringArchiveManager: { path: "/legion/engineering/archives" },
+  /** Parent path; redirects to discovery. Subpages use the dropdown in EngineeringNetworkSection. */
+  EngineeringNetwork: { path: "/legion/engineering/network" },
+  EngineeringNetworkDiscovery: { path: "/legion/engineering/network/discovery" },
+  EngineeringNetworkConfiguration: { path: "/legion/engineering/network/configuration" },
+  EngineeringBacnetExplorer: { path: "/legion/engineering/bacnet-explorer" },
+  EngineeringPointMapping: { path: "/legion/engineering/point-mapping" },
+  EngineeringGraphicsManager: { path: "/legion/engineering/graphics-manager" },
+  EngineeringTemplateLibrary: { path: "/legion/engineering/templates" },
+  EngineeringValidationCenter: { path: "/legion/engineering/validation-center" },
+  EngineeringDeployment: { path: "/legion/engineering/deployment" },
+  EngineeringUserManager: { path: "/legion/engineering/user-manager" }
+};

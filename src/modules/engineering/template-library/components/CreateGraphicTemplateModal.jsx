@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { Modal, Button, Form } from "@themesberg/react-bootstrap";
-import { useHistory } from "react-router-dom";
+import { Modal, Button, Form } from "react-bootstrap";
+import { useNavigate } from "react-router-dom";
 import { Routes } from "../../../../routes";
 
 /**
@@ -8,7 +8,7 @@ import { Routes } from "../../../../routes";
  * (template points come from that equipment definition).
  */
 export default function CreateGraphicTemplateModal({ show, onHide, equipmentTemplates = [] }) {
-  const history = useHistory();
+  const navigate = useNavigate();
   const [equipmentTemplateId, setEquipmentTemplateId] = useState("");
 
   useEffect(() => {
@@ -27,7 +27,7 @@ export default function CreateGraphicTemplateModal({ show, onHide, equipmentTemp
       newGraphicTemplate: "1",
       equipmentTemplateId,
     });
-    history.push(`${Routes.EngineeringGraphicsManager.path}?${q.toString()}`);
+    navigate(`${Routes.EngineeringGraphicsManager.path}?${q.toString()}`);
   };
 
   return (
@@ -36,6 +36,7 @@ export default function CreateGraphicTemplateModal({ show, onHide, equipmentTemp
       onHide={onHide}
       centered
       size="lg"
+      className="engineering-light-form"
       contentClassName="bg-primary border border-light border-opacity-10 text-white"
     >
       <Modal.Header className="border-light border-opacity-10">

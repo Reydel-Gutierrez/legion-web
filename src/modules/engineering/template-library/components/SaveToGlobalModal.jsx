@@ -7,7 +7,7 @@ import {
   Table,
   Nav,
   Spinner,
-} from "@themesberg/react-bootstrap";
+} from "react-bootstrap";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faSearch, faCloudUploadAlt } from "@fortawesome/free-solid-svg-icons";
 import { engineeringRepository } from "../../../../lib/data";
@@ -154,7 +154,7 @@ export default function SaveToGlobalModal({
       centered
       size="lg"
       contentClassName="bg-primary border border-light border-opacity-10 text-white"
-      className="template-library-save-to-global-modal"
+      className="template-library-save-to-global-modal engineering-light-form"
     >
       <Modal.Header className="border-light border-opacity-10">
         <Modal.Title className="text-white fw-bold h6">

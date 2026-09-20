@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Modal, Button, Form } from "@themesberg/react-bootstrap";
+import { Modal, Button, Form } from "react-bootstrap";
 import { operatorRepository } from "../../../lib/data";
 import { canEditSchedules } from "../../../lib/access/operatorPermissions";
 import {

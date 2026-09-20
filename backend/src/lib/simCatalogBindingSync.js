@@ -163,16 +163,12 @@ async function syncSimCatalogBindingsForEquipmentId(equipmentId) {
       equipmentId: eid,
       ...simRepair,
     });
+    // Engineering-side data repair only (see module header) — must not touch Runtime, which only
+    // ever resolves the deployed LiveControllerBinding projection.
     ec = await prisma.controllersMapped.update({
       where: { id: ec.id },
       data: simRepair,
     });
-    try {
-      const runtimeService = require('../modules/runtime/runtime.service');
-      await runtimeService.refreshInMemoryBindingForEquipmentId(eid);
-    } catch (_) {
-      /* ignore */
-    }
   }
 
   if (!ec.isEnabled) {

@@ -1,29 +1,29 @@
 -- AlterTable
-ALTER TABLE "ControllersMapped" RENAME CONSTRAINT "EquipmentController_pkey" TO "ControllersMapped_pkey";
+ALTER TABLE "EquipmentController" RENAME CONSTRAINT "EquipmentController_pkey" TO "ControllersMapped_pkey";
 
 -- AlterTable
-ALTER TABLE "PointsMapped" RENAME CONSTRAINT "PointMapping_pkey" TO "PointsMapped_pkey";
+ALTER TABLE "PointMapping" RENAME CONSTRAINT "PointMapping_pkey" TO "PointsMapped_pkey";
 
 -- RenameForeignKey
-ALTER TABLE "ControllersMapped" RENAME CONSTRAINT "EquipmentController_buildingId_fkey" TO "ControllersMapped_buildingId_fkey";
+ALTER TABLE "EquipmentController" RENAME CONSTRAINT "EquipmentController_buildingId_fkey" TO "ControllersMapped_buildingId_fkey";
 
 -- RenameForeignKey
-ALTER TABLE "ControllersMapped" RENAME CONSTRAINT "EquipmentController_equipmentId_fkey" TO "ControllersMapped_equipmentId_fkey";
+ALTER TABLE "EquipmentController" RENAME CONSTRAINT "EquipmentController_equipmentId_fkey" TO "ControllersMapped_equipmentId_fkey";
 
 -- RenameForeignKey
-ALTER TABLE "ControllersMapped" RENAME CONSTRAINT "EquipmentController_floorId_fkey" TO "ControllersMapped_floorId_fkey";
+ALTER TABLE "EquipmentController" RENAME CONSTRAINT "EquipmentController_floorId_fkey" TO "ControllersMapped_floorId_fkey";
 
 -- RenameForeignKey
-ALTER TABLE "ControllersMapped" RENAME CONSTRAINT "EquipmentController_siteId_fkey" TO "ControllersMapped_siteId_fkey";
+ALTER TABLE "EquipmentController" RENAME CONSTRAINT "EquipmentController_siteId_fkey" TO "ControllersMapped_siteId_fkey";
 
 -- RenameForeignKey
-ALTER TABLE "PointsMapped" RENAME CONSTRAINT "PointMapping_equipmentControllerId_fkey" TO "PointsMapped_equipmentControllerId_fkey";
+ALTER TABLE "PointMapping" RENAME CONSTRAINT "PointMapping_equipmentControllerId_fkey" TO "PointsMapped_equipmentControllerId_fkey";
 
 -- RenameForeignKey
-ALTER TABLE "PointsMapped" RENAME CONSTRAINT "PointMapping_equipmentId_fkey" TO "PointsMapped_equipmentId_fkey";
+ALTER TABLE "PointMapping" RENAME CONSTRAINT "PointMapping_equipmentId_fkey" TO "PointsMapped_equipmentId_fkey";
 
 -- RenameForeignKey
-ALTER TABLE "PointsMapped" RENAME CONSTRAINT "PointMapping_pointId_fkey" TO "PointsMapped_pointId_fkey";
+ALTER TABLE "PointMapping" RENAME CONSTRAINT "PointMapping_pointId_fkey" TO "PointsMapped_pointId_fkey";
 
 -- RenameIndex
 ALTER INDEX "EquipmentController_controllerCode_idx" RENAME TO "ControllersMapped_controllerCode_idx";

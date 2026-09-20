@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { useHistory, useLocation } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useSite } from "../../../app/providers/SiteProvider";
 import { OperatorChromeProvider } from "../../../app/providers/OperatorChromeProvider";
 import { useWorkspaceMode } from "../../../app/providers/WorkspaceModeProvider";
@@ -24,20 +24,10 @@ import { Routes } from "../../../routes";
 import FacilitySidebar from "./FacilitySidebar";
 import OperatorTopBar from "./OperatorTopBar";
 import OperatorWorkspace from "../workspace/OperatorWorkspace";
-import CommissioningPlaceholder from "../workspace/CommissioningPlaceholder";
-
-const SIDEBAR_KEY = "legionOperatorSidebarContracted";
-
-function readContracted() {
-  try {
-    return localStorage.getItem(SIDEBAR_KEY) === "true";
-  } catch {
-    return false;
-  }
-}
+import Ls100ConsolePanel from "../workspace/Ls100ConsolePanel";
 
 export default function OperatorShell({ children }) {
-  const history = useHistory();
+  const navigate = useNavigate();
   const location = useLocation();
   const { site, setSite, apiSites } = useSite();
   const { setCurrentMode } = useWorkspaceMode();
@@ -53,8 +43,6 @@ export default function OperatorShell({ children }) {
 
   const [dashboardMode, setDashboardMode] = useState("operator");
   const [expandedIds, setExpandedIds] = useState(() => new Set());
-  const [contracted, setContracted] = useState(readContracted);
-  const [commandIntent, setCommandIntent] = useState(null);
   const [refreshNonce, setRefreshNonce] = useState(0);
 
   const parsed = useMemo(
@@ -98,14 +86,6 @@ export default function OperatorShell({ children }) {
   }, []);
 
   useEffect(() => {
-    try {
-      localStorage.setItem(SIDEBAR_KEY, contracted ? "true" : "false");
-    } catch {
-      /* ignore */
-    }
-  }, [contracted]);
-
-  useEffect(() => {
     if (!selectedNode) return;
     const ancestors = getFacilityAncestorIds(tree, selectedNode.id);
     setExpandedIds((prev) => {
@@ -123,7 +103,7 @@ export default function OperatorShell({ children }) {
     if (location.search) return;
     if (!tree || !selectedNode) return;
     if (String(selectedNode.id) === String(tree.id) && selectedNode.kind === "site") return;
-    history.replace(locationForFacilityNode(selectedNode));
+    navigate(locationForFacilityNode(selectedNode), { replace: true });
   }, [location.pathname, location.search, selectedNode, tree, history]);
 
   useEffect(() => {
@@ -135,7 +115,7 @@ export default function OperatorShell({ children }) {
   const onSelect = useCallback(
     (node) => {
       if (node && node.siteId) setSite(node.siteId);
-      history.push(locationForFacilityNode(node));
+      navigate(locationForFacilityNode(node));
     },
     [history, setSite]
   );
@@ -159,7 +139,7 @@ export default function OperatorShell({ children }) {
       }
       setDashboardMode(mode);
       if (mode === "operator" && !isOperatorHierarchyPath(location.pathname)) {
-        history.push(Routes.LegionSite.path);
+        navigate(Routes.LegionSite.path);
       }
     },
     [currentUser, setCurrentMode, history, location.pathname]
@@ -170,7 +150,7 @@ export default function OperatorShell({ children }) {
 
   return (
     <OperatorChromeProvider hideHero variant="shell">
-      <div className={`operator-shell${contracted ? " operator-shell--sidebar-collapsed" : ""}`}>
+      <div className="operator-shell">
         <FacilitySidebar
           tree={annotatedTree || tree}
           selectedNode={displaySelected || selectedNode}
@@ -179,9 +159,6 @@ export default function OperatorShell({ children }) {
           onSelect={onSelect}
           currentUser={currentUser}
           onRefresh={() => setRefreshNonce((n) => n + 1)}
-          onCommandPoints={setCommandIntent}
-          contracted={contracted}
-          onToggleContracted={() => setContracted((v) => !v)}
         />
         <div className="operator-shell__main">
           <OperatorTopBar
@@ -194,7 +171,7 @@ export default function OperatorShell({ children }) {
           />
           <div className="operator-shell__workspace">
             {showCommissioning ? (
-              <CommissioningPlaceholder onBack={() => setDashboardMode("operator")} />
+              <Ls100ConsolePanel onBack={() => setDashboardMode("operator")} />
             ) : hierarchyView ? (
               <OperatorWorkspace
                 key={`${selectedNode?.kind || "none"}-${selectedNode?.id || "none"}-${refreshNonce}`}
@@ -204,8 +181,6 @@ export default function OperatorShell({ children }) {
                 tree={annotatedTree || tree}
                 selectedNode={displaySelected || selectedNode}
                 siteKey={siteKey}
-                commandIntent={commandIntent}
-                onCommandIntentHandled={() => setCommandIntent(null)}
                 onSelectNode={onSelect}
                 siteAlarms={alarms}
               />

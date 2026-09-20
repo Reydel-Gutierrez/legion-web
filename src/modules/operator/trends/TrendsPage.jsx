@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useSite } from "../../../app/providers/SiteProvider";
-import { Container, Row, Col, Card, Alert, Button } from "@themesberg/react-bootstrap";
+import { Container, Row, Col, Card, Alert, Button } from "react-bootstrap";
 import LegionHeroHeader from "../../../components/legion/LegionHeroHeader";
 import { useTrendWorkspace } from "./useTrendWorkspace";
 import TrendToolbar from "./components/TrendToolbar";

@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useMemo, useEffect, useRef } from "react";
-import { useLocation, useHistory } from "react-router-dom";
-import { Container, Card, Button, Modal } from "@themesberg/react-bootstrap";
+import { useLocation, useNavigate } from "react-router-dom";
+import { Container, Card, Button, Modal } from "react-bootstrap";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faObjectGroup } from "@fortawesome/free-solid-svg-icons";
 
@@ -8,7 +8,6 @@ import { Routes } from "../../../routes";
 import { useSite } from "../../../app/providers/SiteProvider";
 import { useWorkingVersion, useActiveDeployment, selectSiteTree } from "../../../hooks/useWorkingVersion";
 import { findNodeById } from "../site-builder/utils/siteTreeUtils";
-import LegionHeroHeader from "../../../components/legion/LegionHeroHeader";
 import { engineeringRepository, USE_HIERARCHY_API } from "../../../lib/data";
 import { appNotify, appLogger, withEngineeringAction } from "../../../lib/app-activity";
 import { createGraphicTemplate } from "../working-version/workingVersionModel";
@@ -135,7 +134,7 @@ function layoutGraphicName(type) {
 // ---------------------------------------------------------------------------
 export default function GraphicsManagerPage() {
   const location = useLocation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const { site } = useSite();
   const { workingVersion, workingState, actions } = useWorkingVersion();
   const { deployment } = useActiveDeployment();
@@ -371,7 +370,7 @@ export default function GraphicsManagerPage() {
           objects: [],
           canvasSize: { ...EQUIPMENT_GRAPHIC_CANVAS_DEFAULT },
         });
-        history.replace({ pathname: location.pathname, search: "" });
+        navigate({ pathname: location.pathname, search: "" }, { replace: true });
       }
       return;
     }
@@ -957,13 +956,13 @@ export default function GraphicsManagerPage() {
     (linkTarget) => {
       if (!linkTarget?.type) return;
       if (linkTarget.type === "equipment" && linkTarget.id) {
-        history.push(Routes.LegionEquipmentDetail.path.replace(":equipmentId", encodeURIComponent(linkTarget.id)));
+        navigate(Routes.LegionEquipmentDetail.path.replace(":equipmentId", encodeURIComponent(linkTarget.id)));
       } else if (linkTarget.type === "layout" && linkTarget.id) {
-        history.push(Routes.LegionSite.path, { selectLayoutLevelId: linkTarget.id });
+        navigate(Routes.LegionSite.path, { selectLayoutLevelId: linkTarget.id });
       } else if (linkTarget.type === "url" && linkTarget.url) {
         window.open(linkTarget.url, "_blank", "noopener,noreferrer");
       } else if (linkTarget.type === "route" && linkTarget.path) {
-        history.push(linkTarget.path);
+        navigate(linkTarget.path);
       }
     },
     [history]
@@ -1050,7 +1049,7 @@ export default function GraphicsManagerPage() {
   const handleOpenEquipmentDetailFromZone = useCallback(
     (equipmentId) => {
       if (!equipmentId) return;
-      history.push(Routes.LegionEquipmentDetail.path.replace(":equipmentId", encodeURIComponent(equipmentId)));
+      navigate(Routes.LegionEquipmentDetail.path.replace(":equipmentId", encodeURIComponent(equipmentId)));
     },
     [history]
   );
@@ -1470,10 +1469,6 @@ export default function GraphicsManagerPage() {
   if (hasNoSite) {
     return (
       <Container fluid className="px-0">
-        <div className="px-3 px-md-4 pt-3">
-          <LegionHeroHeader />
-          <hr className="border-light border-opacity-25 my-3" />
-        </div>
         <div className="px-3 px-md-4 pb-4">
           <div className="mb-3">
             <h5 className="text-white fw-bold mb-1">
@@ -1510,11 +1505,6 @@ export default function GraphicsManagerPage() {
         className="d-none"
         aria-hidden
       />
-      <div className="px-3 px-md-4 pt-3">
-        <LegionHeroHeader />
-        <hr className="border-light border-opacity-25 my-3" />
-      </div>
-
       <div className="px-3 px-md-4 pb-4">
         <div className="mb-3 d-flex flex-wrap align-items-center justify-content-between gap-2">
           <div>
@@ -1740,6 +1730,7 @@ export default function GraphicsManagerPage() {
         onHide={handleCloseAssignModal}
         size="lg"
         centered
+        className="engineering-light-form"
       >
         <Modal.Header closeButton>
           <Modal.Title>Select a site, floor, building, or equipment to work on</Modal.Title>

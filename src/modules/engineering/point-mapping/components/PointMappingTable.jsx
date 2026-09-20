@@ -1,5 +1,5 @@
 import React from "react";
-import { Card } from "@themesberg/react-bootstrap";
+import { Card } from "react-bootstrap";
 import LegionFormSelect from "../../../../components/legion/LegionFormSelect";
 import { engineeringRepository } from "../../../../lib/data";
 

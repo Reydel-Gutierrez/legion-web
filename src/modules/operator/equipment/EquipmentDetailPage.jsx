@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useEffect, useCallback } from "react";
-import { useParams, useHistory } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { useActiveDeployment } from "../../../hooks/useWorkingVersion";
 import {
   getEquipmentFromRelease,
@@ -7,7 +7,7 @@ import {
 } from "../../../lib/activeReleaseUtils";
 import { operatorRepository } from "../../../lib/data";
 import { useSite } from "../../../app/providers/SiteProvider";
-import { Container, Row, Col, Card, Button, Form, Modal, Table } from "@themesberg/react-bootstrap";
+import { Container, Row, Col, Card, Button, Form, Modal, Table } from "react-bootstrap";
 import LegionHeroHeader from "../../../components/legion/LegionHeroHeader";
 import StatusDotLabel from "../../../components/legion/StatusDotLabel";
 import OperatorCommFreshnessLabel from "../../../components/legion/OperatorCommFreshnessLabel";
@@ -120,7 +120,7 @@ function buildOperatorEquipmentNetworkDetails(releaseData, equipment, graphic) {
 
 export default function EquipmentDetailPage() {
   const { equipmentId } = useParams();
-  const history = useHistory();
+  const navigate = useNavigate();
   const { site: siteFromContext } = useSite();
   const { deployment, loading: releaseLoading, error: releaseError } = useActiveDeployment();
   const releaseData = deployment;
@@ -339,13 +339,13 @@ export default function EquipmentDetailPage() {
     if (!linkTarget?.type) return;
     if (linkTarget.type === "equipment" && linkTarget.id) {
       const path = Routes.LegionEquipmentDetail.path.replace(":equipmentId", encodeURIComponent(linkTarget.id));
-      history.push(path);
+      navigate(path);
     } else if (linkTarget.type === "layout" && linkTarget.id) {
-      history.push(Routes.LegionSite.path, { selectLayoutLevelId: linkTarget.id });
+      navigate(Routes.LegionSite.path, { selectLayoutLevelId: linkTarget.id });
     } else if (linkTarget.type === "url" && linkTarget.url) {
       window.open(linkTarget.url, "_blank", "noopener,noreferrer");
     } else if (linkTarget.type === "route" && linkTarget.path) {
-      history.push(linkTarget.path);
+      navigate(linkTarget.path);
     }
   };
 
@@ -391,7 +391,7 @@ export default function EquipmentDetailPage() {
               <Button
                 size="sm"
                 className="legion-hero-btn legion-hero-btn--secondary mt-3"
-                onClick={() => history.push(Routes.LegionEquipment.path)}
+                onClick={() => navigate(Routes.LegionEquipment.path)}
               >
                 Back to Equipment
               </Button>

@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from "react";
-import { Modal, Button, Form, Alert } from "@themesberg/react-bootstrap";
+import { Modal, Button, Form, Alert } from "react-bootstrap";
 import { listEquipmentBySite } from "../../../../lib/data/adapters/api/hierarchyApiAdapter";
 import { assignEquipmentController } from "../../../../lib/data/adapters/api/equipmentControllerApiAdapter";
 
@@ -66,8 +66,8 @@ export default function AssignRuntimeControllerModal({
   }, [controllerCode, displayName, equipmentId, isSimulated, onAssigned, onHide, protocol]);
 
   return (
-    <Modal show={show} onHide={onHide} centered className="text-white">
-      <Modal.Header closeButton closeVariant="white" className="bg-primary border-secondary">
+    <Modal show={show} onHide={onHide} centered className="engineering-light-form">
+      <Modal.Header closeButton className="bg-primary border-secondary">
         <Modal.Title>Assign controller to equipment</Modal.Title>
       </Modal.Header>
       <Modal.Body className="bg-primary">

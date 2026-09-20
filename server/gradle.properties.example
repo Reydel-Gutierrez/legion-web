@@ -1,0 +1,5 @@
+# Copy to gradle.properties (git-ignored) for local jOOQ codegen + Spring Boot datasource config.
+# Matches the same local Postgres instance backend/.env already points at.
+db.url=jdbc:postgresql://localhost:5432/legion_db
+db.user=postgres
+db.password=

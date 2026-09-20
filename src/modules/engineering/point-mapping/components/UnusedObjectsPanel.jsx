@@ -1,5 +1,5 @@
 import React from "react";
-import { Card, Collapse } from "@themesberg/react-bootstrap";
+import { Card, Collapse } from "react-bootstrap";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faChevronDown, faChevronRight } from "@fortawesome/free-solid-svg-icons";
 import { engineeringRepository } from "../../../../lib/data";
