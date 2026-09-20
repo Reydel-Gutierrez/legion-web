@@ -1,6 +1,6 @@
 import React from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faChevronDown, faChevronRight } from "@fortawesome/free-solid-svg-icons";
+import { faArrowDown, faArrowUp, faChevronDown, faChevronRight } from "@fortawesome/free-solid-svg-icons";
 import FacilityKindIcon from "../../../components/legion/FacilityKindIcon";
 import OperatorAlarmBell from "../../../components/legion/OperatorAlarmBell";
 import { normalizeCommStatus } from "../../../lib/operator/statusUtils";
@@ -9,16 +9,20 @@ export default function FacilityTreeNode({
   node,
   depth,
   isLast = true,
+  isFirst = false,
   selectedId,
   expandedIds,
   onToggleExpand,
   onSelect,
+  reorderMode = false,
+  onMoveEquipment,
 }) {
   const children = node.children || [];
   const hasChildren = children.length > 0;
   const expanded = expandedIds.has(String(node.id));
   const selected = String(selectedId) === String(node.id);
   const commStatus = normalizeCommStatus(node.commStatus || node.equipmentCommStatus || node.status);
+  const showReorderArrows = reorderMode && node.kind === "equipment";
 
   return (
     <li className={`facility-tree__item${isLast ? " is-last" : ""}${depth === 0 ? " is-root" : ""}`}>
@@ -62,6 +66,28 @@ export default function FacilityTreeNode({
           </span>
           <span className="facility-tree__label">{node.label}</span>
         </button>
+        {showReorderArrows ? (
+          <div className="facility-tree__reorder" onClick={(e) => e.stopPropagation()}>
+            <button
+              type="button"
+              className="facility-tree__reorder-btn"
+              disabled={isFirst}
+              aria-label={`Move ${node.label} up`}
+              onClick={() => onMoveEquipment(node.floorId, node.id, -1)}
+            >
+              <FontAwesomeIcon icon={faArrowUp} />
+            </button>
+            <button
+              type="button"
+              className="facility-tree__reorder-btn"
+              disabled={isLast}
+              aria-label={`Move ${node.label} down`}
+              onClick={() => onMoveEquipment(node.floorId, node.id, 1)}
+            >
+              <FontAwesomeIcon icon={faArrowDown} />
+            </button>
+          </div>
+        ) : null}
       </div>
       {hasChildren && expanded ? (
         <ul className="facility-tree__children">
@@ -71,10 +97,13 @@ export default function FacilityTreeNode({
               node={child}
               depth={depth + 1}
               isLast={index === children.length - 1}
+              isFirst={index === 0}
               selectedId={selectedId}
               expandedIds={expandedIds}
               onToggleExpand={onToggleExpand}
               onSelect={onSelect}
+              reorderMode={reorderMode}
+              onMoveEquipment={onMoveEquipment}
             />
           ))}
         </ul>

@@ -20,7 +20,6 @@ import {
   faPaperPlane,
 } from "@fortawesome/free-solid-svg-icons";
 
-import LegionHeroHeader from "../../../components/legion/LegionHeroHeader";
 import DeployAnywayModal from "../validation-center/components/DeployAnywayModal";
 import { useValidation } from "../../../app/providers/ValidationProvider";
 import { useWorkingVersion } from "../../../hooks/useWorkingVersion";
@@ -361,11 +360,6 @@ export default function DeploymentPage() {
 
   return (
     <Container fluid className="px-0">
-      <div className="px-3 px-md-4 pt-3">
-        <LegionHeroHeader />
-        <hr className="border-light border-opacity-25 my-3" />
-      </div>
-
       <div className="px-3 px-md-4 pb-4">
         <Card className="legion-operator-log-card bg-primary border border-light border-opacity-10 shadow-sm">
           <Card.Header className="legion-operator-log-card-header">

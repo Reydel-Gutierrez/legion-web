@@ -8,10 +8,9 @@ import {
   pruneWorkingVersionsNotBoundToApi,
 } from "../../lib/data/persistence/engineeringVersionPersistence";
 import { DEMO_CAMPUS_SITE_ID, SITE_IDS } from "../../lib/sites";
+import { ARCHIVE_NONE_SITE_KEY, isLocalArchiveSiteKey } from "../../lib/data/archiveConstants";
 
 const SiteContext = createContext(null);
-
-const LEGACY_DEFAULT_SITE = "Miami HQ";
 
 /**
  * When the saved site id is invalid, pick a sensible default — prefer real projects over
@@ -31,6 +30,9 @@ function pickDefaultApiSiteId(apiSites) {
 function isApiModeSiteSelectionAllowed(prev, apiSites) {
   if (prev == null || prev === "") return false;
   if (prev === SITE_IDS.NEW_SITE || prev === "New Building") return true;
+  // The local Archive Library (New/Import/Save-As/Close Archive) lives entirely outside the
+  // backend hierarchy — never let this effect "correct" it back to a real site.
+  if (isLocalArchiveSiteKey(prev)) return true;
   if (!apiSites?.length) return true;
   const ids = new Set(apiSites.map((s) => s.id));
   if (ids.has(prev)) return true;
@@ -41,7 +43,7 @@ function isApiModeSiteSelectionAllowed(prev, apiSites) {
 function readInitialSite() {
   const stored = localStorage.getItem("legionSite");
   if (!USE_HIERARCHY_API) {
-    return stored || LEGACY_DEFAULT_SITE;
+    return stored || ARCHIVE_NONE_SITE_KEY;
   }
   if (stored === "") return "";
   if (stored != null) return stored;
@@ -98,7 +100,7 @@ export function SiteProvider({ children }) {
 
     if (sitesError || apiSites.length === 0) {
       setSite((prev) => {
-        if (prev === SITE_IDS.NEW_SITE || prev === "New Building") return prev;
+        if (prev === SITE_IDS.NEW_SITE || prev === "New Building" || isLocalArchiveSiteKey(prev)) return prev;
         return "";
       });
       return;

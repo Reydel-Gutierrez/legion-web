@@ -123,6 +123,7 @@ export default function AddEquipmentModal({
       centered
       show={show}
       onHide={handleClose}
+      className="engineering-light-form"
       contentClassName="bg-primary border border-light border-opacity-10 text-white"
     >
       <Modal.Header className="border-light border-opacity-10">

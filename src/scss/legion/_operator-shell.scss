@@ -17,7 +17,6 @@ $op-fault: #d64545;
 $op-shadow: 0 1px 2px rgba(24, 39, 57, 0.04);
 $op-radius: 10px;
 $op-sidebar-w: 248px;
-$op-sidebar-w-collapsed: 64px;
 $op-topbar-h: 60px;
 
 body.operator-shell-active {
@@ -59,30 +58,12 @@ body.operator-shell-active {
   display: flex;
   flex-direction: column;
   min-height: 0;
-  transition: width 0.2s ease, flex-basis 0.2s ease;
-}
-
-.facility-sidebar.is-contracted {
-  width: $op-sidebar-w-collapsed;
-  flex-basis: $op-sidebar-w-collapsed;
-
-  .legion-logo {
-    justify-content: center;
-  }
-
-  .legion-logo__wordmark,
-  .facility-tree__label,
-  .sidebar-actions,
-  .facility-sidebar__links span,
-  .facility-sidebar__footer span,
-  .sidebar-utils__menu,
-  .sidebar-utils__panel {
-    display: none !important;
-  }
 }
 
 .facility-sidebar__brand {
-  padding: 14px 14px 8px;
+  padding: 14px 14px 14px;
+  border-bottom: 1px solid $op-border;
+  margin-bottom: 6px;
 }
 
 .legion-logo {
@@ -98,11 +79,6 @@ body.operator-shell-active {
   flex-shrink: 0;
   display: block;
   overflow: visible;
-}
-
-.legion-logo--compact .legion-logo__mark {
-  width: 36px;
-  height: 36px;
 }
 
 .legion-logo__wordmark {
@@ -246,6 +222,37 @@ body.operator-shell-active {
   min-width: 0;
 }
 
+.facility-tree__reorder {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  flex-shrink: 0;
+  padding-right: 4px;
+}
+
+.facility-tree__reorder-btn {
+  width: 18px;
+  height: 18px;
+  border: 1px solid $op-border;
+  border-radius: 4px;
+  background: #fff;
+  color: $op-navy;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+  padding: 0;
+
+  &:hover:not(:disabled) {
+    border-color: $op-blue;
+    color: $op-blue;
+  }
+
+  &:disabled {
+    opacity: 0.35;
+  }
+}
+
 .facility-tree__icons {
   position: relative;
   display: inline-flex;
@@ -313,10 +320,20 @@ body.operator-shell-active {
   border-top: 1px solid $op-border;
 }
 
+.sidebar-utils {
+  padding-bottom: 8px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid $op-border;
+}
+
 .sidebar-utils__row {
   display: flex;
   gap: 6px;
   margin-bottom: 8px;
+}
+
+.sidebar-utils__row:last-child {
+  margin-bottom: 0;
 }
 
 .sidebar-utils__icon {
@@ -336,8 +353,19 @@ body.operator-shell-active {
   }
 }
 
-.sidebar-utils__menu,
-.sidebar-actions__menu {
+.sidebar-utils__icon.is-active {
+  border-color: $op-blue;
+  background: $op-blue-soft;
+  color: $op-blue;
+}
+
+.sidebar-utils__hint {
+  color: $op-muted;
+  font-size: 11px;
+  margin: 0 0 8px;
+}
+
+.sidebar-utils__menu {
   list-style: none;
   margin: 0 0 8px;
   padding: 4px 0;
@@ -399,38 +427,6 @@ body.operator-shell-active {
   }
 }
 
-.sidebar-utils__siblings {
-  list-style: none;
-  padding: 0;
-  margin: 0 0 8px;
-
-  li {
-    padding: 3px 0;
-  }
-
-  .is-current {
-    font-weight: 700;
-  }
-}
-
-.sidebar-actions__toggle {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  border: 0;
-  background: transparent;
-  color: $op-navy;
-  font-weight: 600;
-  font-size: 13px;
-  padding: 6px 2px 8px;
-}
-
-.sidebar-actions__gear {
-  margin-right: 8px;
-  color: $op-muted;
-}
-
 .facility-sidebar__links {
   display: flex;
   flex-direction: column;
@@ -462,13 +458,6 @@ body.operator-shell-active {
   margin-top: 8px;
   color: $op-muted;
   font-size: 11px;
-}
-
-.facility-sidebar__collapse {
-  border: 0;
-  background: transparent;
-  color: $op-muted;
-  padding: 0 4px 0 0;
 }
 
 .facility-sidebar__version {
@@ -876,44 +865,6 @@ body.operator-shell-active {
   gap: 16px;
 }
 
-.equipment-header__utilities {
-  display: flex;
-  align-items: stretch;
-  justify-content: flex-end;
-  gap: 8px;
-  flex-wrap: wrap;
-  flex-shrink: 0;
-}
-
-.equipment-alarm-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 9px;
-  min-width: 132px;
-  min-height: 52px;
-  border: 1px solid $op-border;
-  border-radius: 10px;
-  padding: 8px 12px;
-  background: #fff;
-  color: $op-text;
-  box-shadow: $op-shadow;
-  text-align: left;
-  font: inherit;
-  cursor: pointer;
-}
-.equipment-alarm-chip:hover { border-color: $op-blue; }
-.equipment-alarm-chip__icon { color: $op-muted; font-size: 16px; width: 20px; display: inline-flex; justify-content: center; }
-.equipment-alarm-chip--active .equipment-alarm-chip__icon { color: $op-fault; animation: operator-alarm-ring 2.8s ease-in-out infinite; }
-.equipment-alarm-chip__copy { display: flex; flex-direction: column; line-height: 1.15; }
-.equipment-alarm-chip__label { color: $op-muted; font-size: 11px; text-transform: uppercase; letter-spacing: .03em; }
-.equipment-alarm-chip__copy strong { color: $op-navy; font-size: 14px; font-weight: 800; }
-.equipment-alarm-chip__copy small { color: $op-muted; font-size: 10px; }
-.equipment-trend-chip { display: inline-flex; align-items: center; gap: 9px; min-width: 132px; min-height: 52px; border: 1px solid $op-border; border-radius: 10px; padding: 8px 12px; background: #fff; color: $op-text; box-shadow: $op-shadow; text-align: left; font: inherit; cursor: pointer; }
-.equipment-trend-chip:hover { border-color: $op-blue; }
-.equipment-trend-chip__icon { color: $op-blue; font-size: 17px; width: 20px; text-align: center; }
-.equipment-trend-chip__copy { display: flex; flex-direction: column; line-height: 1.15; }
-.equipment-trend-chip__label { color: $op-muted; font-size: 11px; letter-spacing: .03em; }
-.equipment-trend-chip__copy strong { color: $op-navy; font-size: 14px; font-weight: 800; }
 .trend-workspace__card { overflow: hidden; min-height: 0; }
 .trend-points-layout { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(270px, .75fr); gap: 28px; min-height: 0; }
 .trend-points-layout h2, .trend-library h2 { margin: 0 0 8px; color: $op-navy; font-size: 17px; font-weight: 800; }
@@ -974,62 +925,6 @@ body.operator-shell-active {
   color: $op-text;
 }
 .trend-assign-preview ul { margin: 6px 0 10px; padding-left: 18px; }
-
-.occupancy-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  background: #fff;
-  border: 1px solid $op-border;
-  border-radius: 10px;
-  padding: 8px 14px 8px 12px;
-  min-width: 132px;
-  min-height: 52px;
-  box-shadow: $op-shadow;
-  flex-shrink: 0;
-}
-
-.occupancy-chip--button {
-  cursor: pointer;
-  font: inherit;
-  text-align: left;
-}
-
-.occupancy-chip--button:hover {
-  border-color: $op-blue;
-}
-
-.occupancy-chip__icon {
-  color: $op-ok;
-  font-size: 18px;
-  width: 22px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.occupancy-chip--unoccupied .occupancy-chip__icon {
-  color: #9aa3ad;
-}
-
-.occupancy-chip__copy {
-  display: flex;
-  flex-direction: column;
-  line-height: 1.15;
-}
-
-.occupancy-chip__label {
-  font-size: 11px;
-  color: $op-muted;
-  text-transform: uppercase;
-  letter-spacing: .03em;
-}
-
-.occupancy-chip__value {
-  font-size: 14px;
-  font-weight: 800;
-  color: $op-navy;
-}
 
 .operator-card {
   background: $op-card;
@@ -1430,6 +1325,11 @@ body.operator-shell-active {
   gap: 8px;
 }
 
+.equipment-workspace > .operator-workspace-tabs.equipment-workspace-tabs {
+  flex: 0 0 auto;
+  margin-top: 14px;
+}
+
 .equipment-workspace__grid {
   flex: 1 1 auto;
   min-height: 0;
@@ -1437,6 +1337,16 @@ body.operator-shell-active {
   grid-template-columns: 1fr 1fr;
   grid-template-rows: 1fr 1fr;
   gap: 12px;
+  margin-top: 12px;
+}
+
+.equipment-workspace__single {
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 1fr;
+  grid-template-rows: 1fr;
   margin-top: 12px;
 }
 
@@ -1844,6 +1754,26 @@ body.operator-shell-active {
   background: transparent;
   color: #9aa3ad;
   padding: 4px 6px;
+}
+
+// Whole-row click target (Manage Archives) — the row itself carries the click/keyboard handler
+// instead of a per-row action button, so a lightweight hover/focus state is all it needs.
+.site-table__row {
+  cursor: pointer;
+
+  &:hover {
+    background: #f7f9fb;
+  }
+
+  &:focus-visible {
+    outline: 2px solid $op-blue;
+    outline-offset: -2px;
+  }
+}
+
+.site-table__date-secondary {
+  color: $op-muted;
+  font-size: 11px;
 }
 
 .equipment-graphic-card {

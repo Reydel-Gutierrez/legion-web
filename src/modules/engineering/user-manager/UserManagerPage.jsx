@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useMemo, useEffect } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import * as hierarchyRepository from "../../../lib/data/repositories/hierarchyRepository";
 import {
   Container,
@@ -25,7 +26,6 @@ import {
   faUserCheck,
 } from "@fortawesome/free-solid-svg-icons";
 
-import LegionHeroHeader from "../../../components/legion/LegionHeroHeader";
 import LegionTablePagination from "../../../components/legion/LegionTablePagination";
 import { useTablePagination } from "../../../hooks/useTablePagination";
 import { useSite } from "../../../app/providers/SiteProvider";
@@ -300,6 +300,18 @@ export default function UserManagerPage() {
   const [confirmAction, setConfirmAction] = useState(null);
   const [toast, setToast] = useState(null);
 
+  // "Create User" in the Admin topbar menu links here with ?new=1 to jump straight into Add User.
+  const location = useLocation();
+  const navigate = useNavigate();
+  useEffect(() => {
+    if (new URLSearchParams(location.search).get("new") === "1") {
+      setEditingUser(null);
+      setShowUserModal(true);
+      navigate(location.pathname, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.search]);
+
   const showToast = useCallback((msg) => {
     setToast(msg);
     setTimeout(() => setToast(null), 3000);
@@ -427,10 +439,6 @@ export default function UserManagerPage() {
   if (!canView) {
     return (
       <Container fluid className="px-0">
-        <div className="px-3 px-md-4 pt-3">
-          <LegionHeroHeader />
-          <hr className="border-light border-opacity-25 my-3" />
-        </div>
         <div className="px-3 px-md-4 pb-4">
           <Card className="bg-primary border border-light border-opacity-10 shadow-sm">
             <Card.Body className="py-5 text-center">
@@ -448,11 +456,6 @@ export default function UserManagerPage() {
 
   return (
     <Container fluid className="px-0">
-      <div className="px-3 px-md-4 pt-3">
-        <LegionHeroHeader />
-        <hr className="border-light border-opacity-25 my-3" />
-      </div>
-
       <div className="px-3 px-md-4 pb-4">
         <Card className="legion-operator-log-card bg-primary border border-light border-opacity-10 shadow-sm">
           <Card.Header className="legion-operator-log-card-header d-flex align-items-center justify-content-between flex-wrap gap-2">

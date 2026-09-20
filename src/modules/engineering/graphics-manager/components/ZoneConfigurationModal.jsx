@@ -121,7 +121,7 @@ export default function ZoneConfigurationModal({
   const bandDeg = clampTemperatureBandDeg(local.temperatureBandDeg);
 
   return (
-    <Modal show={show} onHide={onHide} size="lg" centered className="zone-config-modal">
+    <Modal show={show} onHide={onHide} size="lg" centered className="zone-config-modal engineering-light-form">
       <Modal.Header closeButton className="bg-primary border-light border-opacity-10">
         <Modal.Title className="text-white">Floor zone configuration</Modal.Title>
       </Modal.Header>

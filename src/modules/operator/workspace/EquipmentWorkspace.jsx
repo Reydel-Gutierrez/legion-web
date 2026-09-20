@@ -19,10 +19,13 @@ import {
   OperatorPointCommandField,
 } from "../equipment/OperatorPointCommandField";
 import EquipmentHeader from "./EquipmentHeader";
+import EquipmentWorkspaceTabs from "./EquipmentWorkspaceTabs";
 import EquipmentGraphicCard from "./EquipmentGraphicCard";
 import EquipmentTrendsCard from "./EquipmentTrendsCard";
 import EquipmentPointsCard from "./EquipmentPointsCard";
 import EquipmentDetailsCard from "./EquipmentDetailsCard";
+import EquipmentNetworkCard from "./EquipmentNetworkCard";
+import EquipmentPlaceholderCard from "./EquipmentPlaceholderCard";
 import EquipmentAlarmWorkspace from "./EquipmentAlarmWorkspace";
 import EquipmentOccupancyWorkspace from "./EquipmentOccupancyWorkspace";
 import EquipmentTrendWorkspace from "./EquipmentTrendWorkspace";
@@ -34,8 +37,6 @@ export default function EquipmentWorkspace({
   tree,
   selectedNode,
   siteKey,
-  commandIntent,
-  onCommandIntentHandled,
   onSelectNode,
   siteAlarms = [],
 }) {
@@ -61,7 +62,7 @@ export default function EquipmentWorkspace({
 
   const [expandedId, setExpandedId] = useState(null);
   const [clockTick, setClockTick] = useState(() => Date.now());
-  const [workspaceMode, setWorkspaceMode] = useState(null);
+  const [activeTab, setActiveTab] = useState("overview");
   const [schedules, setSchedules] = useState([]);
   const [scheduleLoadError, setScheduleLoadError] = useState("");
   const [commandModalRow, setCommandModalRow] = useState(null);
@@ -69,29 +70,6 @@ export default function EquipmentWorkspace({
   const [alarmModalRow, setAlarmModalRow] = useState(null);
   const [commandValue, setCommandValue] = useState("");
   const [serviceStateChoice, setServiceStateChoice] = useState("in_service");
-  const [configuredAlarmCount, setConfiguredAlarmCount] = useState(0);
-  const [configuredTrendCount, setConfiguredTrendCount] = useState(0);
-  const trendEquipmentId = equipment ? equipment.id : null;
-  useEffect(() => {
-    let active = true;
-    setConfiguredTrendCount(0);
-    operatorDefinitionsRepository.fetchTrendStore(siteKey).then((store) => {
-      if (active) setConfiguredTrendCount(store.assignments.filter((assignment) => assignment.enabled && String(assignment.assetId) === String(trendEquipmentId)).length);
-    }).catch(() => {});
-    return () => { active = false; };
-  }, [siteKey, trendEquipmentId, workspaceMode]);
-
-  const refreshAlarmCount = useCallback(async () => {
-    if (!siteKey || !equipment?.id) return;
-    try {
-      const defs = await operatorRepository.listOperatorAlarmDefinitions(siteKey, { equipmentId: equipment.id });
-      setConfiguredAlarmCount(Array.isArray(defs) ? defs.length : 0);
-    } catch {
-      setConfiguredAlarmCount(0);
-    }
-  }, [siteKey, equipment?.id]);
-
-  useEffect(() => { refreshAlarmCount(); }, [refreshAlarmCount]);
 
   useEffect(() => {
     const id = window.setInterval(() => setClockTick(Date.now()), 30000);
@@ -165,22 +143,6 @@ export default function EquipmentWorkspace({
     [live.displayPoints, live.pointUiState]
   );
 
-  useEffect(() => {
-    if (!commandIntent) return;
-    if (commandIntent === "command" || commandIntent === "alarm") {
-      const first = live.displayPoints[0];
-      if (first) {
-        if (commandIntent === "alarm") {
-          setWorkspaceMode("alarms");
-          setAlarmModalRow(first);
-        } else {
-          openPointCommandModal(first);
-        }
-      }
-    }
-    if (onCommandIntentHandled) onCommandIntentHandled();
-  }, [commandIntent, live.displayPoints, openPointCommandModal, onCommandIntentHandled]);
-
   const closeCommandModal = useCallback(() => {
     setShowCommandModal(false);
     setCommandModalRow(null);
@@ -234,16 +196,6 @@ export default function EquipmentWorkspace({
   const commandApplyDisabled = modalProfile.mode === "typed" && modalProfile.allOperational === false;
   const displayName = equipment?.displayLabel || equipment?.name || "Equipment";
 
-  if (workspaceMode === "alarms") {
-    return <EquipmentAlarmWorkspace equipment={equipment} points={live.displayPoints} alarms={siteAlarms} releaseData={releaseData} siteKey={siteKey} initialPoint={alarmModalRow} onBack={() => setWorkspaceMode(null)} onSaved={refreshAlarmCount} />;
-  }
-  if (workspaceMode === "occupancy") {
-    return <EquipmentOccupancyWorkspace equipment={equipment} schedules={schedules} occupancy={occupancy} currentUser={currentUser} now={new Date(clockTick)} siteKey={siteKey} onBack={() => setWorkspaceMode(null)} onSchedulesChange={(next) => { setSchedules(next || []); setClockTick(Date.now()); }} />;
-  }
-  if (workspaceMode === "trends") {
-    return <EquipmentTrendWorkspace equipment={equipment} releaseData={releaseData} siteKey={siteKey} onBack={() => setWorkspaceMode(null)} onSaved={() => setConfiguredTrendCount((count) => count + 1)} />;
-  }
-
   if (!equipment) {
     return (
       <div className="operator-placeholder">
@@ -260,6 +212,14 @@ export default function EquipmentWorkspace({
     );
   }
 
+  const detailsExtras = {
+    commHeadline: live.commHeadline,
+    lastSeenAt: live.lastSeen,
+    controllerCode: live.persistedDbController?.controllerCode,
+    protocol: live.runtimeForEquipment?.protocol || live.persistedDbController?.protocol,
+  };
+  const backToOverview = () => setActiveTab("overview");
+
   return (
     <div className={`equipment-workspace${expandedId ? ` is-expanded-${expandedId}` : ""}`}>
       {scheduleLoadError ? <div role="alert" className="alert alert-warning">Schedules could not be loaded: {scheduleLoadError}</div> : null}
@@ -269,59 +229,148 @@ export default function EquipmentWorkspace({
         equipment={equipment}
         location={location}
         commHeadline={live.commHeadline}
-        occupancy={occupancy}
-        onOpenSchedule={() => setWorkspaceMode("occupancy")}
-        onOpenAlarms={() => { setAlarmModalRow(null); setWorkspaceMode("alarms"); }}
-        onOpenTrends={() => setWorkspaceMode("trends")}
-        configuredTrendCount={configuredTrendCount}
         alarmCount={alarmCount}
-        configuredAlarmCount={configuredAlarmCount}
       />
-      {false && <div className="equipment-tool-strip">
-        <button type="button" className="equipment-tool-card" onClick={() => setWorkspaceMode("occupancy")}><span>Occupancy</span><strong>{occupancy?.label || "Unoccupied"}</strong><small>{occupancy?.source === "override" ? "Temporary override" : "Open weekly schedule"}</small></button>
-        <button type="button" className="equipment-tool-card equipment-tool-card--alarm" onClick={() => { setAlarmModalRow(null); setWorkspaceMode("alarms"); }}><span>Alarms</span><strong>{alarmCount} Active</strong><small>{configuredAlarmCount} Configured · Open logic workspace</small></button>
-      </div>}
-      <div className="equipment-workspace__grid">
-        <EquipmentGraphicCard
-          graphic={graphic}
-          points={live.pointsForGraphic}
-          onLinkClick={handleGraphicLinkClick}
-          expandedId={expandedId}
-          onToggleExpand={setExpandedId}
-        />
-        <EquipmentTrendsCard onConfigure={() => setWorkspaceMode("trends")}
-          siteKey={siteKey}
-          equipmentId={equipment.id}
-          displayPoints={live.displayPoints}
-          now={live.nowTick}
-          pollRateMs={live.pollMs}
-          expandedId={expandedId}
-          onToggleExpand={setExpandedId}
-        />
-        <EquipmentPointsCard
-          displayPoints={live.displayPoints}
-          pointUiState={live.pointUiState}
-          onSelectPoint={openPointCommandModal}
-          currentUser={currentUser}
-          expandedId={expandedId}
-          onToggleExpand={setExpandedId}
-          alarms={siteAlarms}
-          equipmentId={equipment.id}
-        />
-        <EquipmentDetailsCard
-          releaseData={releaseData}
-          equipment={equipment}
-          graphic={graphic}
-          extras={{
-            commHeadline: live.commHeadline,
-            lastSeenAt: live.lastSeen,
-            controllerCode: live.persistedDbController?.controllerCode,
-            protocol: live.runtimeForEquipment?.protocol || live.persistedDbController?.protocol,
-          }}
-          expandedId={expandedId}
-          onToggleExpand={setExpandedId}
-        />
-      </div>
+      <EquipmentWorkspaceTabs activeTab={activeTab} onChange={setActiveTab} />
+
+      {activeTab === "overview" && (
+        <div className="equipment-workspace__grid">
+          <EquipmentGraphicCard
+            graphic={graphic}
+            points={live.pointsForGraphic}
+            onLinkClick={handleGraphicLinkClick}
+            expandedId={expandedId}
+            onToggleExpand={setExpandedId}
+          />
+          <EquipmentTrendsCard onConfigure={() => setActiveTab("trends")}
+            siteKey={siteKey}
+            equipmentId={equipment.id}
+            displayPoints={live.displayPoints}
+            now={live.nowTick}
+            pollRateMs={live.pollMs}
+            expandedId={expandedId}
+            onToggleExpand={setExpandedId}
+          />
+          <EquipmentPointsCard
+            displayPoints={live.displayPoints}
+            pointUiState={live.pointUiState}
+            onSelectPoint={openPointCommandModal}
+            currentUser={currentUser}
+            expandedId={expandedId}
+            onToggleExpand={setExpandedId}
+            alarms={siteAlarms}
+            equipmentId={equipment.id}
+          />
+          <EquipmentDetailsCard
+            releaseData={releaseData}
+            equipment={equipment}
+            graphic={graphic}
+            extras={detailsExtras}
+            expandedId={expandedId}
+            onToggleExpand={setExpandedId}
+          />
+        </div>
+      )}
+
+      {activeTab === "points" && (
+        <div className="equipment-workspace__single">
+          <EquipmentPointsCard
+            displayPoints={live.displayPoints}
+            pointUiState={live.pointUiState}
+            onSelectPoint={openPointCommandModal}
+            currentUser={currentUser}
+            expandedId="points"
+            onToggleExpand={backToOverview}
+            alarms={siteAlarms}
+            equipmentId={equipment.id}
+          />
+        </div>
+      )}
+
+      {activeTab === "graphics" && (
+        <div className="equipment-workspace__single">
+          <EquipmentGraphicCard
+            graphic={graphic}
+            points={live.pointsForGraphic}
+            onLinkClick={handleGraphicLinkClick}
+            expandedId="graphic"
+            onToggleExpand={backToOverview}
+          />
+        </div>
+      )}
+
+      {activeTab === "network" && (
+        <div className="equipment-workspace__single">
+          <EquipmentNetworkCard
+            releaseData={releaseData}
+            equipment={equipment}
+            graphic={graphic}
+            extras={detailsExtras}
+            expandedId="network"
+            onToggleExpand={backToOverview}
+          />
+        </div>
+      )}
+
+      {activeTab === "alarms" && (
+        <div className="equipment-workspace__single">
+          <EquipmentAlarmWorkspace
+            equipment={equipment}
+            points={live.displayPoints}
+            alarms={siteAlarms}
+            releaseData={releaseData}
+            siteKey={siteKey}
+            initialPoint={alarmModalRow}
+            onBack={backToOverview}
+          />
+        </div>
+      )}
+
+      {activeTab === "trends" && (
+        <div className="equipment-workspace__single">
+          <EquipmentTrendWorkspace
+            equipment={equipment}
+            releaseData={releaseData}
+            siteKey={siteKey}
+            onBack={backToOverview}
+          />
+        </div>
+      )}
+
+      {activeTab === "schedule" && (
+        <div className="equipment-workspace__single">
+          <EquipmentOccupancyWorkspace
+            equipment={equipment}
+            schedules={schedules}
+            occupancy={occupancy}
+            currentUser={currentUser}
+            now={new Date(clockTick)}
+            siteKey={siteKey}
+            onBack={backToOverview}
+            onSchedulesChange={(next) => { setSchedules(next || []); setClockTick(Date.now()); }}
+          />
+        </div>
+      )}
+
+      {activeTab === "logic" && (
+        <div className="equipment-workspace__single">
+          <EquipmentPlaceholderCard
+            title="Logic"
+            message="Logic configuration is not available yet."
+            onToggleExpand={backToOverview}
+          />
+        </div>
+      )}
+
+      {activeTab === "files" && (
+        <div className="equipment-workspace__single">
+          <EquipmentPlaceholderCard
+            title="Files"
+            message="File attachments are not available yet."
+            onToggleExpand={backToOverview}
+          />
+        </div>
+      )}
 
       <Modal
         centered
@@ -409,7 +458,7 @@ export default function EquipmentWorkspace({
               onClick={() => {
               if (commandModalRow) setAlarmModalRow(commandModalRow);
               setShowCommandModal(false);
-              setWorkspaceMode("alarms");
+              setActiveTab("alarms");
               }}
           >
               Configure Alarm

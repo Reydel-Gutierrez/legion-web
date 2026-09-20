@@ -4,7 +4,7 @@ import { Modal, Button } from "react-bootstrap";
 /** Placeholder for future multi-subnet / BBMD / directed who-is workflows */
 export default function AdvancedScanModal({ show, onHide }) {
   return (
-    <Modal show={show} onHide={onHide} centered contentClassName="bg-primary border border-light border-opacity-10 text-white">
+    <Modal show={show} onHide={onHide} centered className="engineering-light-form" contentClassName="bg-primary border border-light border-opacity-10 text-white">
       <Modal.Header closeButton closeVariant="white" className="border-light border-opacity-10">
         <Modal.Title className="h6">Advanced scan</Modal.Title>
       </Modal.Header>

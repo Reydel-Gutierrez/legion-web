@@ -34,6 +34,7 @@ export default function CreateTemplateModal({
       show={show}
       onHide={onHide}
       centered
+      className="engineering-light-form"
       contentClassName="bg-primary border border-light border-opacity-10 text-white"
     >
       <Modal.Header className="border-light border-opacity-10">

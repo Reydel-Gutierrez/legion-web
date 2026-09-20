@@ -13,6 +13,7 @@ import LegionSettings from "../../modules/operator/settings/SettingsPage";
 import OperatorShell from "../../modules/operator/shell/OperatorShell";
 
 import SiteBuilderPage from "../../modules/engineering/site-builder/SiteBuilderPage";
+import ArchiveManagerPage from "../../modules/engineering/archive-manager/ArchiveManagerPage";
 import EngineeringNetworkSection from "../../modules/engineering/network/EngineeringNetworkSection";
 import PointMappingPage from "../../modules/engineering/point-mapping/PointMappingPage";
 import GraphicsManagerPage from "../../modules/engineering/graphics-manager/GraphicsManagerPage";
@@ -21,10 +22,8 @@ import ValidationCenterPage from "../../modules/engineering/validation-center/Va
 import DeploymentPage from "../../modules/engineering/deployment/DeploymentPage";
 import UserManagerPage from "../../modules/engineering/user-manager/UserManagerPage";
 import BacnetExplorerPage from "../../modules/engineering/bacnet-explorer/BacnetExplorerPage";
+import EngineeringShell from "../../modules/engineering/shell/EngineeringShell";
 
-import Sidebar from "../layout/Sidebar";
-import Navbar from "../layout/Navbar";
-import Footer from "../layout/Footer";
 import Preloader from "../layout/Preloader";
 
 /** react-router-dom v6 has no <Redirect> — replaced by <Navigate>, used as a Route's element. */
@@ -37,37 +36,21 @@ function LegacyNetworkConfigurationRedirect() {
 
 /**
  * v6 layout wrappers: Route no longer takes a `render`/`component` prop, so these are now plain
- * components used as a Route's `element` (e.g. `element={<RouteWithSidebar><Page /></RouteWithSidebar>}`)
+ * components used as a Route's `element` (e.g. `element={<RouteWithEngineeringShell><Page /></RouteWithEngineeringShell>}`)
  * instead of wrapping <Route> themselves.
  */
-function RouteWithSidebar({ children }: { children?: ReactNode }) {
+function RouteWithEngineeringShell({ children }: { children?: ReactNode }) {
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
-    const timer = setTimeout(() => setLoaded(true), 1000);
+    const timer = setTimeout(() => setLoaded(true), 400);
     return () => clearTimeout(timer);
   }, []);
-
-  const localStorageIsSettingsVisible = () => {
-    return localStorage.getItem("settingsVisible") === "false" ? false : true;
-  };
-
-  const [showSettings, setShowSettings] = useState(localStorageIsSettingsVisible);
-
-  const toggleSettings = () => {
-    setShowSettings(!showSettings);
-    localStorage.setItem("settingsVisible", String(!showSettings));
-  };
 
   return (
     <>
       <Preloader show={!loaded} />
-      <Sidebar />
-      <main className="content legion-bg">
-        <Navbar />
-        {children}
-        <Footer toggleSettings={toggleSettings} showSettings={showSettings} />
-      </main>
+      <EngineeringShell>{children ?? null}</EngineeringShell>
     </>
   );
 }
@@ -161,92 +144,108 @@ export default function AppRoutes() {
       />
 
       <Route
+        path={AppRoutePaths.EngineeringHome.path}
+        element={
+          <RouteWithEngineeringShell>
+            <SiteBuilderPage />
+          </RouteWithEngineeringShell>
+        }
+      />
+      <Route
         path={AppRoutePaths.EngineeringSiteBuilder.path}
         element={
-          <RouteWithSidebar>
+          <RouteWithEngineeringShell>
             <SiteBuilderPage />
-          </RouteWithSidebar>
+          </RouteWithEngineeringShell>
+        }
+      />
+      <Route
+        path={AppRoutePaths.EngineeringArchiveManager.path}
+        element={
+          <RouteWithEngineeringShell>
+            <ArchiveManagerPage />
+          </RouteWithEngineeringShell>
         }
       />
       <Route
         path="/legion/engineering/network-discovery"
         element={
-          <RouteWithSidebar>
+          <RouteWithEngineeringShell>
             <LegacyNetworkDiscoveryRedirect />
-          </RouteWithSidebar>
+          </RouteWithEngineeringShell>
         }
       />
       <Route
         path="/legion/engineering/network-configuration"
         element={
-          <RouteWithSidebar>
+          <RouteWithEngineeringShell>
             <LegacyNetworkConfigurationRedirect />
-          </RouteWithSidebar>
+          </RouteWithEngineeringShell>
         }
       />
       {/* Trailing /* so the nested <Routes> inside EngineeringNetworkSection can match its own sub-paths. */}
       <Route
         path={`${AppRoutePaths.EngineeringNetwork.path}/*`}
         element={
-          <RouteWithSidebar>
+          <RouteWithEngineeringShell>
             <EngineeringNetworkSection />
-          </RouteWithSidebar>
+          </RouteWithEngineeringShell>
         }
       />
       <Route
         path={AppRoutePaths.EngineeringBacnetExplorer.path}
         element={
-          <RouteWithSidebar>
+          <RouteWithEngineeringShell>
             <BacnetExplorerPage />
-          </RouteWithSidebar>
+          </RouteWithEngineeringShell>
         }
       />
       <Route
         path={AppRoutePaths.EngineeringPointMapping.path}
         element={
-          <RouteWithSidebar>
+          <RouteWithEngineeringShell>
             <PointMappingPage />
-          </RouteWithSidebar>
+          </RouteWithEngineeringShell>
         }
       />
       <Route
         path={AppRoutePaths.EngineeringGraphicsManager.path}
         element={
-          <RouteWithSidebar>
+          <RouteWithEngineeringShell>
             <GraphicsManagerPage />
-          </RouteWithSidebar>
+          </RouteWithEngineeringShell>
         }
       />
       <Route
         path={AppRoutePaths.EngineeringTemplateLibrary.path}
         element={
-          <RouteWithSidebar>
+          <RouteWithEngineeringShell>
             <TemplateLibraryPage />
-          </RouteWithSidebar>
+          </RouteWithEngineeringShell>
         }
       />
       <Route
         path={AppRoutePaths.EngineeringValidationCenter.path}
         element={
-          <RouteWithSidebar>
+          <RouteWithEngineeringShell>
             <ValidationCenterPage />
-          </RouteWithSidebar>
+          </RouteWithEngineeringShell>
         }
       />
       <Route
         path={AppRoutePaths.EngineeringDeployment.path}
         element={
-          <RouteWithSidebar>
+          <RouteWithEngineeringShell>
             <DeploymentPage />
-          </RouteWithSidebar>
+          </RouteWithEngineeringShell>
         }
       />
       <Route
         path={AppRoutePaths.EngineeringUserManager.path}
         element={
-          <RouteWithSidebar>
+          <RouteWithEngineeringShell>
             <UserManagerPage />
-          </RouteWithSidebar>
+          </RouteWithEngineeringShell>
         }
       />
 

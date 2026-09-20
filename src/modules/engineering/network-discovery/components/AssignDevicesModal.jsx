@@ -51,6 +51,7 @@ export default function AssignDevicesModal({
       centered
       show={show}
       onHide={onHide}
+      className="engineering-light-form"
       contentClassName="bg-primary border border-light border-opacity-10 text-white assign-devices-modal"
     >
       <Modal.Header className="border-light border-opacity-10">

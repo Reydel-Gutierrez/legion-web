@@ -7,38 +7,21 @@ import { USE_HIERARCHY_API } from "../../../lib/data/config";
 import { hierarchyRepository } from "../../../lib/data";
 import { canMutateFacilityHierarchy } from "../../../lib/access/operatorPermissions";
 
-function siblingList(root, node) {
-  if (!root || !node) return [];
-  if (node.kind === "site") return [];
-  const parentKind = node.kind === "equipment" ? "floor" : node.kind === "floor" ? "building" : "site";
-  let parent = null;
-  function find(n) {
-    if (!n) return;
-    if ((n.children || []).some((c) => String(c.id) === String(node.id))) parent = n;
-    (n.children || []).forEach(find);
-  }
-  find(root);
-  if (!parent) return [];
-  return (parent.children || []).filter((c) => c.kind === node.kind);
-}
-
 export default function SidebarUtilityControls({
   currentUser,
   selectedNode,
-  tree,
   onRefresh,
+  reorderMode,
+  onToggleReorderMode,
 }) {
   const navigate = useNavigate();
   const canMutate = canMutateFacilityHierarchy(currentUser);
   const [plusOpen, setPlusOpen] = useState(false);
-  const [organizeOpen, setOrganizeOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
 
-  const siblings = useMemo(() => siblingList(tree, selectedNode), [tree, selectedNode]);
   const childCount = selectedNode?.children?.length || 0;
-  const persistSupported = USE_HIERARCHY_API && canMutate;
 
   const plusItems = useMemo(() => {
     const items = [];
@@ -105,7 +88,6 @@ export default function SidebarUtilityControls({
           aria-label="Add"
           onClick={() => {
             setPlusOpen((v) => !v);
-            setOrganizeOpen(false);
             setConfirmDelete(false);
           }}
         >
@@ -120,19 +102,18 @@ export default function SidebarUtilityControls({
           onClick={() => {
             setConfirmDelete((v) => !v);
             setPlusOpen(false);
-            setOrganizeOpen(false);
           }}
         >
           <FontAwesomeIcon icon={faMinus} />
         </button>
         <button
           type="button"
-          className="sidebar-utils__icon"
-          title="Organize"
-          aria-label="Organize"
-          disabled={!canMutate || !selectedNode || selectedNode.kind === "site"}
+          className={`sidebar-utils__icon${reorderMode ? " is-active" : ""}`}
+          title={reorderMode ? "Done organizing" : "Organize"}
+          aria-label={reorderMode ? "Done organizing equipment order" : "Organize equipment order"}
+          aria-pressed={reorderMode}
           onClick={() => {
-            setOrganizeOpen((v) => !v);
+            onToggleReorderMode();
             setPlusOpen(false);
             setConfirmDelete(false);
           }}
@@ -140,6 +121,12 @@ export default function SidebarUtilityControls({
           <FontAwesomeIcon icon={faArrowsAltV} />
         </button>
       </div>
+
+      {reorderMode ? (
+        <p className="sidebar-utils__hint">
+          Use the arrows next to each equipment in the tree to move it up or down within its floor.
+        </p>
+      ) : null}
 
       {plusOpen ? (
         <ul className="sidebar-utils__menu">
@@ -169,31 +156,6 @@ export default function SidebarUtilityControls({
               Confirm
             </button>
           </div>
-        </div>
-      ) : null}
-
-      {organizeOpen ? (
-        <div className="sidebar-utils__panel">
-          <p className="sidebar-utils__panel-title">Organize</p>
-          {!persistSupported ? (
-            <p className="sidebar-utils__warn">
-              Reorder is not persisted from Operator. Use Engineering → Site Builder to change hierarchy order.
-            </p>
-          ) : (
-            <p className="sidebar-utils__warn">
-              Moving objects between parents is available in Site Builder. Sibling order uses existing sort fields there.
-            </p>
-          )}
-          <ul className="sidebar-utils__siblings">
-            {siblings.map((s) => (
-              <li key={s.id} className={String(s.id) === String(selectedNode?.id) ? "is-current" : ""}>
-                {s.label}
-              </li>
-            ))}
-          </ul>
-          <button type="button" onClick={() => navigate(Routes.EngineeringSiteBuilder.path)}>
-            Open Site Builder
-          </button>
         </div>
       ) : null}
 

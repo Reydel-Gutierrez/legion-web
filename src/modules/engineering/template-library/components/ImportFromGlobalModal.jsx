@@ -272,7 +272,7 @@ export default function ImportFromGlobalModal({
         size="xl"
         enforceFocus={false}
         contentClassName="bg-primary border border-light border-opacity-10 text-white"
-        className="template-library-import-modal"
+        className="template-library-import-modal engineering-light-form"
       >
         <Modal.Header className="border-light border-opacity-10">
           <Modal.Title className="text-white fw-bold h6">
@@ -591,6 +591,7 @@ export default function ImportFromGlobalModal({
         size="md"
         enforceFocus={false}
         dialogClassName="global-library-nested-modal"
+        className="engineering-light-form"
         contentClassName="bg-primary border border-light border-opacity-10 text-white"
       >
         <Modal.Header className="border-light border-opacity-10">
@@ -662,6 +663,7 @@ export default function ImportFromGlobalModal({
         size="sm"
         enforceFocus={false}
         dialogClassName="global-library-nested-modal"
+        className="engineering-light-form"
         contentClassName="bg-primary border border-light border-opacity-10 text-white"
       >
         <Modal.Header className="border-light border-opacity-10">

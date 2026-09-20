@@ -22,7 +22,6 @@ import {
   faCheck,
 } from "@fortawesome/free-solid-svg-icons";
 
-import LegionHeroHeader from "../../../components/legion/LegionHeroHeader";
 import LegionDrawer from "../../../components/legion/LegionDrawer";
 import { engineeringRepository } from "../../../lib/data";
 import { CATEGORY, SEVERITY, READINESS_STATUS } from "../../../lib/data/repositories/engineeringRepository";
@@ -177,11 +176,6 @@ export default function ValidationCenterPage() {
 
   return (
     <Container fluid className="px-0">
-      <div className="px-3 px-md-4 pt-3">
-        <LegionHeroHeader />
-        <hr className="border-light border-opacity-25 my-3" />
-      </div>
-
       <div className="px-3 px-md-4 pb-4">
         <Card className="legion-operator-log-card bg-primary border border-light border-opacity-10 shadow-sm">
           <Card.Header className="legion-operator-log-card-header d-flex align-items-center justify-content-between flex-wrap gap-2">

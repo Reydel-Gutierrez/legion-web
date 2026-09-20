@@ -95,10 +95,9 @@ export default function DiscoverDevicesModal({
   const devices = discoverResult?.devices || [];
 
   return (
-    <Modal show={show} onHide={onHide} size="lg" centered className="bacnet-discover-modal">
+    <Modal show={show} onHide={onHide} size="lg" centered className="bacnet-discover-modal engineering-light-form">
       <Modal.Header
         closeButton
-        closeVariant="white"
         className="bacnet-discover-modal__header legion-operator-log-card-header"
       >
         <Modal.Title className="text-white fw-bold text-uppercase mb-0">

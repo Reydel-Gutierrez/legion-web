@@ -20,7 +20,6 @@ import {
 import { useNavigate } from "react-router-dom";
 import { useSite } from "../../../app/providers/SiteProvider";
 import { useWorkingVersion } from "../../../hooks/useWorkingVersion";
-import LegionHeroHeader from "../../../components/legion/LegionHeroHeader";
 import { engineeringRepository } from "../../../lib/data";
 import { USE_HIERARCHY_API } from "../../../lib/data/config";
 import { isBackendSiteId } from "../../../lib/data/siteIdUtils";
@@ -419,11 +418,6 @@ export default function TemplateLibraryPage() {
 
   return (
     <Container fluid className="px-0">
-      <div className="px-3 px-md-4 pt-3">
-        <LegionHeroHeader />
-        <hr className="border-light border-opacity-25 my-3" />
-      </div>
-
       <div className="px-3 px-md-4 pb-4">
         <Card className="legion-operator-log-card bg-primary border border-light border-opacity-10 shadow-sm">
           <Card.Header className="legion-operator-log-card-header d-flex align-items-center justify-content-between flex-wrap gap-2">

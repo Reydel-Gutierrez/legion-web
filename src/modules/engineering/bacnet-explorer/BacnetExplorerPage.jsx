@@ -3,7 +3,6 @@ import { Card, Container } from "react-bootstrap";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faProjectDiagram } from "@fortawesome/free-solid-svg-icons";
 
-import LegionHeroHeader from "../../../components/legion/LegionHeroHeader";
 import {
   fetchExplorerDevices,
   fetchDeviceTree,
@@ -251,11 +250,6 @@ export default function BacnetExplorerPage() {
   return (
     <Container fluid className="px-0 bacnet-explorer-page">
       <div className="bacnet-explorer-page__shell">
-        <div className="bacnet-explorer-page__hero px-3 px-md-4 pt-3">
-          <LegionHeroHeader />
-          <hr className="border-light border-opacity-25 my-3" />
-        </div>
-
         <div className="bacnet-explorer-page__workspace px-3 px-md-4 pb-3">
           <Card className="legion-operator-log-card bg-primary border border-light border-opacity-10 shadow-sm bacnet-explorer-card">
             <Card.Header className="legion-operator-log-card-header">

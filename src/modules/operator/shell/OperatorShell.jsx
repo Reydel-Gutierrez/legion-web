@@ -26,16 +26,6 @@ import OperatorTopBar from "./OperatorTopBar";
 import OperatorWorkspace from "../workspace/OperatorWorkspace";
 import Ls100ConsolePanel from "../workspace/Ls100ConsolePanel";
 
-const SIDEBAR_KEY = "legionOperatorSidebarContracted";
-
-function readContracted() {
-  try {
-    return localStorage.getItem(SIDEBAR_KEY) === "true";
-  } catch {
-    return false;
-  }
-}
-
 export default function OperatorShell({ children }) {
   const navigate = useNavigate();
   const location = useLocation();
@@ -53,8 +43,6 @@ export default function OperatorShell({ children }) {
 
   const [dashboardMode, setDashboardMode] = useState("operator");
   const [expandedIds, setExpandedIds] = useState(() => new Set());
-  const [contracted, setContracted] = useState(readContracted);
-  const [commandIntent, setCommandIntent] = useState(null);
   const [refreshNonce, setRefreshNonce] = useState(0);
 
   const parsed = useMemo(
@@ -96,14 +84,6 @@ export default function OperatorShell({ children }) {
     document.body.classList.add("operator-shell-active");
     return () => document.body.classList.remove("operator-shell-active");
   }, []);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(SIDEBAR_KEY, contracted ? "true" : "false");
-    } catch {
-      /* ignore */
-    }
-  }, [contracted]);
 
   useEffect(() => {
     if (!selectedNode) return;
@@ -170,7 +150,7 @@ export default function OperatorShell({ children }) {
 
   return (
     <OperatorChromeProvider hideHero variant="shell">
-      <div className={`operator-shell${contracted ? " operator-shell--sidebar-collapsed" : ""}`}>
+      <div className="operator-shell">
         <FacilitySidebar
           tree={annotatedTree || tree}
           selectedNode={displaySelected || selectedNode}
@@ -179,9 +159,6 @@ export default function OperatorShell({ children }) {
           onSelect={onSelect}
           currentUser={currentUser}
           onRefresh={() => setRefreshNonce((n) => n + 1)}
-          onCommandPoints={setCommandIntent}
-          contracted={contracted}
-          onToggleContracted={() => setContracted((v) => !v)}
         />
         <div className="operator-shell__main">
           <OperatorTopBar
@@ -204,8 +181,6 @@ export default function OperatorShell({ children }) {
                 tree={annotatedTree || tree}
                 selectedNode={displaySelected || selectedNode}
                 siteKey={siteKey}
-                commandIntent={commandIntent}
-                onCommandIntentHandled={() => setCommandIntent(null)}
                 onSelectNode={onSelect}
                 siteAlarms={alarms}
               />

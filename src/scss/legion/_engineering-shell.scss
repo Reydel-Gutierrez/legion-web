@@ -1,0 +1,841 @@
+// Legion Engineering shell — a direct visual duplicate of the Operator shell for now.
+// The sidebar (EngineeringFacilitySidebar) and top bar (EngineeringTopBar) render Operator's
+// actual components/classes (.facility-sidebar, .operator-topbar, .operator-user, .operator-menu,
+// .operator-search, .sidebar-utils — all plain, unscoped selectors defined in _operator-shell.scss),
+// so this file only needs the shell's own layout scaffolding plus a few Engineering-only leftovers
+// (light-theme form overrides, simple list/button styles still used by Site Builder and the
+// equipment workspace's non-overview tabs). Nothing here should re-introduce Engineering-specific
+// sidebar/topbar colors — see the parent task: Engineering should look like a duplicate of Operator.
+
+$eng-bg: #f3f5f7;
+$eng-card: #ffffff;
+$eng-border: #e4e8ee;
+$eng-text: #1b2430;
+$eng-muted: #6b7785;
+$eng-gold: #b3790a;
+$eng-gold-soft: #faf1de;
+
+// Gruvbox-light-inspired sidebar + top bar palette — clearly distinct from Operator's neutral-cool
+// chrome ($op-sidebar #f7f8fa / $op-bg #f3f5f7), so Engineering's chrome alone tells the two shells
+// apart at a glance while staying inside the same light theme.
+$eng-sidebar-bg: #f9f5d7;
+$eng-sidebar-border: #ebdbb2;
+$eng-sidebar-fg: #504945;
+$eng-sidebar-muted: #7c6f64;
+$eng-sidebar-title-fg: #3c3836;
+$eng-sidebar-hover-bg: #f0e9c4;
+$eng-sidebar-active-bg: #ebdbb2;
+$eng-sidebar-accent: #af3a03;
+
+.engineering-shell {
+  display: flex;
+  height: 100vh;
+  width: 100%;
+  overflow: hidden;
+  background: $eng-bg;
+  color: $eng-text;
+  font-family: "Nunito Sans", "Segoe UI", sans-serif;
+  font-size: 13.5px;
+}
+
+.engineering-shell__main {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  background: $eng-bg;
+}
+
+.engineering-shell__workspace {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding: 16px 20px 18px;
+}
+
+// ---------------------------------------------------------------------------
+// Sidebar palette — the sidebar itself is Operator's actual .facility-sidebar/.facility-tree (see
+// EngineeringFacilitySidebar), so these are scoped color overrides layered on top of it, not a
+// separate theme. Covers background/border/text, the brand wordmark, tree row hover + active state,
+// and the Add/Remove utility icons, so the accent reads consistently everywhere in the sidebar.
+// ---------------------------------------------------------------------------
+
+.engineering-shell .facility-sidebar {
+  background: $eng-sidebar-bg;
+  border-right-color: $eng-sidebar-border;
+}
+
+.engineering-shell .facility-sidebar__brand {
+  border-bottom-color: $eng-sidebar-border;
+}
+
+.engineering-shell .legion-logo__controls {
+  color: $eng-sidebar-title-fg;
+}
+
+.engineering-shell .facility-tree__children > .facility-tree__item::before,
+.engineering-shell .facility-tree__children > .facility-tree__item::after {
+  border-color: $eng-sidebar-border;
+}
+
+.engineering-shell .facility-tree__hit {
+  color: $eng-sidebar-fg;
+}
+
+.engineering-shell .facility-tree__icon,
+.engineering-shell .facility-tree__twist {
+  color: $eng-sidebar-muted;
+}
+
+.engineering-shell .facility-tree__row:hover {
+  background: $eng-sidebar-hover-bg;
+}
+
+.engineering-shell .facility-tree__row.is-selected {
+  background: $eng-sidebar-active-bg;
+
+  .facility-tree__hit {
+    color: $eng-sidebar-title-fg;
+    font-weight: 600;
+  }
+
+  .facility-tree__icon {
+    color: $eng-sidebar-accent;
+  }
+}
+
+.engineering-shell .facility-tree__reorder-btn {
+  border-color: $eng-sidebar-border;
+  color: $eng-sidebar-fg;
+
+  &:hover:not(:disabled) {
+    border-color: $eng-sidebar-accent;
+    color: $eng-sidebar-accent;
+  }
+}
+
+.engineering-shell .sidebar-utils {
+  border-bottom-color: $eng-sidebar-border;
+}
+
+.engineering-shell .sidebar-utils__icon {
+  border-color: $eng-sidebar-border;
+  background: rgba($eng-sidebar-title-fg, 0.05);
+  color: $eng-sidebar-fg;
+
+  &:hover:not(:disabled) {
+    border-color: $eng-sidebar-accent;
+    color: $eng-sidebar-accent;
+  }
+}
+
+.engineering-shell .sidebar-utils__icon.is-active {
+  border-color: $eng-sidebar-accent;
+  background: $eng-sidebar-active-bg;
+  color: $eng-sidebar-accent;
+}
+
+.engineering-shell .sidebar-utils__menu {
+  border-color: $eng-sidebar-border;
+
+  button:hover:not(:disabled) {
+    background: $eng-sidebar-hover-bg;
+    color: $eng-sidebar-title-fg;
+  }
+}
+
+.engineering-shell .facility-sidebar__link {
+  color: $eng-sidebar-muted;
+
+  &:hover {
+    color: $eng-sidebar-title-fg;
+  }
+}
+
+.engineering-shell .facility-sidebar__footer {
+  color: $eng-sidebar-muted;
+}
+
+// ---------------------------------------------------------------------------
+// Top bar palette — the top bar itself is Operator's actual .operator-topbar/.operator-search/
+// .operator-user/.operator-menu/.dashboard-mode-selector (see EngineeringTopBar), so these are
+// scoped color overrides layered on top of it, matching the sidebar's palette above.
+// ---------------------------------------------------------------------------
+
+.engineering-shell .operator-topbar {
+  background: $eng-sidebar-bg;
+  border-bottom-color: $eng-sidebar-border;
+}
+
+.engineering-shell .dashboard-mode-selector__toggle,
+.engineering-shell .dashboard-mode-selector--static {
+  color: $eng-sidebar-title-fg;
+}
+
+.engineering-shell .dashboard-mode-selector__menu {
+  border-color: $eng-sidebar-border;
+}
+
+.engineering-shell .dashboard-mode-selector__option:hover {
+  background: $eng-sidebar-hover-bg;
+}
+
+.engineering-shell .dashboard-mode-selector__option.is-active {
+  background: $eng-sidebar-active-bg;
+  color: $eng-sidebar-accent;
+}
+
+.engineering-shell .operator-search {
+  // The Archive/Templates/Graphics/Network/Tools toolbar (with icons + labels) eats a lot of the
+  // topbar's width, so keep the search box from getting flex-shrunk down to nothing — it collapses
+  // to icon-only via the breakpoint below well before this box would.
+  min-width: 140px;
+}
+
+.engineering-shell .operator-search__input {
+  background: rgba($eng-sidebar-title-fg, 0.06);
+  color: $eng-sidebar-fg;
+
+  &::placeholder {
+    color: $eng-sidebar-muted;
+  }
+
+  &:focus {
+    outline-color: rgba($eng-sidebar-accent, 0.35);
+    background: $eng-card;
+  }
+}
+
+.engineering-shell .operator-search__results {
+  border-color: $eng-sidebar-border;
+}
+
+.engineering-shell .operator-search__hit:hover {
+  background: $eng-sidebar-hover-bg;
+}
+
+.engineering-shell .operator-topbar__right {
+  color: $eng-sidebar-muted;
+}
+
+// The currently open archive's name — click to rename. Sits in .operator-topbar__right, ahead of
+// Logs, so it reads like a document title next to the rest of the account/utility cluster.
+.engineering-archive-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid $eng-sidebar-border;
+  background: rgba($eng-sidebar-title-fg, 0.05);
+  color: $eng-sidebar-title-fg;
+  font-weight: 700;
+  font-size: 12.5px;
+  padding: 5px 10px;
+  border-radius: 6px;
+  max-width: 220px;
+
+  &:hover {
+    border-color: $eng-sidebar-accent;
+    background: $eng-sidebar-hover-bg;
+  }
+}
+
+.engineering-archive-name__label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.engineering-archive-name__icon {
+  font-size: 10px;
+  color: $eng-sidebar-muted;
+  flex-shrink: 0;
+}
+
+.engineering-shell .operator-topbar__text-btn,
+.engineering-shell .operator-topbar__icon-btn {
+  color: $eng-sidebar-muted;
+
+  &:hover {
+    color: $eng-sidebar-title-fg;
+  }
+}
+
+.engineering-shell .operator-user:hover {
+  background: $eng-sidebar-hover-bg;
+}
+
+.engineering-shell .operator-user__avatar {
+  background: $eng-sidebar-accent;
+}
+
+.engineering-shell .operator-user__name {
+  color: $eng-sidebar-title-fg;
+}
+
+.engineering-shell .operator-user__role {
+  color: $eng-sidebar-muted;
+}
+
+.engineering-shell .operator-menu {
+  border-color: $eng-sidebar-border;
+}
+
+.engineering-shell .operator-menu__item {
+  color: $eng-sidebar-fg;
+
+  &:hover {
+    background: $eng-sidebar-hover-bg;
+    color: $eng-sidebar-title-fg;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// File / Library / Network / Tools menu bar — sits next to Operator's DashboardModeSelector in the
+// reused .operator-topbar, styled to match the same warm palette.
+// ---------------------------------------------------------------------------
+
+.engineering-tools-menus {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+  // Extra breathing room from the mode selector and the search bar, on top of the topbar's own
+  // flex gap, so the toolbar reads as its own cluster rather than crowding its neighbors.
+  margin: 0 20px;
+}
+
+.engineering-tools-menu {
+  position: relative;
+}
+
+.engineering-tools-menu__toggle {
+  border: 0;
+  background: transparent;
+  color: $eng-sidebar-title-fg;
+  font-weight: 600;
+  font-size: 13px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 9px;
+  border-radius: 6px;
+  text-decoration: none;
+
+  &:hover {
+    background: $eng-sidebar-hover-bg;
+    text-decoration: none;
+  }
+}
+
+.engineering-tools-menu.is-active .engineering-tools-menu__toggle,
+.engineering-tools-menu__toggle.is-active {
+  color: $eng-sidebar-accent;
+
+  .engineering-tools-menu__icon {
+    color: $eng-sidebar-accent;
+  }
+}
+
+.engineering-tools-menu__icon {
+  font-size: 13px;
+  color: $eng-sidebar-muted;
+}
+
+.engineering-tools-menu__chevron {
+  font-size: 9px;
+  opacity: 0.6;
+}
+
+.engineering-tools-menu__dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 40;
+  list-style: none;
+  margin: 4px 0 0;
+  padding: 6px 0;
+  min-width: 230px;
+  background: $eng-card;
+  border: 1px solid $eng-sidebar-border;
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(60, 56, 54, 0.16);
+}
+
+.engineering-tools-menu__item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  padding: 8px 12px;
+  font-size: 13px;
+  color: $eng-sidebar-fg;
+  text-decoration: none;
+
+  &:hover {
+    background: $eng-sidebar-hover-bg;
+    color: $eng-sidebar-title-fg;
+  }
+
+  &.is-active {
+    color: $eng-sidebar-accent;
+    font-weight: 700;
+  }
+}
+
+.engineering-tools-menu__item-icon {
+  font-size: 12px;
+  color: $eng-sidebar-muted;
+  width: 14px;
+}
+
+.engineering-tools-menu__item.is-danger {
+  color: #d64545;
+
+  .engineering-tools-menu__item-icon {
+    color: #d64545;
+  }
+
+  &:hover {
+    background: rgba(214, 69, 69, 0.1);
+    color: #d64545;
+  }
+}
+
+.engineering-tools-menu__divider {
+  height: 1px;
+  background: $eng-sidebar-border;
+  margin: 4px 0;
+}
+
+// Seven icon+label tabs plus the mode selector, search, and full account name/role can outgrow
+// even a fairly wide window. Rather than let the search box or the right-side account menu get
+// shoved off-screen, drop the tab labels (icons + tooltips remain — it reads as a toolbar either
+// way) and the account name/role once space gets tight — well before Operator's own (much
+// narrower) breakpoints would kick in, since Engineering's topbar carries more content.
+@media (max-width: 1650px) {
+  .engineering-tools-menu__toggle span,
+  .engineering-tools-menu__toggle--link span {
+    display: none;
+  }
+
+  .engineering-tools-menu__toggle {
+    padding: 7px 8px;
+  }
+
+  .engineering-tools-menus {
+    margin: 0 10px;
+    gap: 0;
+  }
+
+  .engineering-shell .operator-user__meta {
+    display: none;
+  }
+
+  .engineering-shell .operator-topbar__text-btn span {
+    display: none;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Misc reused button/list styles (Site Builder toolbar, equipment workspace tabs)
+// ---------------------------------------------------------------------------
+
+.engineering-btn {
+  border: 1px solid $eng-border;
+  background: #fff;
+  color: $eng-text;
+  font-weight: 600;
+  font-size: 12.5px;
+  padding: 7px 12px;
+  border-radius: 6px;
+  white-space: nowrap;
+
+  &:hover {
+    border-color: $eng-gold;
+  }
+}
+
+.engineering-btn--primary {
+  background: $eng-gold;
+  border-color: $eng-gold;
+  color: #fff;
+
+  &:hover {
+    background: darken($eng-gold, 6%);
+  }
+}
+
+.engineering-simple-list {
+  list-style: none;
+  margin: 0 0 10px;
+  padding: 0;
+
+  li {
+    padding: 6px 0;
+    border-bottom: 1px solid $eng-border;
+    font-size: 13px;
+    color: $eng-text;
+
+    &:last-child {
+      border-bottom: 0;
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Light-theme override for reused Site Builder / Equipment forms (NodeEditorPanel,
+// EquipmentEditorPanel) AND every Engineering modal. Those components carry the app's original dark
+// Bootstrap utility classes (bg-primary, text-white, bg-dark bg-opacity-*, border-light) inherited
+// from the rest of the app's dark theme. Rather than rewrite every Form.Control/Modal.Body in those
+// files, this scoped override forces them light wherever mounted.
+//
+// Bootstrap Modals render via a portal appended to <body>, outside the .engineering-shell DOM tree
+// entirely, so the usual ".engineering-shell .some-class" descendant scoping can't reach them. Every
+// Engineering modal instead gets `engineering-light-form` added directly to its own `className`
+// (react-bootstrap passes that to the modal's root element, which wraps .modal-dialog/.modal-content/
+// header/body/footer as real descendants) so the same override rules below apply to it too.
+// ---------------------------------------------------------------------------
+
+.engineering-light-form,
+.engineering-shell__workspace {
+  .card,
+  .bg-primary {
+    background: $eng-card !important;
+    color: $eng-text !important;
+    border-color: $eng-border !important;
+  }
+
+  // Higher specificity than volt/layout's `.card.legion-operator-log-card > .card-header...`
+  // (also !important), which would otherwise keep this header bar dark inside the light shell.
+  .card.legion-operator-log-card > .card-header.legion-operator-log-card-header {
+    background-color: $eng-gold-soft !important;
+    border-bottom-color: $eng-border !important;
+  }
+
+  .text-white {
+    color: $eng-text !important;
+  }
+
+  .text-white-50 {
+    color: $eng-muted !important;
+  }
+
+  // Bootstrap Reboot sets <code>'s own color (var(--bs-code-color), white in the app's dark theme)
+  // rather than inheriting it, so a light-themed parent's text-white-50/text-white has no effect on it.
+  code {
+    color: inherit !important;
+  }
+
+  // volt/layout's `.card.bg-primary .form-label, .card.bg-primary .small` (also !important) targets
+  // .small/.form-label directly, which beats an inherited color from a lighter-themed ancestor —
+  // match its selector (with one more ancestor class) so specificity actually wins here.
+  .card.bg-primary .form-label,
+  .card.bg-primary .small {
+    color: $eng-muted !important;
+  }
+
+  .bg-dark {
+    background: #f7f9fb !important;
+  }
+
+  .border-light,
+  .border-secondary {
+    border-color: $eng-border !important;
+  }
+
+  .btn-outline-light {
+    color: $eng-text !important;
+    border-color: $eng-border !important;
+    background-color: transparent !important;
+
+    &:hover:not(:disabled) {
+      background-color: #f7f9fb !important;
+      border-color: $eng-gold !important;
+      color: $eng-text !important;
+    }
+  }
+
+  .btn-close-white {
+    filter: none !important;
+  }
+
+  .form-control,
+  .form-select,
+  input,
+  select,
+  textarea {
+    background: #fff !important;
+    color: $eng-text !important;
+    border-color: $eng-border !important;
+
+    &::placeholder {
+      color: #9aa3ad !important;
+    }
+
+    &:disabled {
+      background: #f3f5f7 !important;
+      color: $eng-muted !important;
+    }
+  }
+
+  .form-label {
+    color: $eng-muted !important;
+  }
+
+  .dropdown-menu,
+  .legion-dropdown-menu {
+    background: #fff !important;
+    color: $eng-text !important;
+    border-color: $eng-border !important;
+    box-shadow: 0 8px 24px rgba(24, 39, 57, 0.14);
+
+    .dropdown-item,
+    .text-white {
+      color: $eng-text !important;
+    }
+
+    .dropdown-item:hover {
+      background: $eng-gold-soft !important;
+      color: $eng-gold !important;
+    }
+
+    .dropdown-divider {
+      border-color: $eng-border !important;
+    }
+  }
+
+  .alert-danger {
+    background: rgba(214, 69, 69, 0.08) !important;
+    color: #d64545 !important;
+    border-color: rgba(214, 69, 69, 0.25) !important;
+  }
+
+  .alert-warning {
+    background: rgba(179, 121, 10, 0.08) !important;
+    color: $eng-gold !important;
+    border-color: rgba(179, 121, 10, 0.25) !important;
+  }
+
+  // LegionFormSelect renders its own toggle/menu (not a native <select>), styled dark with
+  // !important via a 3-class chain (.legion-form-select .dropdown-toggle.legion-form-select-toggle)
+  // in the original theme — match that specificity so this override actually wins.
+  .legion-form-select .dropdown-toggle.legion-form-select-toggle,
+  .legion-form-select-toggle.dropdown-toggle {
+    color: $eng-text !important;
+    background-color: #fff !important;
+    border-color: $eng-border !important;
+
+    &:hover {
+      background-color: #f7f9fb !important;
+      border-color: $eng-gold !important;
+      color: $eng-text !important;
+    }
+
+    .text-white-50 {
+      color: $eng-muted !important;
+    }
+  }
+
+  .dropdown-menu.legion-form-select-menu {
+    background: #fff !important;
+    border-color: $eng-border !important;
+    box-shadow: 0 8px 24px rgba(24, 39, 57, 0.14) !important;
+
+    .dropdown-item {
+      color: $eng-text !important;
+
+      &:hover {
+        background: $eng-gold-soft !important;
+        color: $eng-gold !important;
+      }
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// BACnet Discover Devices modal — a bespoke dark-themed component (see .bacnet-discover-modal in
+// volt/layout/_legion-layout.scss) rather than the generic bg-primary/text-white utility pattern
+// above, so it needs its own light re-theme. Compounded with .engineering-light-form (added to that
+// Modal's className) so this wins over the dark original.
+// ---------------------------------------------------------------------------
+
+.engineering-light-form.bacnet-discover-modal {
+  .modal-content {
+    background: $eng-card !important;
+    border: 1px solid $eng-border !important;
+    color: $eng-text !important;
+  }
+
+  .modal-header.bacnet-discover-modal__header {
+    background: $eng-gold-soft !important;
+    border-bottom: 1px solid $eng-border !important;
+  }
+
+  .modal-header .modal-title {
+    color: $eng-text !important;
+  }
+
+  .modal-body.bacnet-discover-modal__body {
+    background: #fff !important;
+  }
+
+  .bacnet-discover-modal__status-label,
+  .bacnet-discover-modal__status-detail,
+  .bacnet-discover-modal__message,
+  .bacnet-discover-modal__results-title,
+  .bacnet-discover-device-card__meta {
+    color: $eng-muted !important;
+  }
+
+  .bacnet-discover-modal__message {
+    border-color: $eng-border !important;
+  }
+
+  .bacnet-discover-device-card {
+    background: #f7f9fb !important;
+    border-color: $eng-border !important;
+  }
+
+  .bacnet-discover-device-card__address {
+    color: $eng-text !important;
+  }
+
+  .bacnet-explorer-btn {
+    border-color: $eng-border !important;
+    color: $eng-text !important;
+
+    &:hover:not(:disabled) {
+      background: #f7f9fb !important;
+      border-color: $eng-gold !important;
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Create Site wizard — simple numbered-step indicator (Name → Details → Location).
+// ---------------------------------------------------------------------------
+
+.create-site-steps {
+  display: flex;
+  align-items: center;
+}
+
+.create-site-steps__item {
+  display: flex;
+  align-items: center;
+  flex: 1 1 auto;
+  color: $eng-muted;
+  font-size: 12px;
+  font-weight: 600;
+
+  &:last-child {
+    flex: 0 0 auto;
+  }
+
+  &.is-active {
+    color: $eng-text;
+  }
+
+  &.is-done {
+    color: $eng-gold;
+  }
+}
+
+.create-site-steps__dot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 1px solid $eng-border;
+  font-size: 10px;
+  flex-shrink: 0;
+  margin-right: 6px;
+
+  .is-active > & {
+    border-color: $eng-gold;
+    color: $eng-gold;
+  }
+
+  .is-done > & {
+    background: $eng-gold;
+    border-color: $eng-gold;
+    color: #fff;
+  }
+}
+
+.create-site-steps__label {
+  white-space: nowrap;
+}
+
+.create-site-steps__line {
+  height: 1px;
+  background: $eng-border;
+  flex: 1 1 auto;
+  margin: 0 10px;
+}
+
+// ---------------------------------------------------------------------------
+// Site Settings (General / Network / System) — simple label/value rows for the read-only view.
+// ---------------------------------------------------------------------------
+
+.site-settings-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.site-settings-field {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid $eng-border;
+
+  &:last-child {
+    border-bottom: 0;
+    padding-bottom: 0;
+  }
+}
+
+.site-settings-field__label {
+  flex: 0 0 140px;
+  color: $eng-muted;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.site-settings-field__value {
+  flex: 1 1 auto;
+  min-width: 0;
+  color: $eng-text;
+  font-size: 13.5px;
+}
+
+.site-settings-field__code {
+  background: #f7f9fb;
+  border: 1px solid $eng-border;
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-size: 12px;
+  color: $eng-text;
+}
+
+.site-settings-field__copy {
+  border: 0;
+  background: transparent;
+  color: $eng-muted;
+  padding: 2px 4px;
+
+  &:hover {
+    color: $eng-gold;
+  }
+}
+

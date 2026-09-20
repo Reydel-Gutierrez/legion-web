@@ -28,7 +28,7 @@ export default function BindGraphicTemplateModal({
   };
 
   return (
-    <Modal show={show} onHide={onHide} centered>
+    <Modal show={show} onHide={onHide} centered className="engineering-light-form">
       <Modal.Header closeButton className="bg-primary border-light border-opacity-10">
         <Modal.Title className="text-white">Bind to equipment template</Modal.Title>
       </Modal.Header>

@@ -4,6 +4,7 @@
  */
 
 import { isBackendSiteId } from "../siteIdUtils";
+import { isLocalArchiveSiteKey } from "../archiveConstants";
 
 const STORAGE_KEY_WORKING_VERSIONS = "legion_site_drafts";
 const STORAGE_KEY_ACTIVE_RELEASES = "legion_site_deployments";
@@ -75,6 +76,21 @@ export function saveWorkingVersionForSite(siteName, workingState) {
   setLocalStorageSafe(STORAGE_KEY_WORKING_VERSIONS, safeStringify(all));
 }
 
+/** Removes a site's local draft and any deployed release snapshot (Delete Archive). */
+export function deleteWorkingVersionForSite(siteName) {
+  if (!siteName) return;
+  const drafts = loadAllWorkingVersions();
+  if (siteName in drafts) {
+    delete drafts[siteName];
+    setLocalStorageSafe(STORAGE_KEY_WORKING_VERSIONS, safeStringify(drafts));
+  }
+  const releases = loadAllActiveReleases();
+  if (siteName in releases) {
+    delete releases[siteName];
+    setLocalStorageSafe(STORAGE_KEY_ACTIVE_RELEASES, safeStringify(releases));
+  }
+}
+
 export function loadAllActiveReleases() {
   return safeParse(STORAGE_KEY_ACTIVE_RELEASES, {});
 }
@@ -122,7 +138,7 @@ export function pruneWorkingVersionsNotBoundToApi(apiSites) {
   const all = loadAllWorkingVersions();
   const next = {};
   for (const [key, value] of Object.entries(all)) {
-    if (WIZARD_KEYS.has(key)) {
+    if (WIZARD_KEYS.has(key) || isLocalArchiveSiteKey(key)) {
       next[key] = value;
       continue;
     }
@@ -153,7 +169,7 @@ export function pruneActiveReleasesNotBoundToApi(apiSites) {
   const all = loadAllActiveReleases();
   const next = {};
   for (const [key, value] of Object.entries(all)) {
-    if (WIZARD_KEYS.has(key)) {
+    if (WIZARD_KEYS.has(key) || isLocalArchiveSiteKey(key)) {
       next[key] = value;
       continue;
     }

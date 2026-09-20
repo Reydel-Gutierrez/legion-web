@@ -8,7 +8,6 @@ import { Routes } from "../../../routes";
 import { useSite } from "../../../app/providers/SiteProvider";
 import { useWorkingVersion, useActiveDeployment, selectSiteTree } from "../../../hooks/useWorkingVersion";
 import { findNodeById } from "../site-builder/utils/siteTreeUtils";
-import LegionHeroHeader from "../../../components/legion/LegionHeroHeader";
 import { engineeringRepository, USE_HIERARCHY_API } from "../../../lib/data";
 import { appNotify, appLogger, withEngineeringAction } from "../../../lib/app-activity";
 import { createGraphicTemplate } from "../working-version/workingVersionModel";
@@ -1470,10 +1469,6 @@ export default function GraphicsManagerPage() {
   if (hasNoSite) {
     return (
       <Container fluid className="px-0">
-        <div className="px-3 px-md-4 pt-3">
-          <LegionHeroHeader />
-          <hr className="border-light border-opacity-25 my-3" />
-        </div>
         <div className="px-3 px-md-4 pb-4">
           <div className="mb-3">
             <h5 className="text-white fw-bold mb-1">
@@ -1510,11 +1505,6 @@ export default function GraphicsManagerPage() {
         className="d-none"
         aria-hidden
       />
-      <div className="px-3 px-md-4 pt-3">
-        <LegionHeroHeader />
-        <hr className="border-light border-opacity-25 my-3" />
-      </div>
-
       <div className="px-3 px-md-4 pb-4">
         <div className="mb-3 d-flex flex-wrap align-items-center justify-content-between gap-2">
           <div>
@@ -1740,6 +1730,7 @@ export default function GraphicsManagerPage() {
         onHide={handleCloseAssignModal}
         size="lg"
         centered
+        className="engineering-light-form"
       >
         <Modal.Header closeButton>
           <Modal.Title>Select a site, floor, building, or equipment to work on</Modal.Title>
